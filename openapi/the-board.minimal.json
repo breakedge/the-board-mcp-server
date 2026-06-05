@@ -1,0 +1,1310 @@
+{
+	"version": "1.6.0",
+	"paths": {
+		"/v1/clients": {
+			"GET": {
+				"summary": "顧客リスト取得",
+				"parameters": [
+					{
+						"name": "name_cont",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "name_disp_cont",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "invoice_system_number_eq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "tags[]",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "include_archive_flg",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "updated_at_gteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "updated_at_lteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "custom_no_eq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "per_page",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "page",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "response_group",
+						"required": false,
+						"type": "string"
+					}
+				]
+			},
+			"POST": {
+				"summary": "顧客登録"
+			}
+		},
+		"/v1/clients/{id}": {
+			"PATCH": {
+				"summary": "顧客更新"
+			},
+			"DELETE": {
+				"summary": "顧客削除"
+			},
+			"GET": {
+				"summary": "顧客取得"
+			}
+		},
+		"/v1/client_branches": {
+			"GET": {
+				"summary": "顧客支社リスト取得",
+				"parameters": [
+					{
+						"name": "client_id_eq",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "include_archive_flg",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "updated_at_gteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "updated_at_lteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "per_page",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "page",
+						"required": false,
+						"type": "integer"
+					}
+				]
+			},
+			"POST": {
+				"summary": "顧客支社登録"
+			}
+		},
+		"/v1/client_branches/{id}": {
+			"PATCH": {
+				"summary": "顧客支社更新"
+			},
+			"DELETE": {
+				"summary": "顧客支社削除"
+			},
+			"GET": {
+				"summary": "顧客支社取得"
+			}
+		},
+		"/v1/contacts": {
+			"GET": {
+				"summary": "顧客担当者リスト取得",
+				"parameters": [
+					{
+						"name": "client_id_eq",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "include_archive_flg",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "updated_at_gteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "updated_at_lteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "per_page",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "page",
+						"required": false,
+						"type": "integer"
+					}
+				]
+			},
+			"POST": {
+				"summary": "顧客担当者登録"
+			}
+		},
+		"/v1/contacts/{id}": {
+			"PATCH": {
+				"summary": "顧客担当者更新"
+			},
+			"DELETE": {
+				"summary": "顧客担当者削除"
+			},
+			"GET": {
+				"summary": "顧客担当者取得"
+			}
+		},
+		"/v1/projects": {
+			"GET": {
+				"summary": "案件リスト取得",
+				"parameters": [
+					{
+						"name": "name_cont",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "client_id_eq",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "client_name_cont",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "client_name_disp_cont",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "order_status_in[]",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "delivery_status_in[]",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "project_no_eq",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "management_no_eq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "delivery_date_gteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "delivery_date_lteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "invoice_date_gteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "invoice_date_lteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "invoice_timing_kbn_in[]",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "tags[]",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "created_at_gteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "created_at_lteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "updated_at_gteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "updated_at_lteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "include_lost_flg",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "include_archive_flg",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "per_page",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "page",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "response_group",
+						"required": false,
+						"type": "string"
+					}
+				]
+			},
+			"POST": {
+				"summary": "案件登録"
+			}
+		},
+		"/v1/projects/{id}": {
+			"PATCH": {
+				"summary": "案件更新"
+			},
+			"DELETE": {
+				"summary": "案件削除"
+			},
+			"GET": {
+				"summary": "案件取得",
+				"parameters": [
+					{
+						"name": "response_group",
+						"required": false,
+						"type": "string"
+					}
+				]
+			}
+		},
+		"/v1/project_costs": {
+			"GET": {
+				"summary": "案件原価リスト取得",
+				"parameters": [
+					{
+						"name": "project_id_eq",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "created_at_gteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "created_at_lteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "invoice_date_gteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "invoice_date_lteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "payment_date_gteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "payment_date_lteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "per_page",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "page",
+						"required": false,
+						"type": "integer"
+					}
+				]
+			},
+			"POST": {
+				"summary": "案件原価登録"
+			}
+		},
+		"/v1/project_costs/{id}": {
+			"PATCH": {
+				"summary": "案件原価更新"
+			},
+			"DELETE": {
+				"summary": "案件原価削除"
+			},
+			"GET": {
+				"summary": "案件原価取得"
+			}
+		},
+		"/v1/projects/order_status/{id}": {
+			"PATCH": {
+				"summary": "受注ステータス変更"
+			}
+		},
+		"/v1/projects/lock_flg/{id}": {
+			"PATCH": {
+				"summary": "案件のロック"
+			}
+		},
+		"/v1/invoices": {
+			"GET": {
+				"summary": "請求リスト取得",
+				"parameters": [
+					{
+						"name": "invoice_date_gteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "invoice_date_lteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "invoice_payment_limit_date_gteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "invoice_payment_limit_date_lteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "project_order_status_in[]",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "invoice_status_in[]",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "project_project_no_eq",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "project_management_no_eq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "project_name_cont",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "project_client_id_eq",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "project_client_name_cont",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "project_client_name_disp_cont",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "project_tags[]",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "updated_at_gteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "updated_at_lteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "per_page",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "page",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "response_group",
+						"required": false,
+						"type": "string"
+					}
+				]
+			}
+		},
+		"/v1/invoices/invoice_status/{id}": {
+			"PATCH": {
+				"summary": "請求ステータス変更"
+			}
+		},
+		"/v1/documents/estimates/{id}": {
+			"PATCH": {
+				"summary": "見積書更新"
+			},
+			"GET": {
+				"summary": "見積書取得"
+			}
+		},
+		"/v1/documents/estimates/lock_flg/{id}": {
+			"PATCH": {
+				"summary": "見積書ロック"
+			}
+		},
+		"/v1/documents/orders/{id}": {
+			"PATCH": {
+				"summary": "発注書更新"
+			},
+			"GET": {
+				"summary": "発注書取得"
+			}
+		},
+		"/v1/documents/orders/lock_flg/{id}": {
+			"PATCH": {
+				"summary": "発注書ロック"
+			}
+		},
+		"/v1/documents/deliveries/{id}": {
+			"PATCH": {
+				"summary": "納品書更新"
+			},
+			"GET": {
+				"summary": "納品書取得"
+			}
+		},
+		"/v1/documents/deliveries/lock_flg/{id}": {
+			"PATCH": {
+				"summary": "納品書ロック"
+			}
+		},
+		"/v1/documents/invoices/{id}": {
+			"PATCH": {
+				"summary": "請求書更新"
+			},
+			"GET": {
+				"summary": "請求書取得"
+			}
+		},
+		"/v1/documents/invoices/lock_flg/{id}": {
+			"PATCH": {
+				"summary": "請求書ロック"
+			}
+		},
+		"/v1/documents/receipts/{id}": {
+			"PATCH": {
+				"summary": "領収書更新"
+			},
+			"GET": {
+				"summary": "領収書取得"
+			}
+		},
+		"/v1/documents/receipts/lock_flg/{id}": {
+			"PATCH": {
+				"summary": "領収書ロック"
+			}
+		},
+		"/v1/payees": {
+			"GET": {
+				"summary": "発注先リスト取得",
+				"parameters": [
+					{
+						"name": "name_cont",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "name_disp_cont",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "invoice_system_number_eq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "tags[]",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "include_archive_flg",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "updated_at_gteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "updated_at_lteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "custom_no_eq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "per_page",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "page",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "response_group",
+						"required": false,
+						"type": "string"
+					}
+				]
+			},
+			"POST": {
+				"summary": "発注先登録"
+			}
+		},
+		"/v1/payees/{id}": {
+			"PATCH": {
+				"summary": "発注先更新"
+			},
+			"DELETE": {
+				"summary": "発注先削除"
+			},
+			"GET": {
+				"summary": "発注先取得"
+			}
+		},
+		"/v1/payee_branches": {
+			"GET": {
+				"summary": "発注先支社リスト取得",
+				"parameters": [
+					{
+						"name": "payee_id_eq",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "include_archive_flg",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "updated_at_gteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "updated_at_lteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "per_page",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "page",
+						"required": false,
+						"type": "integer"
+					}
+				]
+			},
+			"POST": {
+				"summary": "発注先支社登録"
+			}
+		},
+		"/v1/payee_branches/{id}": {
+			"PATCH": {
+				"summary": "発注先支社更新"
+			},
+			"DELETE": {
+				"summary": "発注先支社削除"
+			},
+			"GET": {
+				"summary": "発注先支社取得"
+			}
+		},
+		"/v1/payee_contacts": {
+			"GET": {
+				"summary": "発注先担当者リスト取得",
+				"parameters": [
+					{
+						"name": "payee_id_eq",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "include_archive_flg",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "updated_at_gteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "updated_at_lteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "per_page",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "page",
+						"required": false,
+						"type": "integer"
+					}
+				]
+			},
+			"POST": {
+				"summary": "発注先担当者登録"
+			}
+		},
+		"/v1/payee_contacts/{id}": {
+			"PATCH": {
+				"summary": "発注先担当者更新"
+			},
+			"DELETE": {
+				"summary": "発注先担当者削除"
+			},
+			"GET": {
+				"summary": "発注先担当者取得"
+			}
+		},
+		"/v1/expenditures": {
+			"GET": {
+				"summary": "発注リスト取得",
+				"parameters": [
+					{
+						"name": "name_cont",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "payee_id_eq",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "payee_name_cont",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "payee_name_disp_cont",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "expenditure_status_in[]",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "delivery_status_in[]",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "expenditure_no_eq",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "management_no_eq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "tags[]",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "created_at_gteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "created_at_lteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "updated_at_gteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "updated_at_lteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "include_not_ordered_flg",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "include_archive_flg",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "expenditure_order_order_date_gteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "expenditure_order_order_date_lteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "per_page",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "page",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "response_group",
+						"required": false,
+						"type": "string"
+					}
+				]
+			},
+			"POST": {
+				"summary": "発注登録"
+			}
+		},
+		"/v1/expenditures/{id}": {
+			"PATCH": {
+				"summary": "発注更新"
+			},
+			"DELETE": {
+				"summary": "発注削除"
+			},
+			"GET": {
+				"summary": "発注取得",
+				"parameters": [
+					{
+						"name": "response_group",
+						"required": false,
+						"type": "string"
+					}
+				]
+			}
+		},
+		"/v1/expenditures/expenditure_status/{id}": {
+			"PATCH": {
+				"summary": "発注ステータス変更"
+			}
+		},
+		"/v1/expenditures/lock_flg/{id}": {
+			"PATCH": {
+				"summary": "発注のロック"
+			}
+		},
+		"/v1/expenditure_payments": {
+			"GET": {
+				"summary": "支払リスト取得",
+				"parameters": [
+					{
+						"name": "invoice_date_gteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "invoice_date_lteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "payment_date_gteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "payment_date_lteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "expenditure_expenditure_status_in[]",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "payment_status_in[]",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "expenditure_expenditure_no_eq",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "expenditure_management_no_eq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "expenditure_name_cont",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "expenditure_payee_id_eq",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "expenditure_payee_name_cont",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "expenditure_payee_name_disp_cont",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "expenditure_tags[]",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "updated_at_gteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "updated_at_lteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "per_page",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "page",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "response_group",
+						"required": false,
+						"type": "string"
+					}
+				]
+			}
+		},
+		"/v1/expenditure_payments/payment_status/{id}": {
+			"PATCH": {
+				"summary": "支払ステータス変更"
+			}
+		},
+		"/v1/expenditure_payments/lock_flg/{id}": {
+			"PATCH": {
+				"summary": "支払のロック"
+			}
+		},
+		"/v1/expenditure_documents/estimates/{id}": {
+			"PATCH": {
+				"summary": "見積依頼書更新"
+			},
+			"GET": {
+				"summary": "見積依頼書取得"
+			}
+		},
+		"/v1/expenditure_documents/estimates/lock_flg/{id}": {
+			"PATCH": {
+				"summary": "見積依頼書ロック"
+			}
+		},
+		"/v1/expenditure_documents/orders/{id}": {
+			"PATCH": {
+				"summary": "発注書更新"
+			},
+			"GET": {
+				"summary": "発注書取得"
+			}
+		},
+		"/v1/expenditure_documents/orders/lock_flg/{id}": {
+			"PATCH": {
+				"summary": "発注書ロック"
+			}
+		},
+		"/v1/expenditure_documents/deliveries/{id}": {
+			"PATCH": {
+				"summary": "検収書更新"
+			},
+			"GET": {
+				"summary": "検収書取得"
+			}
+		},
+		"/v1/expenditure_documents/deliveries/lock_flg/{id}": {
+			"PATCH": {
+				"summary": "検収書ロック"
+			}
+		},
+		"/v1/expenditure_documents/invoices/{id}": {
+			"PATCH": {
+				"summary": "支払通知書更新"
+			},
+			"GET": {
+				"summary": "支払通知書取得"
+			}
+		},
+		"/v1/expenditure_documents/invoices/lock_flg/{id}": {
+			"PATCH": {
+				"summary": "支払通知書ロック"
+			}
+		},
+		"/v1/analyses": {
+			"GET": {
+				"summary": "計上データリスト取得",
+				"parameters": [
+					{
+						"name": "report_ym_gteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "report_ym_lteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "analysis_data_kbn_in[]",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "order_status_in[]",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "expenditure_status_in[]",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "include_auto_renewal_flg",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "invoice_status_in[]",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "payment_status_in[]",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "updated_at_gteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "updated_at_lteq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "per_page",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "page",
+						"required": false,
+						"type": "integer"
+					}
+				]
+			}
+		},
+		"/v1/users": {
+			"GET": {
+				"summary": "ユーザーリスト取得",
+				"parameters": [
+					{
+						"name": "email_eq",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "per_page",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "page",
+						"required": false,
+						"type": "integer"
+					}
+				]
+			}
+		},
+		"/v1/groups": {
+			"GET": {
+				"summary": "グループリスト取得",
+				"parameters": [
+					{
+						"name": "name_cont",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "include_archive_flg",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "per_page",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "page",
+						"required": false,
+						"type": "integer"
+					}
+				]
+			}
+		},
+		"/v1/payment_terms": {
+			"GET": {
+				"summary": "支払条件リスト取得",
+				"parameters": [
+					{
+						"name": "name_cont",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "include_archive_flg",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "per_page",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "page",
+						"required": false,
+						"type": "integer"
+					}
+				]
+			}
+		},
+		"/v1/project_types": {
+			"GET": {
+				"summary": "案件区分リスト取得",
+				"parameters": [
+					{
+						"name": "project_type_kbn_eq",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "name_cont",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "include_archive_flg",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "per_page",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "page",
+						"required": false,
+						"type": "integer"
+					}
+				]
+			}
+		},
+		"/v1/expenditure_types": {
+			"GET": {
+				"summary": "発注区分リスト取得",
+				"parameters": [
+					{
+						"name": "expenditure_type_kbn_eq",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "name_cont",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "include_archive_flg",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "per_page",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "page",
+						"required": false,
+						"type": "integer"
+					}
+				]
+			}
+		},
+		"/v1/accounting_types": {
+			"GET": {
+				"summary": "会計区分リスト取得",
+				"parameters": [
+					{
+						"name": "accounting_type_kbn_eq",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "name_cont",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "include_archive_flg",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "per_page",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "page",
+						"required": false,
+						"type": "integer"
+					}
+				]
+			}
+		},
+		"/v1/document_send_channels": {
+			"GET": {
+				"summary": "カスタム書類送付方法リスト取得",
+				"parameters": [
+					{
+						"name": "name_cont",
+						"required": false,
+						"type": "string"
+					},
+					{
+						"name": "include_archive_flg",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "per_page",
+						"required": false,
+						"type": "integer"
+					},
+					{
+						"name": "page",
+						"required": false,
+						"type": "integer"
+					}
+				]
+			}
+		}
+	}
+}

@@ -1,0 +1,50 @@
+name: Close external PRs
+
+# 外部 PR は受け付けず、内容を issue に変換して自動クローズする
+# (CONTRIBUTING.md のポリシー)。
+# PR のコードはチェックアウト・実行しないため pull_request_target で安全。
+on:
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  close:
+    runs-on: ubuntu-latest
+    # OWNER / MEMBER / COLLABORATOR 以外 (= 外部) の PR のみ対象
+    if: ${{ !contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association) }}
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const { owner, repo } = context.repo;
+
+            const issue = await github.rest.issues.create({
+              owner,
+              repo,
+              title: `[From PR #${pr.number}] ${pr.title}`,
+              body: `_Converted from #${pr.number} opened by @${pr.user.login}. `
+                + `External pull requests are not accepted; see CONTRIBUTING.md._\n\n---\n\n`
+                + `${pr.body || '(no description provided)'}`,
+              labels: ['from-pr'],
+            });
+
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: pr.number,
+              body: `Thanks for your contribution! This project does not accept external `
+                + `pull requests (see CONTRIBUTING.md). We've converted it into #${issue.data.number} `
+                + `for consideration — please follow up there.`,
+            });
+
+            await github.rest.pulls.update({
+              owner,
+              repo,
+              pull_number: pr.number,
+              state: 'closed',
+            });

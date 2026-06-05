@@ -1,0 +1,25 @@
+node_modules
+dist
+coverage
+.git
+.github
+.codex
+tests
+*.test.ts
+.env
+.env.*
+.vscode
+.idea
+npm-debug.log*
+*.tgz
+README*.md
+docs
+
+# Internal planning & design docs (.gitignore と揃える / ビルドコンテキストに含めない)
+CLAUDE.md
+DECISION.md
+REQUIREMENTS.md
+board-mcp-oss-plan.md
+.internal/
+.claude/
+.playwright-mcp/

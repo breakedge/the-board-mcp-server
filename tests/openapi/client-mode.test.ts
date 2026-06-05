@@ -1,0 +1,355 @@
+import { http, HttpResponse } from "msw";
+import { setupServer } from "msw/node";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import type { Config } from "../../src/config.js";
+import {
+	handleAuthStatus,
+	handleDelete,
+	handleGet,
+	handleListPaths,
+	handlePatch,
+	handlePost,
+} from "../../src/openapi/client-mode.js";
+import { loadSchema } from "../../src/openapi/schema-loader.js";
+import type { MinimalSchema } from "../../src/openapi/types.js";
+
+const TEST_BASE_URL = "https://api.the-board.jp";
+const mswServer = setupServer();
+
+let schema: MinimalSchema;
+
+function makeConfig(overrides: Partial<Config> = {}): Config {
+	return {
+		readOnly: true,
+		enableWrites: false,
+		enableDestructiveWrites: false,
+		toolsets: [
+			"projects",
+			"documents",
+			"customers",
+			"payees",
+			"expenditures",
+			"master",
+			"analytics",
+		],
+		...overrides,
+	};
+}
+
+beforeAll(async () => {
+	mswServer.listen({ onUnhandledRequest: "error" });
+	schema = await loadSchema();
+});
+
+beforeEach(() => {
+	vi.stubEnv("THE_BOARD_API_KEY", "test-key");
+	vi.stubEnv("THE_BOARD_API_TOKEN", "test-token");
+});
+
+afterEach(() => {
+	mswServer.resetHandlers();
+	vi.unstubAllEnvs();
+});
+
+afterAll(() => {
+	mswServer.close();
+});
+
+// ---------------------------------------------------------------------------
+// handleListPaths (STEP 2-3)
+// ---------------------------------------------------------------------------
+describe("handleListPaths", () => {
+	it("引数なしで全エンドポイントを返す", () => {
+		const result = handleListPaths({}, makeConfig(), schema);
+		expect(result.content[0].type).toBe("text");
+		const text = result.content[0].text as string;
+		const parsed = JSON.parse(text);
+		expect(Array.isArray(parsed)).toBe(true);
+		expect(parsed.length).toBeGreaterThan(0);
+		expect(parsed[0]).toHaveProperty("method");
+		expect(parsed[0]).toHaveProperty("path");
+		expect(parsed[0]).toHaveProperty("summary");
+	});
+
+	it("method='GET' で GET のみフィルタ", () => {
+		const result = handleListPaths({ method: "GET" }, makeConfig(), schema);
+		const parsed = JSON.parse(result.content[0].text as string);
+		expect(parsed.every((e: { method: string }) => e.method === "GET")).toBe(true);
+	});
+
+	it("keyword='client' でパス/summaryに 'client' を含むもの", () => {
+		const result = handleListPaths({ keyword: "client" }, makeConfig(), schema);
+		const parsed = JSON.parse(result.content[0].text as string);
+		expect(parsed.length).toBeGreaterThan(0);
+		expect(
+			parsed.every(
+				(e: { path: string; summary: string }) =>
+					e.path.toLowerCase().includes("client") ||
+					e.summary.toLowerCase().includes("client") ||
+					e.summary.includes("顧客"),
+			),
+		).toBe(true);
+	});
+
+	it("method + keyword の組み合わせ", () => {
+		const result = handleListPaths({ method: "POST", keyword: "client" }, makeConfig(), schema);
+		const parsed = JSON.parse(result.content[0].text as string);
+		expect(parsed.every((e: { method: string }) => e.method === "POST")).toBe(true);
+	});
+
+	it("toolsets で有効ドメインのみに絞る (--toolsets projects)", () => {
+		const result = handleListPaths({}, makeConfig({ toolsets: ["projects"] }), schema);
+		const parsed = JSON.parse(result.content[0].text as string);
+		expect(parsed.length).toBeGreaterThan(0);
+		// projects ドメイン (/v1/projects*, /v1/project_costs*) のパスのみ
+		expect(parsed.every((e: { path: string }) => e.path.startsWith("/v1/project"))).toBe(true);
+		// documents ドメインのパスは含まれない
+		expect(parsed.some((e: { path: string }) => e.path.startsWith("/v1/documents"))).toBe(false);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// handleGet (STEP 2-4)
+// ---------------------------------------------------------------------------
+describe("handleGet", () => {
+	it("正常系: /v1/clients → JSON テキスト返却", async () => {
+		mswServer.use(
+			http.get(`${TEST_BASE_URL}/v1/clients`, () => {
+				return HttpResponse.json([{ id: 1 }]);
+			}),
+		);
+		const config = makeConfig();
+		const result = await handleGet({ path: "/v1/clients" }, config, schema);
+		expect(result.isError).toBeUndefined();
+		expect(result.content[0].text).toContain('"id"');
+	});
+
+	it("query オブジェクト渡し", async () => {
+		mswServer.use(
+			http.get(`${TEST_BASE_URL}/v1/projects`, ({ request }) => {
+				const url = new URL(request.url);
+				expect(url.searchParams.get("page")).toBe("1");
+				return HttpResponse.json([]);
+			}),
+		);
+		const config = makeConfig();
+		await handleGet({ path: "/v1/projects", query: { page: 1 } }, config, schema);
+	});
+
+	it("無効パス → エラーレスポンス", async () => {
+		const config = makeConfig();
+		const result = await handleGet({ path: "/v1/nonexistent" }, config, schema);
+		expect(result.isError).toBe(true);
+	});
+
+	it("readOnly モードで GET は許可", async () => {
+		mswServer.use(http.get(`${TEST_BASE_URL}/v1/clients`, () => HttpResponse.json([])));
+		const config = makeConfig({ readOnly: true });
+		const result = await handleGet({ path: "/v1/clients" }, config, schema);
+		expect(result.isError).toBeUndefined();
+	});
+
+	it("API エラー (404) → isError: true", async () => {
+		mswServer.use(
+			http.get(`${TEST_BASE_URL}/v1/clients/999`, () => {
+				return HttpResponse.json({ message: "Not Found" }, { status: 404 });
+			}),
+		);
+		const config = makeConfig();
+		const result = await handleGet({ path: "/v1/clients/999" }, config, schema);
+		expect(result.isError).toBe(true);
+	});
+
+	it("無効な toolset のパスは拒否される", async () => {
+		// /v1/clients は customers ドメイン。toolsets=projects のみなら拒否。
+		const config = makeConfig({ toolsets: ["projects"] });
+		const result = await handleGet({ path: "/v1/clients" }, config, schema);
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toContain("toolset");
+	});
+});
+
+// ---------------------------------------------------------------------------
+// handlePost (STEP 2-5)
+// ---------------------------------------------------------------------------
+describe("handlePost", () => {
+	it("正常系: enableWrites=true", async () => {
+		mswServer.use(
+			http.post(`${TEST_BASE_URL}/v1/clients`, () => {
+				return HttpResponse.json({ id: 1 }, { status: 201 });
+			}),
+		);
+		const config = makeConfig({ readOnly: false, enableWrites: true });
+		const result = await handlePost(
+			{ path: "/v1/clients", body: { name: "Test" } },
+			config,
+			schema,
+		);
+		expect(result.isError).toBeUndefined();
+	});
+
+	it("無効な toolset のパスは拒否される (writes 有効でも)", async () => {
+		const config = makeConfig({
+			readOnly: false,
+			enableWrites: true,
+			toolsets: ["projects"],
+		});
+		const result = await handlePost(
+			{ path: "/v1/clients", body: { name: "Test" } },
+			config,
+			schema,
+		);
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toContain("toolset");
+	});
+
+	it("readOnly モード → エラー + 有効化方法", async () => {
+		const config = makeConfig({ readOnly: true });
+		const result = await handlePost(
+			{ path: "/v1/clients", body: { name: "Test" } },
+			config,
+			schema,
+		);
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toContain("--enable-writes");
+	});
+
+	it("enableWrites=false → エラー", async () => {
+		const config = makeConfig({ readOnly: false, enableWrites: false });
+		const result = await handlePost(
+			{ path: "/v1/clients", body: { name: "Test" } },
+			config,
+			schema,
+		);
+		expect(result.isError).toBe(true);
+	});
+
+	it("無効パス → エラー", async () => {
+		const config = makeConfig({ readOnly: false, enableWrites: true });
+		const result = await handlePost({ path: "/v1/nonexistent", body: {} }, config, schema);
+		expect(result.isError).toBe(true);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// handlePatch (STEP 2-6)
+// ---------------------------------------------------------------------------
+describe("handlePatch", () => {
+	it("正常系: enableWrites=true", async () => {
+		mswServer.use(
+			http.patch(`${TEST_BASE_URL}/v1/clients/1`, () => {
+				return HttpResponse.json({ id: 1 });
+			}),
+		);
+		const config = makeConfig({ readOnly: false, enableWrites: true });
+		const result = await handlePatch(
+			{ path: "/v1/clients/1", body: { name: "Updated" } },
+			config,
+			schema,
+		);
+		expect(result.isError).toBeUndefined();
+	});
+
+	it("readOnly → エラー", async () => {
+		const config = makeConfig({ readOnly: true });
+		const result = await handlePatch({ path: "/v1/clients/1", body: {} }, config, schema);
+		expect(result.isError).toBe(true);
+	});
+
+	it("destructive パス (lock_flg) + enableDestructiveWrites=false → エラー", async () => {
+		const config = makeConfig({
+			readOnly: false,
+			enableWrites: true,
+			enableDestructiveWrites: false,
+		});
+		const result = await handlePatch({ path: "/v1/projects/lock_flg/1", body: {} }, config, schema);
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toContain("--enable-destructive-writes");
+	});
+
+	it("destructive パス (lock_flg) + enableDestructiveWrites=true → 許可", async () => {
+		mswServer.use(
+			http.patch(`${TEST_BASE_URL}/v1/projects/lock_flg/1`, () => {
+				return HttpResponse.json({ locked: true });
+			}),
+		);
+		const config = makeConfig({
+			readOnly: false,
+			enableWrites: true,
+			enableDestructiveWrites: true,
+		});
+		const result = await handlePatch({ path: "/v1/projects/lock_flg/1", body: {} }, config, schema);
+		expect(result.isError).toBeUndefined();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// handleDelete (STEP 2-6)
+// ---------------------------------------------------------------------------
+describe("handleDelete", () => {
+	it("正常系: enableDestructiveWrites=true", async () => {
+		mswServer.use(
+			http.delete(`${TEST_BASE_URL}/v1/clients/1`, () => {
+				return new HttpResponse(null, { status: 204 });
+			}),
+		);
+		const config = makeConfig({
+			readOnly: false,
+			enableWrites: true,
+			enableDestructiveWrites: true,
+		});
+		const result = await handleDelete({ path: "/v1/clients/1" }, config, schema);
+		expect(result.isError).toBeUndefined();
+	});
+
+	it("enableDestructiveWrites=false → エラー + 有効化方法", async () => {
+		const config = makeConfig({
+			readOnly: false,
+			enableWrites: true,
+			enableDestructiveWrites: false,
+		});
+		const result = await handleDelete({ path: "/v1/clients/1" }, config, schema);
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toContain("--enable-destructive-writes");
+	});
+
+	it("readOnly → エラー", async () => {
+		const config = makeConfig({ readOnly: true });
+		const result = await handleDelete({ path: "/v1/clients/1" }, config, schema);
+		expect(result.isError).toBe(true);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// handleAuthStatus (STEP 2-7)
+// ---------------------------------------------------------------------------
+describe("handleAuthStatus", () => {
+	it("環境変数あり → configured: true", () => {
+		const result = handleAuthStatus();
+		const text = result.content[0].text as string;
+		expect(text).toContain("true");
+		expect(text).not.toContain("test-key");
+		expect(text).not.toContain("test-token");
+	});
+
+	it("環境変数なし → configured: false", () => {
+		vi.unstubAllEnvs();
+		const result = handleAuthStatus();
+		const text = result.content[0].text as string;
+		expect(text).toContain("false");
+	});
+
+	it("readOnly モードでも呼び出せる", () => {
+		const result = handleAuthStatus();
+		expect(result.isError).toBeUndefined();
+	});
+
+	it("rate limit の残量を含む (STEP 2-7)", () => {
+		const result = handleAuthStatus();
+		const parsed = JSON.parse(result.content[0].text as string);
+		expect(parsed).toHaveProperty("dailyRequestsRemaining");
+		expect(typeof parsed.dailyRequestsRemaining).toBe("number");
+		expect(parsed).toHaveProperty("dailyRequestLimit");
+		expect(parsed.dailyRequestLimit).toBe(3000);
+	});
+});

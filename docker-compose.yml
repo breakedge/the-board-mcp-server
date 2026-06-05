@@ -1,0 +1,22 @@
+# The Board MCP server は stdio トランスポートで通信するため、通常は MCP
+# クライアントが `docker run -i` で起動する。この compose ファイルは環境変数の
+# 設定例とローカル動作確認用。
+#
+# 使い方:
+#   THE_BOARD_API_KEY=... THE_BOARD_API_TOKEN=... docker compose run --rm the-board
+services:
+  the-board:
+    build: .
+    image: breakedge/the-board-mcp-server
+    # stdio 通信のため標準入力を開いたままにする
+    stdin_open: true
+    tty: false
+    environment:
+      THE_BOARD_API_KEY: ${THE_BOARD_API_KEY:?set THE_BOARD_API_KEY}
+      THE_BOARD_API_TOKEN: ${THE_BOARD_API_TOKEN:?set THE_BOARD_API_TOKEN}
+      # THE_BOARD_API_BASE_URL: https://api.the-board.jp
+      # 書き込みを許可する場合 (デフォルトは read-only):
+      # THE_BOARD_ENABLE_WRITES: "true"
+      # THE_BOARD_ENABLE_DESTRUCTIVE_WRITES: "true"
+      # ツールセットを絞る場合:
+      # THE_BOARD_TOOLSETS: projects,documents,customers

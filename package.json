@@ -1,0 +1,53 @@
+{
+	"name": "@breakedge/the-board-mcp-server",
+	"version": "0.1.0",
+	"description": "Unofficial MCP server for Board (the-board.jp) - cloud-based invoicing and project management SaaS",
+	"type": "module",
+	"engines": {
+		"node": ">=20"
+	},
+	"keywords": ["mcp", "model-context-protocol", "the-board", "invoice", "api", "typescript"],
+	"license": "MIT",
+	"author": "BREAKEDGE Inc.",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/breakedge/the-board-mcp-server.git"
+	},
+	"bin": {
+		"the-board-mcp-server": "./dist/index.js"
+	},
+	"files": ["dist/", "openapi/"],
+	"publishConfig": {
+		"access": "public",
+		"provenance": true
+	},
+	"main": "./dist/index.js",
+	"scripts": {
+		"dev": "tsx src/index.ts",
+		"build": "tsc",
+		"prepare": "npm run build",
+		"start": "node dist/index.js",
+		"test": "vitest run",
+		"test:cov": "vitest run --coverage",
+		"check": "biome check .",
+		"check:fix": "biome check --fix .",
+		"typecheck": "tsc --noEmit",
+		"release": "changeset publish"
+	},
+	"dependencies": {
+		"@modelcontextprotocol/sdk": "^1.12.0",
+		"yargs": "^17.0.0",
+		"zod": "^3.24.0"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.0",
+		"@changesets/cli": "^2.31.0",
+		"@types/node": "^20.0.0",
+		"@types/yargs": "^17.0.0",
+		"@vitest/coverage-v8": "^3.0.0",
+		"msw": "^2.13.2",
+		"tsx": "^4.0.0",
+		"typescript": "^5.7.0",
+		"vitest": "^3.0.0"
+	}
+}

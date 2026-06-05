@@ -1,0 +1,54 @@
+name: Release
+
+# changesets で CHANGELOG 生成 + npm publish + GitHub Release を行う。
+# changeset が存在する push では "Version Packages" PR を作成し、その PR が
+# main にマージされると publish する。
+#
+# 認証は npm Trusted Publishing (OIDC) を使用し、長命トークン (NPM_TOKEN) は持たない。
+# publish 時に provenance (来歴証明) が自動付与される (package.json の
+# publishConfig.provenance で明示)。
+#
+# 前提:
+#   - npm 上にパッケージが既に存在すること
+#     (新規パッケージは初回のみ手動 publish が必要 = 鶏卵問題)
+#   - npmjs.com のパッケージ設定で Trusted Publisher
+#     (このリポジトリ + このワークフロー release.yml) を登録済みであること
+#   - 詳細なセットアップ手順は .internal/RELEASE_SETUP.md を参照
+#     (.internal/ は .gitignore 済みで公開リポジトリには含まれない)
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write # version bump commit / tag / GitHub Release
+  pull-requests: write # "Version Packages" PR
+  id-token: write # npm Trusted Publishing (OIDC) トークン生成に必須
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22 # Trusted Publishing は Node >= 22.14.0 が必須
+          cache: npm
+          # registry-url は意図的に設定しない:
+          # setup-node が .npmrc に authToken プレースホルダを書き込み
+          # OIDC 認証と衝突する (EINVALIDNPMTOKEN の原因)
+      # Trusted Publishing は npm CLI >= 11.5.1 が必須
+      # (Node 22 同梱の npm は 10.x のため最新へ更新)
+      - run: npm install -g npm@latest
+      - run: npm ci
+      - name: Create Release PR or publish
+        uses: changesets/action@v1
+        with:
+          publish: npm run release
+          title: "chore: version packages"
+          commit: "chore: version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

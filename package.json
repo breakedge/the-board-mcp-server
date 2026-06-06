@@ -1,6 +1,6 @@
 {
 	"name": "@breakedge/the-board-mcp-server",
-	"version": "0.1.0",
+	"version": "0.1.2",
 	"description": "Unofficial MCP server for Board (the-board.jp) - cloud-based invoicing and project management SaaS",
 	"type": "module",
 	"engines": {
@@ -11,10 +11,10 @@
 	"author": "BREAKEDGE Inc.",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/breakedge/the-board-mcp-server.git"
+		"url": "git+https://github.com/breakedge/the-board-mcp-server.git"
 	},
 	"bin": {
-		"the-board-mcp-server": "./dist/index.js"
+		"the-board-mcp-server": "dist/index.js"
 	},
 	"files": ["dist/", "openapi/"],
 	"publishConfig": {
@@ -24,8 +24,9 @@
 	"main": "./dist/index.js",
 	"scripts": {
 		"dev": "tsx src/index.ts",
-		"build": "tsc",
+		"build": "tsc && chmod +x dist/index.js",
 		"prepare": "npm run build",
+		"postinstall": "node -e \"try{require('fs').chmodSync('dist/index.js',0o755)}catch(e){}\"",
 		"start": "node dist/index.js",
 		"test": "vitest run",
 		"test:cov": "vitest run --coverage",

@@ -60,16 +60,19 @@ export async function createMcpServer(config: Config): Promise<McpServer> {
 	);
 
 	// z.preprocess で JSON文字列 → object 変換
-	const coercibleRecord = z.preprocess((val) => {
-		if (typeof val === "string") {
-			try {
-				return JSON.parse(val);
-			} catch {
-				return val;
+	const coercibleRecord = z.preprocess(
+		(val) => {
+			if (typeof val === "string") {
+				try {
+					return JSON.parse(val);
+				} catch {
+					return val;
+				}
 			}
-		}
-		return val;
-	}, z.record(z.unknown()));
+			return val;
+		},
+		z.record(z.string(), z.unknown()),
+	);
 
 	// list_paths
 	server.tool(

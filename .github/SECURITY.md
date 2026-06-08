@@ -29,7 +29,7 @@ This policy applies to:
 
 ### Out of Scope
 
-- Vulnerabilities in the Board API itself (report to VELC Inc.)
+- Vulnerabilities in the board API itself (report to VELC Inc.)
 - Vulnerabilities in dependencies (report to the upstream project)
 
 ## Supported Versions

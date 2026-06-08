@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Report a problem with The Board MCP server
+about: Report a problem with the board MCP server
 title: "[Bug] "
 labels: bug
 assignees: ''

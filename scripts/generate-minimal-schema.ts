@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * Board OpenAPI spec から minimal schema を生成する。
+ * board OpenAPI spec から minimal schema を生成する。
  *
  * Usage:
  *   npx tsx scripts/generate-minimal-schema.ts [input-path]

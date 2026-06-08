@@ -21,7 +21,7 @@ const pkg = JSON.parse(readFileSync(join(__dirname, "../../package.json"), "utf-
 	version: string;
 };
 
-const INSTRUCTIONS = `You are connected to Board (the-board.jp) MCP server.
+const INSTRUCTIONS = `You are connected to board (the-board.jp) MCP server.
 
 ## How to use
 1. Use the_board_api_list_paths to discover available API endpoints
@@ -93,12 +93,12 @@ export async function createMcpServer(config: Config): Promise<McpServer> {
 	// get
 	server.tool(
 		"the_board_api_get",
-		"Send GET request to the Board API. Retrieves resources (single or list).",
+		"Send GET request to the board API. Retrieves resources (single or list).",
 		{
 			path: z.string().describe("API path (e.g., /v1/clients, /v1/projects/123)"),
 			query: coercibleRecord.optional().describe("Query parameters"),
 		},
-		{ title: "Get resource from the Board API", readOnlyHint: true },
+		{ title: "Get resource from the board API", readOnlyHint: true },
 		(args) => handleGet(args as { path: string; query?: Record<string, unknown> }, config, schema),
 	);
 
@@ -106,24 +106,24 @@ export async function createMcpServer(config: Config): Promise<McpServer> {
 	if (config.enableWrites) {
 		server.tool(
 			"the_board_api_post",
-			"Send POST request to the Board API. Creates new resources.",
+			"Send POST request to the board API. Creates new resources.",
 			{
 				path: z.string().describe("API path (e.g., /v1/clients)"),
 				body: coercibleRecord.describe("Request body"),
 			},
-			{ title: "Create resource in Board", destructiveHint: false },
+			{ title: "Create resource in board", destructiveHint: false },
 			(args) => handlePost(args as { path: string; body: Record<string, unknown> }, config, schema),
 		);
 
 		server.tool(
 			"the_board_api_patch",
-			"Send PATCH request to the Board API. Updates resources (incl. status/lock changes).",
+			"Send PATCH request to the board API. Updates resources (incl. status/lock changes).",
 			{
 				path: z.string().describe("API path (e.g., /v1/clients/123)"),
 				body: coercibleRecord.describe("Request body"),
 			},
 			{
-				title: "Update resource in Board",
+				title: "Update resource in board",
 				// 破壊的書き込み有効時はこの PATCH ツールが lock/status 変更も実行しうるため、
 				// その場合は destructive として正しく通知する
 				destructiveHint: config.enableDestructiveWrites,
@@ -138,12 +138,12 @@ export async function createMcpServer(config: Config): Promise<McpServer> {
 	if (config.enableDestructiveWrites) {
 		server.tool(
 			"the_board_api_delete",
-			"Send DELETE request to the Board API. Deletes resources permanently.",
+			"Send DELETE request to the board API. Deletes resources permanently.",
 			{
 				path: z.string().describe("API path (e.g., /v1/clients/123)"),
 			},
 			{
-				title: "Delete resource from Board",
+				title: "Delete resource from board",
 				destructiveHint: true,
 				idempotentHint: true,
 			},
@@ -154,10 +154,10 @@ export async function createMcpServer(config: Config): Promise<McpServer> {
 	// auth_status
 	server.tool(
 		"the_board_auth_status",
-		"Check the Board API authentication status and rate limit remaining.",
+		"Check the board API authentication status and rate limit remaining.",
 		{},
 		{
-			title: "Check the Board API authentication status",
+			title: "Check the board API authentication status",
 			readOnlyHint: true,
 		},
 		() => handleAuthStatus(),

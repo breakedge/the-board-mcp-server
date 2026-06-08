@@ -1,4 +1,4 @@
-# The Board MCP server は stdio トランスポートで通信するため、通常は MCP
+# the board MCP server は stdio トランスポートで通信するため、通常は MCP
 # クライアントが `docker run -i` で起動する。この compose ファイルは環境変数の
 # 設定例とローカル動作確認用。
 #

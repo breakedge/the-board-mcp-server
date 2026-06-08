@@ -56,7 +56,7 @@ describe("formatApiError", () => {
 	});
 
 	it("422 で errors の値が文字列(非配列)でも例外を投げず field/内容を含む", () => {
-		// Board 本番 API は errors の値を配列でない形で返すことがある
+		// board 本番 API は errors の値を配列でない形で返すことがある
 		const err = new TheBoardApiError("Unprocessable", 422, {
 			errors: { name: "を入力してください" },
 		});

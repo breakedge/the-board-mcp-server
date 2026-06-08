@@ -1,10 +1,10 @@
-# The Board MCP Server
+# the board MCP Server
 
 [![CI](https://github.com/breakedge/the-board-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/breakedge/the-board-mcp-server/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/@breakedge/the-board-mcp-server.svg)](https://www.npmjs.com/package/@breakedge/the-board-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-[Board](https://the-board.jp/) の非公式 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) サーバです。Board はヴェルク株式会社が提供するクラウド型の見積書・請求書管理 SaaS です。
+[board](https://the-board.jp/) の非公式 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) サーバです。board はヴェルク株式会社が提供するクラウド型の見積書・請求書管理 SaaS です。
 
 > **免責事項**: このプロジェクトはヴェルク株式会社とは提携関係になく、同社の承認を受けたものではありません。board® はヴェルク株式会社の商標です。
 
@@ -12,7 +12,7 @@
 
 ## 特徴
 
-- Board API v1.6.0 の全 89 エンドポイントに 6 つの汎用 MCP ツールでアクセス
+- board API v1.6.0 の全 89 エンドポイントに 6 つの汎用 MCP ツールでアクセス
 - OpenAPI スキーマ駆動のパス検証
 - 3 段階の書き込み安全機構（`--read-only` デフォルト → `--enable-writes` → `--enable-destructive-writes`）
 - 組み込みレートリミット（3 req/sec、3,000 req/day）

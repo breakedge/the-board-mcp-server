@@ -1,4 +1,4 @@
-# コントリビューションガイド — The Board MCP Server
+# コントリビューションガイド — the board MCP Server
 
 ご関心をお寄せいただきありがとうございます！
 

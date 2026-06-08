@@ -1,10 +1,10 @@
-# The Board MCP Server
+# the board MCP Server
 
 [![CI](https://github.com/breakedge/the-board-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/breakedge/the-board-mcp-server/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/@breakedge/the-board-mcp-server.svg)](https://www.npmjs.com/package/@breakedge/the-board-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-An unofficial [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for [Board](https://the-board.jp/) — a cloud-based invoicing and project management SaaS by VELC Inc.
+An unofficial [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for [board](https://the-board.jp/) — a cloud-based invoicing and project management SaaS by VELC Inc.
 
 > **Disclaimer**: This project is not affiliated with or endorsed by VELC Inc. board® is a trademark of VELC Inc.
 
@@ -12,7 +12,7 @@ An unofficial [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) s
 
 ## Features
 
-- Access all 89 endpoints of the Board API v1.6.0 via 6 generic MCP tools
+- Access all 89 endpoints of the board API v1.6.0 via 6 generic MCP tools
 - OpenAPI schema-driven path validation
 - 3-tier write safety (`--read-only` default → `--enable-writes` → `--enable-destructive-writes`)
 - Built-in rate limiting (3 req/sec, 3,000 req/day)

@@ -19,7 +19,7 @@ function extractValidationDetails(body: unknown): string {
 		const b = body as Record<string, unknown>;
 		if (b.errors && typeof b.errors === "object") {
 			const errors = b.errors as Record<string, unknown>;
-			// Board API は errors の値を配列 / 文字列 / オブジェクトいずれでも返しうるため
+			// board API は errors の値を配列 / 文字列 / オブジェクトいずれでも返しうるため
 			// 形に依存せず文字列化する (配列前提の messages.join はクラッシュする)
 			const details = Object.entries(errors)
 				.map(([field, messages]) => {
@@ -54,7 +54,7 @@ export function formatApiError(error: unknown): string {
 				return "レート制限に達しました。しばらく待ってから再試行してください。";
 			case 500:
 			case 503:
-				return "Board API でエラーが発生しました。時間をおいて再試行してください。";
+				return "board API でエラーが発生しました。時間をおいて再試行してください。";
 			default:
 				return `API エラーが発生しました (${error.status})`;
 		}

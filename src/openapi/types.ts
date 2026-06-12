@@ -12,6 +12,8 @@ export interface MinimalParameter {
 export interface MinimalField {
 	name: string;
 	type?: string;
+	/** OpenAPI の format (date, date-time, int32 等)。describe 出力で値の形を示す。 */
+	format?: string;
 	required?: boolean;
 	enum?: (string | number)[];
 	description?: string;

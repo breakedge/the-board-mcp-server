@@ -1,10 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { TheBoardApiError } from "../../src/api/types.js";
 import {
 	createErrorResponse,
 	createTextResponse,
 	formatApiError,
 } from "../../src/utils/response.js";
+
+afterEach(() => {
+	vi.unstubAllEnvs();
+});
 
 describe("createTextResponse", () => {
 	it('"ok" を渡すと { content: [{ type: "text", text: "ok" }] } を返す', () => {
@@ -112,6 +116,14 @@ describe("formatApiError", () => {
 	it("不明な Error → err.message を併記して原因を示す (B2-3)", () => {
 		const err = new Error("fetch failed: ECONNREFUSED");
 		expect(formatApiError(err)).toContain("fetch failed: ECONNREFUSED");
+	});
+
+	it("不明な Error の message に含まれる資格情報を伏字化する (defense-in-depth)", () => {
+		vi.stubEnv("THE_BOARD_API_TOKEN", "secret-token-xyz");
+		const err = new Error("connection failed using Bearer secret-token-xyz");
+		const msg = formatApiError(err);
+		expect(msg).toContain("予期しないエラー");
+		expect(msg).not.toContain("secret-token-xyz");
 	});
 
 	it("method/path を持つ 404 はリクエスト文脈を含む (B2-2)", () => {

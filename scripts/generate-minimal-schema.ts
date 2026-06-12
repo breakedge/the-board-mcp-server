@@ -9,12 +9,15 @@
  *
  * Usage:
  *   npx tsx scripts/generate-minimal-schema.ts [input-path]
+ *   npx biome format --write openapi/the-board.minimal.json   # 生成後に必須
  *
  * input-path を省略した場合、公式 URL からダウンロードする。
+ * 出力 JSON は素の JSON.stringify(tab) で、コミット済みファイルは biome で整形済み。
+ * 再生成したら biome format を必ず通すこと (整形差分でレビューが埋もれるのを防ぐ)。
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUTPUT_PATH = join(__dirname, "../openapi/the-board.minimal.json");
@@ -37,6 +40,7 @@ interface MinimalParameter {
 interface MinimalField {
 	name: string;
 	type?: string;
+	format?: string;
 	required?: boolean;
 	enum?: (string | number)[];
 	description?: string;
@@ -64,6 +68,14 @@ function resolveRef(node: Json, seen: Set<string>): Json {
 	let current = node;
 	while (current && typeof current === "object" && typeof current.$ref === "string") {
 		if (seen.has(current.$ref)) return null;
+		// export した関数を spec 未ロードで呼ぶと $ref が黙って欠落する footgun を防ぐ。
+		// 回帰テストは $ref を展開済みのインラインスキーマで書くこと (resolveRef を通さない)。
+		if (spec === undefined) {
+			throw new Error(
+				`Cannot resolve $ref "${current.$ref}": OpenAPI spec not loaded. ` +
+					"generator 関数を import して使う場合は $ref 展開済みのスキーマを渡すこと。",
+			);
+		}
 		seen.add(current.$ref);
 		const path = current.$ref.replace(/^#\//, "").split("/");
 		let target: Json = spec;
@@ -91,7 +103,7 @@ const MAX_FLATTEN_DEPTH = 50;
  * 兄弟(別 allOf 分岐)へは copy を渡すことで、循環を検出しつつ兄弟間の重複参照は許容する。
  * depth backstop は ref を介さない病的に深い allOf への保険。
  */
-function flatten(schema: Json, seen: Set<string>, depth = 0): Json {
+export function flatten(schema: Json, seen: Set<string>, depth = 0): Json {
 	if (depth > MAX_FLATTEN_DEPTH) return {};
 	const path = new Set(seen);
 	const resolved = resolveRef(schema, path);
@@ -137,7 +149,7 @@ function flatten(schema: Json, seen: Set<string>, depth = 0): Json {
 }
 
 /** スキーマのプロパティ集合を MinimalField[] に変換 (depth 制限・readOnly 除外)。 */
-function toFields(schema: Json, seen: Set<string>, depth: number): MinimalField[] {
+export function toFields(schema: Json, seen: Set<string>, depth: number): MinimalField[] {
 	const flat = flatten(schema, seen);
 	const props = flat.properties as Record<string, Json> | undefined;
 	if (!props) return [];
@@ -147,7 +159,16 @@ function toFields(schema: Json, seen: Set<string>, depth: number): MinimalField[
 		const prop = flatten(rawProp, seen);
 		if (prop.readOnly === true) continue; // 書き込みボディに設定不可
 		const field: MinimalField = { name };
-		if (prop.type) field.type = prop.type;
+		// type を省く spec でも items/properties の有無で配列/オブジェクトを補う
+		if (prop.type) {
+			field.type = prop.type;
+		} else if (prop.items) {
+			field.type = "array";
+		} else if (prop.properties) {
+			field.type = "object";
+		}
+		// format (date / date-time / int32 等) は describe で AI が値の形を掴むのに有用
+		if (typeof prop.format === "string") field.format = prop.format;
 		if (requiredSet.has(name)) field.required = true;
 		if (Array.isArray(prop.enum)) field.enum = prop.enum;
 		const desc = cleanDescription(prop.description);
@@ -190,7 +211,7 @@ function extractParameters(op: Json): MinimalParameter[] | undefined {
 	return result.length > 0 ? result : undefined;
 }
 
-function extractRequestBody(op: Json): MinimalRequestBody | undefined {
+export function extractRequestBody(op: Json): MinimalRequestBody | undefined {
 	const schema = op.requestBody?.content?.["application/json"]?.schema;
 	if (!schema) return undefined;
 	const properties = toFields(schema, new Set(), 0);
@@ -253,7 +274,11 @@ async function main() {
 	console.log(`Output: ${OUTPUT_PATH} (${Buffer.byteLength(json)} bytes)`);
 }
 
-main().catch((err) => {
-	console.error(err);
-	process.exit(1);
-});
+// スクリプトとして直接実行されたときだけ生成を走らせる。
+// テストから import する際に副作用 (spec の fetch / ファイル書き込み) を防ぐ。
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+	main().catch((err) => {
+		console.error(err);
+		process.exit(1);
+	});
+}

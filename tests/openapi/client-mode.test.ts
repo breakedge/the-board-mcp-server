@@ -344,6 +344,18 @@ describe("handleGet", () => {
 		);
 		expect(result.isError).toBe(true);
 	});
+
+	it("配列内に undefined を含むクエリは API に送らず isError (B0-4 allowlist)", async () => {
+		// allowlist 化前は typeof undefined !== "object" ですり抜け、String(undefined)="undefined" が送られていた。
+		mswServer.use(http.get(`${TEST_BASE_URL}/v1/projects`, () => HttpResponse.json([])));
+		const config = makeConfig();
+		const result = await handleGet(
+			{ path: "/v1/projects", query: { "tags[]": ["ok", undefined] } },
+			config,
+			schema,
+		);
+		expect(result.isError).toBe(true);
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -600,5 +612,50 @@ describe("handleAuthStatus", () => {
 		const result = await handleAuthStatus({ validate: true });
 		const parsed = JSON.parse(result.content[0].text as string);
 		expect(parsed.credentialsValid).toBe(false);
+	});
+
+	it("validate=true: 403 は credentialsValid: true (認証は通り権限不足のみ)", async () => {
+		mswServer.use(
+			http.get(`${TEST_BASE_URL}/v1/clients`, () =>
+				HttpResponse.json({ message: "Forbidden" }, { status: 403 }),
+			),
+		);
+		const result = await handleAuthStatus({ validate: true }, makeConfig());
+		const parsed = JSON.parse(result.content[0].text as string);
+		expect(parsed.credentialsValid).toBe(true);
+	});
+
+	it("validate=true: 無効 toolset の /v1/clients を叩かず有効 toolset を probe する", async () => {
+		let clientsCalled = false;
+		let projectsCalled = false;
+		mswServer.use(
+			http.get(`${TEST_BASE_URL}/v1/clients`, () => {
+				clientsCalled = true;
+				return HttpResponse.json([]);
+			}),
+			http.get(`${TEST_BASE_URL}/v1/projects`, () => {
+				projectsCalled = true;
+				return HttpResponse.json([]);
+			}),
+		);
+		const result = await handleAuthStatus(
+			{ validate: true },
+			makeConfig({ toolsets: ["projects"] }),
+		);
+		const parsed = JSON.parse(result.content[0].text as string);
+		expect(parsed.credentialsValid).toBe(true);
+		expect(clientsCalled).toBe(false);
+		expect(projectsCalled).toBe(true);
+	});
+
+	it("validate=true: ネットワーク障害は credentialsValid:null + validationError(伏字化済み)", async () => {
+		// 401/403 以外・非 TheBoardApiError の分岐。誤って invalid 判定せず null とし、
+		// validationError は redactSecrets を通す(防御的措置)。
+		mswServer.use(http.get(`${TEST_BASE_URL}/v1/clients`, () => HttpResponse.error()));
+		const result = await handleAuthStatus({ validate: true }, makeConfig());
+		const parsed = JSON.parse(result.content[0].text as string);
+		expect(parsed.credentialsValid).toBeNull();
+		expect(typeof parsed.validationError).toBe("string");
+		expect(parsed.validationError).not.toContain("test-token");
 	});
 });

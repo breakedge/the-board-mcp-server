@@ -6,16 +6,31 @@ import {
 } from "./rate-limiter.js";
 import { type ApiErrorResponse, TheBoardApiError } from "./types.js";
 
-function sanitizeErrorMessage(message: string, apiKey: string, apiToken: string): string {
+/** 指定された key/token をメッセージから伏字化する共通処理 (空文字は no-op)。 */
+function redactWith(message: string, apiKey: string, apiToken: string): string {
 	let sanitized = message;
-	sanitized = sanitized.replaceAll(apiKey, "[REDACTED_API_KEY]");
-	sanitized = sanitized.replaceAll(`Bearer ${apiToken}`, "Bearer [REDACTED_TOKEN]");
-	sanitized = sanitized.replaceAll(apiToken, "[REDACTED_TOKEN]");
-	sanitized = sanitized.replace(
-		/Authorization: Bearer \S+/g,
-		"Authorization: Bearer [REDACTED_TOKEN]",
+	if (apiKey) sanitized = sanitized.replaceAll(apiKey, "[REDACTED_API_KEY]");
+	if (apiToken) {
+		sanitized = sanitized.replaceAll(`Bearer ${apiToken}`, "Bearer [REDACTED_TOKEN]");
+		sanitized = sanitized.replaceAll(apiToken, "[REDACTED_TOKEN]");
+	}
+	return sanitized.replace(/Authorization: Bearer \S+/g, "Authorization: Bearer [REDACTED_TOKEN]");
+}
+
+function sanitizeErrorMessage(message: string, apiKey: string, apiToken: string): string {
+	return redactWith(message, apiKey, apiToken);
+}
+
+/**
+ * env の資格情報でメッセージを伏字化する。API レイヤ外 (response 整形 / handler) でも
+ * 使えるよう env を都度読む。fetch は資格情報をメッセージに載せないため defense-in-depth。
+ */
+export function redactSecrets(message: string): string {
+	return redactWith(
+		message,
+		process.env.THE_BOARD_API_KEY ?? "",
+		process.env.THE_BOARD_API_TOKEN ?? "",
 	);
-	return sanitized;
 }
 
 function sanitizeBody(body: unknown, apiKey: string, apiToken: string): unknown {
@@ -67,11 +82,22 @@ function extractPagination(headers: Headers): Pagination | undefined {
 	if (total === null) {
 		return undefined;
 	}
-	const pagination: Pagination = { totalCount: Number(total) };
-	const page = headers.get("X-Page");
-	if (page !== null) pagination.page = Number(page);
-	const perPage = headers.get("X-Per-Page");
-	if (perPage !== null) pagination.perPage = Number(perPage);
+	const totalCount = Number(total);
+	// 不正な X-Total-Count (非数値ヘッダ等) は NaN になり AI を誤誘導するため pagination を省く
+	if (!Number.isFinite(totalCount)) {
+		return undefined;
+	}
+	const pagination: Pagination = { totalCount };
+	const pageHeader = headers.get("X-Page");
+	if (pageHeader !== null) {
+		const page = Number(pageHeader);
+		if (Number.isFinite(page)) pagination.page = page;
+	}
+	const perPageHeader = headers.get("X-Per-Page");
+	if (perPageHeader !== null) {
+		const perPage = Number(perPageHeader);
+		if (Number.isFinite(perPage)) pagination.perPage = perPage;
+	}
 	return pagination;
 }
 

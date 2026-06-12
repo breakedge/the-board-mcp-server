@@ -1,7 +1,12 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { getRateLimitStatus, makeApiRequest, type Pagination } from "../api/client.js";
+import {
+	getRateLimitStatus,
+	makeApiRequest,
+	type Pagination,
+	redactSecrets,
+} from "../api/client.js";
 import { TheBoardApiError } from "../api/types.js";
-import { ALL_TOOLSETS, type Config } from "../config.js";
+import { ALL_TOOLSETS, type Config, type Toolset } from "../config.js";
 import { createErrorResponse, createTextResponse, formatApiError } from "../utils/response.js";
 import {
 	getKnownQueryParams,
@@ -38,9 +43,12 @@ function validateQuery(
 ): string | null {
 	for (const [key, value] of Object.entries(query)) {
 		if (Array.isArray(value)) {
-			// 配列要素は URL に直列化できるスカラのみ許可(typeof null/配列/オブジェクト === "object")
-			if (value.some((v) => typeof v === "object")) {
-				return `クエリパラメータ "${key}" の配列要素は文字列・数値・真偽値のみ指定できます(オブジェクト・配列・null は不可)。`;
+			// 配列要素は URL に直列化できるスカラのみ許可(allowlist)。
+			// object/配列/null だけでなく undefined/bigint/symbol 等も String() で壊れるため弾く。
+			const isScalar = (v: unknown) =>
+				typeof v === "string" || typeof v === "number" || typeof v === "boolean";
+			if (value.some((v) => !isScalar(v))) {
+				return `クエリパラメータ "${key}" の配列要素は文字列・数値・真偽値のみ指定できます(オブジェクト・配列・null 等は不可)。`;
 			}
 		} else if (value !== null && typeof value === "object") {
 			return `クエリパラメータ "${key}" にオブジェクトは指定できません。値は文字列・数値・真偽値・スカラ配列のいずれかにしてください。`;
@@ -361,7 +369,32 @@ export async function handleDelete(
 	}
 }
 
-export async function handleAuthStatus(args: { validate?: boolean } = {}): Promise<CallToolResult> {
+// validate 用の probe エンドポイント。有効な toolset 内の軽量 GET を選び、
+// 運用者が無効化した toolset のエンドポイントを検証で叩かないようにする。
+const VALIDATION_PROBES: { toolset: Toolset; path: string }[] = [
+	{ toolset: "customers", path: "/v1/clients" },
+	{ toolset: "projects", path: "/v1/projects" },
+	{ toolset: "master", path: "/v1/users" },
+	{ toolset: "payees", path: "/v1/payees" },
+	{ toolset: "expenditures", path: "/v1/expenditures" },
+	{ toolset: "documents", path: "/v1/invoices" },
+	{ toolset: "analytics", path: "/v1/analyses" },
+];
+
+function validationProbePath(config?: Config): string {
+	if (config) {
+		for (const probe of VALIDATION_PROBES) {
+			if (config.toolsets.includes(probe.toolset)) return probe.path;
+		}
+	}
+	// config 無し / 全 toolset が未知 (理論上起きない) 時のフォールバック
+	return "/v1/clients";
+}
+
+export async function handleAuthStatus(
+	args: { validate?: boolean } = {},
+	config?: Config,
+): Promise<CallToolResult> {
 	const apiKeyConfigured = Boolean(process.env.THE_BOARD_API_KEY);
 	const apiTokenConfigured = Boolean(process.env.THE_BOARD_API_TOKEN);
 	const { dailyRequestsRemaining, dailyRequestLimit } = getRateLimitStatus();
@@ -380,15 +413,19 @@ export async function handleAuthStatus(args: { validate?: boolean } = {}): Promi
 			status.credentialsValid = false;
 		} else {
 			try {
-				await makeApiRequest("GET", "/v1/clients", { per_page: 1 });
+				await makeApiRequest("GET", validationProbePath(config), { per_page: 1 });
 				status.credentialsValid = true;
 			} catch (err) {
-				if (err instanceof TheBoardApiError && (err.status === 401 || err.status === 403)) {
+				if (err instanceof TheBoardApiError && err.status === 401) {
+					// 401 = 認証失敗。資格情報そのものが無効。
 					status.credentialsValid = false;
+				} else if (err instanceof TheBoardApiError && err.status === 403) {
+					// 403 = 認証は通ったが当該リソースの権限不足。資格情報自体は有効。
+					status.credentialsValid = true;
 				} else {
 					// ネットワーク等で検証不能。誤って invalid 判定しないよう null とする。
 					status.credentialsValid = null;
-					status.validationError = err instanceof Error ? err.message : "unknown";
+					status.validationError = err instanceof Error ? redactSecrets(err.message) : "unknown";
 				}
 			}
 		}

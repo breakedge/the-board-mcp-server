@@ -1,7 +1,7 @@
 import { HttpResponse, http } from "msw";
 import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { makeApiRequest } from "../../src/api/client.js";
+import { makeApiRequest, redactSecrets } from "../../src/api/client.js";
 import { TheBoardApiError } from "../../src/api/types.js";
 
 const TEST_BASE_URL = "https://api.the-board.jp";
@@ -233,6 +233,28 @@ describe("makeApiRequest — 成功レスポンス", () => {
 		const result = await makeApiRequest("GET", "/v1/clients");
 		expect(result.pagination).toBeUndefined();
 	});
+
+	it("X-Total-Count が非数値なら pagination を返さない (NaN ガード)", async () => {
+		server.use(
+			http.get(`${TEST_BASE_URL}/v1/clients`, () =>
+				HttpResponse.json([{ id: 1 }], { headers: { "X-Total-Count": "not-a-number" } }),
+			),
+		);
+		const result = await makeApiRequest("GET", "/v1/clients");
+		expect(result.pagination).toBeUndefined();
+	});
+
+	it("X-Page/X-Per-Page が非数値なら totalCount のみ返す (NaN ガード)", async () => {
+		server.use(
+			http.get(`${TEST_BASE_URL}/v1/clients`, () =>
+				HttpResponse.json([{ id: 1 }], {
+					headers: { "X-Total-Count": "57", "X-Page": "abc", "X-Per-Page": "xyz" },
+				}),
+			),
+		);
+		const result = await makeApiRequest("GET", "/v1/clients");
+		expect(result.pagination).toEqual({ totalCount: 57 });
+	});
 });
 
 describe("makeApiRequest — エラーレスポンス — TheBoardApiError", () => {
@@ -348,6 +370,22 @@ describe("makeApiRequest — エラーサニタイズ", () => {
 			const body = (err as TheBoardApiError).body as Record<string, string>;
 			expect(JSON.stringify(body)).not.toContain(TEST_API_TOKEN);
 		}
+	});
+});
+
+describe("redactSecrets", () => {
+	it("env のキー/トークンをメッセージから伏字化する", () => {
+		// beforeEach で THE_BOARD_API_KEY/TOKEN が stub 済み
+		const msg = redactSecrets(
+			`x-api-key: ${TEST_API_KEY} / Authorization: Bearer ${TEST_API_TOKEN}`,
+		);
+		expect(msg).not.toContain(TEST_API_KEY);
+		expect(msg).not.toContain(TEST_API_TOKEN);
+	});
+
+	it("資格情報が未設定でも安全に動作する (空文字で全置換しない)", () => {
+		vi.unstubAllEnvs();
+		expect(redactSecrets("hello world")).toBe("hello world");
 	});
 });
 

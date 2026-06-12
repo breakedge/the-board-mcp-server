@@ -1254,6 +1254,74 @@
 							"name": "exchange_rate",
 							"type": "number",
 							"description": "為替レート ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "invoice_date",
+							"type": "string",
+							"description": "請求日 ※一括請求用",
+							"items": {
+								"type": "string"
+							}
+						},
+						{
+							"name": "contract_start_date",
+							"type": "string",
+							"description": "請求開始日 ※定期請求用"
+						},
+						{
+							"name": "contract_end_date",
+							"type": "string",
+							"description": "請求終了日 ※定期請求用"
+						},
+						{
+							"name": "periodical_invoice_interval",
+							"type": "integer",
+							"enum": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+							"description": "請求間隔 ※定期請求用"
+						},
+						{
+							"name": "periodical_invoice_payment_kbn",
+							"type": "integer",
+							"enum": [1, 2],
+							"description": "請求間隔内の請求時期 - 1：請求間隔の最初の月 - 2：請求間隔の最後の月 ※定期請求用"
+						},
+						{
+							"name": "contract_end_alert_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "通知対象 - 0：通知しない - 1：通知する ※定期請求用"
+						},
+						{
+							"name": "auto_renewal_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "自動契約更新 - 0：OFF - 1：ON ※定期請求用"
+						},
+						{
+							"name": "auto_renewal_period_month",
+							"type": "integer",
+							"enum": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+							"description": "自動契約更新期間（月数） ※定期請求用"
+						},
+						{
+							"name": "monthly_invoice_payment_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3],
+							"description": "自動挿入メッセージ年月 - 1：請求月 - 2：請求月の翌月 - 3：請求月の前月 ※定期請求用"
+						},
+						{
+							"name": "delivery_document_kbn",
+							"type": "integer",
+							"enum": [1, 2],
+							"description": "納品書・検収書の枚数 - 1：1枚 - 2：請求回数と同じ ※定期請求・分割請求用<br> ※複数納品書対応ON時のみ"
+						},
+						{
+							"name": "invoice_dates",
+							"type": "array",
+							"description": "請求日（`YYYY-MM-DD`形式の日付）の配列",
+							"items": {
+								"type": "string"
+							}
 						}
 					],
 					"required": ["name", "client_id", "user_id", "order_status", "invoice_timing_kbn"]
@@ -1490,6 +1558,66 @@
 							"name": "exchange_rate",
 							"type": "number",
 							"description": "為替レート ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "invoice_date",
+							"type": "string",
+							"description": "請求日 ※一括請求用",
+							"items": {
+								"type": "string"
+							}
+						},
+						{
+							"name": "contract_start_date",
+							"type": "string",
+							"description": "請求開始日 ※定期請求用"
+						},
+						{
+							"name": "contract_end_date",
+							"type": "string",
+							"description": "請求終了日 ※定期請求用"
+						},
+						{
+							"name": "periodical_invoice_interval",
+							"type": "integer",
+							"enum": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+							"description": "請求間隔 ※定期請求用"
+						},
+						{
+							"name": "periodical_invoice_payment_kbn",
+							"type": "integer",
+							"enum": [1, 2],
+							"description": "請求間隔内の請求時期 - 1：請求間隔の最初の月 - 2：請求間隔の最後の月 ※定期請求用"
+						},
+						{
+							"name": "contract_end_alert_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "通知対象 - 0：通知しない - 1：通知する ※定期請求用"
+						},
+						{
+							"name": "auto_renewal_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "自動契約更新 - 0：OFF - 1：ON ※定期請求用"
+						},
+						{
+							"name": "auto_renewal_period_month",
+							"type": "integer",
+							"enum": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+							"description": "自動契約更新期間（月数） ※定期請求用"
+						},
+						{
+							"name": "monthly_invoice_payment_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3],
+							"description": "自動挿入メッセージ年月 - 1：請求月 - 2：請求月の翌月 - 3：請求月の前月 ※定期請求用"
+						},
+						{
+							"name": "delivery_document_kbn",
+							"type": "integer",
+							"enum": [1, 2],
+							"description": "納品書・検収書の枚数 - 1：1枚 - 2：請求回数と同じ ※定期請求・分割請求用<br> ※複数納品書対応ON時のみ"
 						}
 					]
 				}
@@ -3833,6 +3961,102 @@
 							"name": "exchange_rate",
 							"type": "number",
 							"description": "為替レート ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "invoice_date",
+							"type": "string",
+							"description": "請求日 ※一括支払用",
+							"items": {
+								"type": "string"
+							}
+						},
+						{
+							"name": "total",
+							"type": "number",
+							"description": "税抜金額"
+						},
+						{
+							"name": "tax",
+							"type": "number",
+							"description": "消費税"
+						},
+						{
+							"name": "tax_withholding",
+							"type": "integer",
+							"description": "源泉所得税"
+						},
+						{
+							"name": "contract_start_date",
+							"type": "string",
+							"description": "請求開始日 ※定期支払用"
+						},
+						{
+							"name": "contract_end_date",
+							"type": "string",
+							"description": "請求終了日 ※定期支払用"
+						},
+						{
+							"name": "periodical_payment_interval",
+							"type": "integer",
+							"enum": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+							"description": "支払間隔 ※定期支払用"
+						},
+						{
+							"name": "periodical_payment_payment_kbn",
+							"type": "integer",
+							"enum": [1, 2],
+							"description": "支払間隔内の請求時期 - 1：支払間隔の最初の月 - 2：支払間隔の最後の月 ※定期支払用"
+						},
+						{
+							"name": "auto_renewal_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "自動契約更新 - 0：OFF - 1：ON ※定期支払用"
+						},
+						{
+							"name": "auto_renewal_period_month",
+							"type": "integer",
+							"enum": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+							"description": "自動契約更新期間（月数） ※定期支払用"
+						},
+						{
+							"name": "delivery_document_kbn",
+							"type": "integer",
+							"enum": [1, 2],
+							"description": "検収書の枚数 - 1：1枚 - 2：支払回数と同じ ※定期支払・分割支払用<br> ※複数検収書対応ON時のみ"
+						},
+						{
+							"name": "invoices",
+							"type": "array",
+							"description": "請求情報 ※分割支払用",
+							"items": {
+								"type": "object",
+								"properties": [
+									{
+										"name": "invoice_date",
+										"type": "string",
+										"required": true,
+										"description": "請求日"
+									},
+									{
+										"name": "total",
+										"type": "number",
+										"required": true,
+										"description": "税抜金額"
+									},
+									{
+										"name": "tax",
+										"type": "number",
+										"required": true,
+										"description": "消費税"
+									},
+									{
+										"name": "tax_withholding",
+										"type": "integer",
+										"description": "源泉所得税"
+									}
+								]
+							}
 						}
 					],
 					"required": [
@@ -4072,6 +4296,69 @@
 							"name": "exchange_rate",
 							"type": "number",
 							"description": "為替レート ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "invoice_date",
+							"type": "string",
+							"description": "請求日 ※一括支払用",
+							"items": {
+								"type": "string"
+							}
+						},
+						{
+							"name": "total",
+							"type": "number",
+							"description": "税抜金額"
+						},
+						{
+							"name": "tax",
+							"type": "number",
+							"description": "消費税"
+						},
+						{
+							"name": "tax_withholding",
+							"type": "integer",
+							"description": "源泉所得税"
+						},
+						{
+							"name": "contract_start_date",
+							"type": "string",
+							"description": "請求開始日 ※定期支払用"
+						},
+						{
+							"name": "contract_end_date",
+							"type": "string",
+							"description": "請求終了日 ※定期支払用"
+						},
+						{
+							"name": "periodical_payment_interval",
+							"type": "integer",
+							"enum": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+							"description": "支払間隔 ※定期支払用"
+						},
+						{
+							"name": "periodical_payment_payment_kbn",
+							"type": "integer",
+							"enum": [1, 2],
+							"description": "支払間隔内の請求時期 - 1：支払間隔の最初の月 - 2：支払間隔の最後の月 ※定期支払用"
+						},
+						{
+							"name": "auto_renewal_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "自動契約更新 - 0：OFF - 1：ON ※定期支払用"
+						},
+						{
+							"name": "auto_renewal_period_month",
+							"type": "integer",
+							"enum": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+							"description": "自動契約更新期間（月数） ※定期支払用"
+						},
+						{
+							"name": "delivery_document_kbn",
+							"type": "integer",
+							"enum": [1, 2],
+							"description": "納品書・検収書の枚数 - 1：1枚 - 2：請求回数と同じ ※定期支払・分割支払用<br> ※複数検収書対応ON時のみ"
 						}
 					]
 				}

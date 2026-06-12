@@ -39,6 +39,7 @@ export const INSTRUCTIONS = `You are connected to board (the-board.jp) MCP serve
   - small (default), medium, large: increasing field detail.
   - all: includes related documents. REQUIRED to obtain document IDs (see below).
 - Unknown query params are rejected with the list of valid params. Prefer the names shown by list_paths.
+- List responses report pagination as a separate note (total count, current page, per_page). If you have not fetched every record, request the next page (page=N+1).
 
 ## Filter naming conventions (important — wrong names are otherwise silently ignored)
 - Suffixes: _eq (exact), _cont (substring), _gteq / _lteq (range), _in[] (multi-select array).
@@ -64,6 +65,7 @@ Note: the id from /v1/invoices is a billing id, which is NOT the same as the doc
   - the_board_api_post / the_board_api_patch require --enable-writes (or THE_BOARD_ENABLE_WRITES=true)
   - the_board_api_delete requires --enable-destructive-writes (or THE_BOARD_ENABLE_DESTRUCTIVE_WRITES=true)
 - If a write tool is not in your tool list, ask the user to restart the server with the appropriate flag.
+- Writes are not auto-retried except on rate limits. If a write times out at the network level, do not blindly re-POST — first GET to check whether the resource was already created (avoids duplicate invoices/projects).
 
 ## Rate limits
 - 3 requests/second and 3,000 requests/day. Check the_board_auth_status for remaining daily quota.
@@ -199,13 +201,50 @@ export async function createMcpServer(config: Config): Promise<McpServer> {
 	// auth_status
 	server.tool(
 		"the_board_auth_status",
-		"Check the board API authentication status and rate limit remaining.",
-		{},
+		"Check the board API authentication status and rate limit remaining. Pass validate=true to verify the credentials actually work with a lightweight API call (consumes 1 request).",
+		{
+			validate: z
+				.boolean()
+				.optional()
+				.describe("If true, make a lightweight GET to confirm credentials are valid"),
+		},
 		{
 			title: "Check the board API authentication status",
 			readOnlyHint: true,
 		},
-		() => handleAuthStatus(),
+		(args) => handleAuthStatus(args),
+	);
+
+	// 案件中心モデルでの「見積 + 月次請求」作成手順を案内する prompt (B3-2)。
+	server.prompt(
+		"create_monthly_billing_project",
+		"Step-by-step guide to create a board project with one estimate and monthly invoices (project-centric model).",
+		{
+			client_id: z.string().describe("顧客ID (client_id)"),
+			project_name: z.string().describe("案件名"),
+			months: z.string().describe("請求の月数 (例: 3)"),
+		},
+		({ client_id, project_name, months }) => ({
+			messages: [
+				{
+					role: "user",
+					content: {
+						type: "text",
+						text: `board で「${project_name}」(顧客 client_id=${client_id})を、見積 1 件 + 月次請求 ${months} 件で作成してください。
+
+board は書類を直接 POST できない案件中心モデルです。次の手順で進めてください:
+1. the_board_api_describe("/v1/projects", "POST") でボディ項目を確認する。
+2. POST /v1/projects で案件を作成。invoice_timing_kbn と、分割請求なら invoice_dates[] を ${months} 件分指定する(invoice_dates は作成後に変更不可)。これで空の見積・請求書が自動生成される。
+3. GET /v1/projects/{id}?response_group=all で .estimate.id と .invoices[].id を取得する。
+4. the_board_api_describe("/v1/documents/estimates/{id}", "PATCH") で details[] の項目を確認し、PATCH /v1/documents/estimates/{id} に details[](document_detail_kbn=1 の通常行)と total(税抜)・tax を明示送信する。total/tax は自動集計されない。
+5. 各 PATCH /v1/documents/invoices/{id} を同様に埋める。
+6. 最後に GET ?response_group=all で各書類の total/tax が 0 でないことを確認する。
+
+書き込みツールが見つからない場合は、--enable-writes での再起動を依頼してください。`,
+					},
+				},
+			],
+		}),
 	);
 
 	return server;

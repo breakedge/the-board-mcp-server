@@ -50,12 +50,37 @@ export function getRateLimitStatus(): {
 	};
 }
 
+export interface Pagination {
+	totalCount: number;
+	page?: number;
+	perPage?: number;
+}
+
+export interface ApiResult {
+	data: unknown;
+	pagination?: Pagination;
+}
+
+/** board のページネーションヘッダ (X-Total-Count / X-Page / X-Per-Page) を抽出する。 */
+function extractPagination(headers: Headers): Pagination | undefined {
+	const total = headers.get("X-Total-Count");
+	if (total === null) {
+		return undefined;
+	}
+	const pagination: Pagination = { totalCount: Number(total) };
+	const page = headers.get("X-Page");
+	if (page !== null) pagination.page = Number(page);
+	const perPage = headers.get("X-Per-Page");
+	if (perPage !== null) pagination.perPage = Number(perPage);
+	return pagination;
+}
+
 export async function makeApiRequest(
 	method: string,
 	path: string,
 	params?: Record<string, unknown>,
 	body?: unknown,
-): Promise<unknown> {
+): Promise<ApiResult> {
 	const apiKey = process.env.THE_BOARD_API_KEY;
 	const apiToken = process.env.THE_BOARD_API_TOKEN;
 	const baseUrl = process.env.THE_BOARD_API_BASE_URL ?? "https://api.the-board.jp";
@@ -117,11 +142,13 @@ export async function makeApiRequest(
 			});
 
 			if (response.status === 204) {
-				return null;
+				return { data: null };
 			}
 
 			if (response.ok) {
-				return response.json();
+				const data = await response.json();
+				const pagination = extractPagination(response.headers);
+				return pagination ? { data, pagination } : { data };
 			}
 
 			// Error response
@@ -142,6 +169,8 @@ export async function makeApiRequest(
 				sanitized,
 				response.status,
 				sanitizeBody(errorBody, apiKey, apiToken),
+				method,
+				path,
 			);
 		}, 3);
 	} finally {

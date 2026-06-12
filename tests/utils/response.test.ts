@@ -114,6 +114,13 @@ describe("formatApiError", () => {
 		expect(formatApiError(err)).toContain("fetch failed: ECONNREFUSED");
 	});
 
+	it("method/path を持つ 404 はリクエスト文脈を含む (B2-2)", () => {
+		const err = new TheBoardApiError("Not Found", 404, {}, "GET", "/v1/documents/invoices/123");
+		const msg = formatApiError(err);
+		expect(msg).toContain("見つかりませんでした");
+		expect(msg).toContain("GET /v1/documents/invoices/123");
+	});
+
 	it("Error以外 (string) → 予期しないエラーメッセージ", () => {
 		expect(formatApiError("unknown")).toContain("予期しないエラー");
 	});

@@ -1,6 +1,7 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { getRateLimitStatus, makeApiRequest } from "../api/client.js";
-import type { Config } from "../config.js";
+import { getRateLimitStatus, makeApiRequest, type Pagination } from "../api/client.js";
+import { TheBoardApiError } from "../api/types.js";
+import { ALL_TOOLSETS, type Config } from "../config.js";
 import { createErrorResponse, createTextResponse, formatApiError } from "../utils/response.js";
 import {
 	getKnownQueryParams,
@@ -10,6 +11,18 @@ import {
 } from "./schema-loader.js";
 import { isPathEnabled } from "./toolsets.js";
 import type { MinimalSchema } from "./types.js";
+
+/** ページネーション状況を AI 向けの一文にする (B2-5)。 */
+function paginationHint(p: Pagination): string {
+	const parts = [`全 ${p.totalCount} 件`];
+	if (p.page !== undefined) parts.push(`page ${p.page}`);
+	if (p.perPage !== undefined) parts.push(`per_page ${p.perPage}`);
+	let hint = `ページネーション: ${parts.join(", ")}。`;
+	if (p.page !== undefined && p.perPage !== undefined && p.page * p.perPage < p.totalCount) {
+		hint += ` 全件取得していません。続きは page=${p.page + 1} を指定してください。`;
+	}
+	return hint;
+}
 
 /**
  * クエリパラメータを送信前に検証する。問題があればエラーメッセージ、無ければ null。
@@ -54,6 +67,38 @@ function formatWriteResult(result: unknown): string {
 		return JSON.stringify({ success: true, message: "操作が完了しました (No Content)" });
 	}
 	return JSON.stringify(result, null, 2);
+}
+
+/**
+ * 明細 (details) を送っているのに total が未指定/0 の場合の警告を返す (B0-3)。
+ * board は明細から合計を自動集計しないため、これは「明細はあるが total=0」という
+ * サイレントに不整合な財務書類を生む。書き込み成功とは別に AI へ注意喚起する。
+ */
+function documentTotalWarning(body: Record<string, unknown>): string | null {
+	const details = body.details;
+	if (!Array.isArray(details) || details.length === 0) {
+		return null;
+	}
+	const total = body.total;
+	if (total === undefined || total === null || total === 0 || total === "0") {
+		return `警告: 明細 ${details.length} 行を送信しましたが total が未指定または 0 です。board は明細から合計を自動集計しないため、明示送信しない限り文書の total/tax は 0 のままになります。total(税抜)と tax を指定してください。`;
+	}
+	return null;
+}
+
+/** 書き込み結果を、必要なら警告を別 content block として先頭に付けて返す。 */
+function writeResponse(result: unknown, body: Record<string, unknown>): CallToolResult {
+	const text = formatWriteResult(result);
+	const warning = documentTotalWarning(body);
+	if (warning) {
+		return {
+			content: [
+				{ type: "text", text: warning },
+				{ type: "text", text },
+			],
+		};
+	}
+	return createTextResponse(text);
 }
 
 const DESTRUCTIVE_PATH_PATTERNS = [
@@ -112,7 +157,15 @@ export function handleListPaths(
 		}
 	}
 
-	return createTextResponse(JSON.stringify(results));
+	const response = createTextResponse(JSON.stringify(results));
+	// toolsets で絞り込み中は、隠れた endpoint がある旨を AI に伝える (B3-6)。
+	if (config.toolsets.length < ALL_TOOLSETS.length) {
+		response.content.push({
+			type: "text",
+			text: `注記: 有効な toolset (${config.toolsets.join(", ")}) で絞り込み中のため、一部の endpoint は表示されていません。必要なら運用者に --toolsets の追加を依頼してください。`,
+		});
+	}
+	return response;
 }
 
 /**
@@ -189,8 +242,13 @@ export async function handleGet(
 	}
 
 	try {
-		const result = await makeApiRequest("GET", sanitized, args.query);
-		return createTextResponse(JSON.stringify(result, null, 2));
+		const { data, pagination } = await makeApiRequest("GET", sanitized, args.query);
+		const body = createTextResponse(JSON.stringify(data, null, 2));
+		if (pagination) {
+			// 本体とは別 content でページネーション状況を示し、AI が全件取得済みかを判断できるようにする (B2-5)。
+			body.content.push({ type: "text", text: paginationHint(pagination) });
+		}
+		return body;
 	} catch (err) {
 		return createErrorResponse(formatApiError(err));
 	}
@@ -223,8 +281,8 @@ export async function handlePost(
 	}
 
 	try {
-		const result = await makeApiRequest("POST", sanitized, undefined, args.body);
-		return createTextResponse(formatWriteResult(result));
+		const { data } = await makeApiRequest("POST", sanitized, undefined, args.body);
+		return writeResponse(data, args.body);
 	} catch (err) {
 		return createErrorResponse(formatApiError(err));
 	}
@@ -262,8 +320,8 @@ export async function handlePatch(
 	}
 
 	try {
-		const result = await makeApiRequest("PATCH", sanitized, undefined, args.body);
-		return createTextResponse(formatWriteResult(result));
+		const { data } = await makeApiRequest("PATCH", sanitized, undefined, args.body);
+		return writeResponse(data, args.body);
 	} catch (err) {
 		return createErrorResponse(formatApiError(err));
 	}
@@ -296,24 +354,45 @@ export async function handleDelete(
 	}
 
 	try {
-		const result = await makeApiRequest("DELETE", sanitized);
-		return createTextResponse(formatWriteResult(result));
+		const { data } = await makeApiRequest("DELETE", sanitized);
+		return createTextResponse(formatWriteResult(data));
 	} catch (err) {
 		return createErrorResponse(formatApiError(err));
 	}
 }
 
-export function handleAuthStatus(): CallToolResult {
+export async function handleAuthStatus(args: { validate?: boolean } = {}): Promise<CallToolResult> {
 	const apiKeyConfigured = Boolean(process.env.THE_BOARD_API_KEY);
 	const apiTokenConfigured = Boolean(process.env.THE_BOARD_API_TOKEN);
 	const { dailyRequestsRemaining, dailyRequestLimit } = getRateLimitStatus();
 
-	return createTextResponse(
-		JSON.stringify({
-			apiKeyConfigured,
-			apiTokenConfigured,
-			dailyRequestsRemaining,
-			dailyRequestLimit,
-		}),
-	);
+	const status: Record<string, unknown> = {
+		apiKeyConfigured,
+		apiTokenConfigured,
+		dailyRequestsRemaining,
+		dailyRequestLimit,
+	};
+
+	// validate=true のときだけ軽量 GET で資格情報の有効性を実検証する (B3-4)。
+	// 既定は副作用なし(env 変数の有無のみ)。検証はレート制限を 1 消費する。
+	if (args.validate) {
+		if (!apiKeyConfigured || !apiTokenConfigured) {
+			status.credentialsValid = false;
+		} else {
+			try {
+				await makeApiRequest("GET", "/v1/clients", { per_page: 1 });
+				status.credentialsValid = true;
+			} catch (err) {
+				if (err instanceof TheBoardApiError && (err.status === 401 || err.status === 403)) {
+					status.credentialsValid = false;
+				} else {
+					// ネットワーク等で検証不能。誤って invalid 判定しないよう null とする。
+					status.credentialsValid = null;
+					status.validationError = err instanceof Error ? err.message : "unknown";
+				}
+			}
+		}
+	}
+
+	return createTextResponse(JSON.stringify(status));
 }

@@ -108,6 +108,18 @@ describe("handleListPaths", () => {
 		expect(parsed.some((e: { path: string }) => e.path.startsWith("/v1/documents"))).toBe(false);
 	});
 
+	it("toolsets で絞り込み中は別 content で注記する (B3-6)", () => {
+		const result = handleListPaths({}, makeConfig({ toolsets: ["projects"] }), schema);
+		expect(result.content.length).toBeGreaterThan(1);
+		const text = result.content.map((c) => c.text).join("\n");
+		expect(text).toContain("toolset");
+	});
+
+	it("全 toolsets 有効なら注記を付けない (B3-6)", () => {
+		const result = handleListPaths({}, makeConfig(), schema);
+		expect(result.content.length).toBe(1);
+	});
+
 	it("parameters を持つエンドポイントは出力に parameters を含む (B1-3)", () => {
 		const result = handleListPaths({ method: "GET", keyword: "projects" }, makeConfig(), schema);
 		const parsed = JSON.parse(result.content[0].text as string);
@@ -205,6 +217,22 @@ describe("handleGet", () => {
 		const result = await handleGet({ path: "/v1/clients" }, config, schema);
 		expect(result.isError).toBeUndefined();
 		expect(result.content[0].text).toContain('"id"');
+	});
+
+	it("リスト GET はページネーションヒントを別 content で返す (B2-5)", async () => {
+		mswServer.use(
+			http.get(`${TEST_BASE_URL}/v1/clients`, () =>
+				HttpResponse.json([{ id: 1 }], {
+					headers: { "X-Total-Count": "57", "X-Page": "1", "X-Per-Page": "20" },
+				}),
+			),
+		);
+		const result = await handleGet({ path: "/v1/clients" }, makeConfig(), schema);
+		expect(result.isError).toBeUndefined();
+		const text = result.content.map((c) => c.text).join("\n");
+		expect(text).toContain('"id"'); // 本体は維持
+		expect(text).toContain("57"); // 総件数
+		expect(text).toContain("page");
 	});
 
 	it("query オブジェクト渡し", async () => {
@@ -420,6 +448,39 @@ describe("handlePatch", () => {
 		expect(result.content[0].text).toContain("success");
 	});
 
+	it("明細あり・total 未指定の文書 PATCH は警告を返す (B0-3)", async () => {
+		mswServer.use(
+			http.patch(`${TEST_BASE_URL}/v1/documents/estimates/1`, () => HttpResponse.json({ id: 1 })),
+		);
+		const config = makeConfig({ readOnly: false, enableWrites: true });
+		const result = await handlePatch(
+			{ path: "/v1/documents/estimates/1", body: { details: [{ price: 1000 }] } },
+			config,
+			schema,
+		);
+		expect(result.isError).toBeUndefined();
+		const text = result.content.map((c) => c.text).join("\n");
+		expect(text).toContain("total");
+		expect(text).toContain("自動集計");
+	});
+
+	it("明細あり・total 指定済みの文書 PATCH は警告を出さない (B0-3)", async () => {
+		mswServer.use(
+			http.patch(`${TEST_BASE_URL}/v1/documents/estimates/1`, () => HttpResponse.json({ id: 1 })),
+		);
+		const config = makeConfig({ readOnly: false, enableWrites: true });
+		const result = await handlePatch(
+			{
+				path: "/v1/documents/estimates/1",
+				body: { details: [{ price: 1000 }], total: 1000, tax: 100 },
+			},
+			config,
+			schema,
+		);
+		const text = result.content.map((c) => c.text).join("\n");
+		expect(text).not.toContain("自動集計");
+	});
+
 	it("destructive パス (lock_flg) + enableDestructiveWrites=false → エラー", async () => {
 		const config = makeConfig({
 			readOnly: false,
@@ -488,32 +549,56 @@ describe("handleDelete", () => {
 // handleAuthStatus (STEP 2-7)
 // ---------------------------------------------------------------------------
 describe("handleAuthStatus", () => {
-	it("環境変数あり → configured: true", () => {
-		const result = handleAuthStatus();
+	it("環境変数あり → configured: true", async () => {
+		const result = await handleAuthStatus();
 		const text = result.content[0].text as string;
 		expect(text).toContain("true");
 		expect(text).not.toContain("test-key");
 		expect(text).not.toContain("test-token");
 	});
 
-	it("環境変数なし → configured: false", () => {
+	it("環境変数なし → configured: false", async () => {
 		vi.unstubAllEnvs();
-		const result = handleAuthStatus();
+		const result = await handleAuthStatus();
 		const text = result.content[0].text as string;
 		expect(text).toContain("false");
 	});
 
-	it("readOnly モードでも呼び出せる", () => {
-		const result = handleAuthStatus();
+	it("readOnly モードでも呼び出せる", async () => {
+		const result = await handleAuthStatus();
 		expect(result.isError).toBeUndefined();
 	});
 
-	it("rate limit の残量を含む (STEP 2-7)", () => {
-		const result = handleAuthStatus();
+	it("rate limit の残量を含む (STEP 2-7)", async () => {
+		const result = await handleAuthStatus();
 		const parsed = JSON.parse(result.content[0].text as string);
 		expect(parsed).toHaveProperty("dailyRequestsRemaining");
 		expect(typeof parsed.dailyRequestsRemaining).toBe("number");
 		expect(parsed).toHaveProperty("dailyRequestLimit");
 		expect(parsed.dailyRequestLimit).toBe(3000);
+	});
+
+	it("既定では資格情報の実検証を行わない (credentialsValid 無し)", async () => {
+		const result = await handleAuthStatus();
+		const parsed = JSON.parse(result.content[0].text as string);
+		expect(parsed.credentialsValid).toBeUndefined();
+	});
+
+	it("validate=true: API が成功すれば credentialsValid: true (B3-4)", async () => {
+		mswServer.use(http.get(`${TEST_BASE_URL}/v1/clients`, () => HttpResponse.json([])));
+		const result = await handleAuthStatus({ validate: true });
+		const parsed = JSON.parse(result.content[0].text as string);
+		expect(parsed.credentialsValid).toBe(true);
+	});
+
+	it("validate=true: 401 なら credentialsValid: false (B3-4)", async () => {
+		mswServer.use(
+			http.get(`${TEST_BASE_URL}/v1/clients`, () =>
+				HttpResponse.json({ message: "Unauthorized" }, { status: 401 }),
+			),
+		);
+		const result = await handleAuthStatus({ validate: true });
+		const parsed = JSON.parse(result.content[0].text as string);
+		expect(parsed.credentialsValid).toBe(false);
 	});
 });

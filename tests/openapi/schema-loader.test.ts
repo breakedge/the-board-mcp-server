@@ -139,8 +139,9 @@ describe("loadSchema", () => {
 		expect(Object.keys(s.paths).length).toBeGreaterThan(0);
 	});
 
-	it("version が含まれる", async () => {
+	it("version が含まれる (semver)", async () => {
+		// version は board API spec に追従するため値は pin せず形式のみ検証する
 		const s = await loadSchema();
-		expect(s.version).toBe("1.6.0");
+		expect(s.version).toMatch(/^\d+\.\d+\.\d+$/);
 	});
 });

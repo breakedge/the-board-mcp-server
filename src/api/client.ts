@@ -67,11 +67,22 @@ function extractPagination(headers: Headers): Pagination | undefined {
 	if (total === null) {
 		return undefined;
 	}
-	const pagination: Pagination = { totalCount: Number(total) };
-	const page = headers.get("X-Page");
-	if (page !== null) pagination.page = Number(page);
-	const perPage = headers.get("X-Per-Page");
-	if (perPage !== null) pagination.perPage = Number(perPage);
+	const totalCount = Number(total);
+	// 不正な X-Total-Count (非数値ヘッダ等) は NaN になり AI を誤誘導するため pagination を省く
+	if (!Number.isFinite(totalCount)) {
+		return undefined;
+	}
+	const pagination: Pagination = { totalCount };
+	const pageHeader = headers.get("X-Page");
+	if (pageHeader !== null) {
+		const page = Number(pageHeader);
+		if (Number.isFinite(page)) pagination.page = page;
+	}
+	const perPageHeader = headers.get("X-Per-Page");
+	if (perPageHeader !== null) {
+		const perPage = Number(perPageHeader);
+		if (Number.isFinite(perPage)) pagination.perPage = perPage;
+	}
 	return pagination;
 }
 

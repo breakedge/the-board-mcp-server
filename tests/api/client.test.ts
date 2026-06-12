@@ -233,6 +233,28 @@ describe("makeApiRequest — 成功レスポンス", () => {
 		const result = await makeApiRequest("GET", "/v1/clients");
 		expect(result.pagination).toBeUndefined();
 	});
+
+	it("X-Total-Count が非数値なら pagination を返さない (NaN ガード)", async () => {
+		server.use(
+			http.get(`${TEST_BASE_URL}/v1/clients`, () =>
+				HttpResponse.json([{ id: 1 }], { headers: { "X-Total-Count": "not-a-number" } }),
+			),
+		);
+		const result = await makeApiRequest("GET", "/v1/clients");
+		expect(result.pagination).toBeUndefined();
+	});
+
+	it("X-Page/X-Per-Page が非数値なら totalCount のみ返す (NaN ガード)", async () => {
+		server.use(
+			http.get(`${TEST_BASE_URL}/v1/clients`, () =>
+				HttpResponse.json([{ id: 1 }], {
+					headers: { "X-Total-Count": "57", "X-Page": "abc", "X-Per-Page": "xyz" },
+				}),
+			),
+		);
+		const result = await makeApiRequest("GET", "/v1/clients");
+		expect(result.pagination).toEqual({ totalCount: 57 });
+	});
 });
 
 describe("makeApiRequest — エラーレスポンス — TheBoardApiError", () => {

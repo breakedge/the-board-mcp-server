@@ -59,7 +59,7 @@ interface MinimalSchema {
 
 let spec: Json;
 
-/** $ref を解決する (循環は null を返す)。 */
+/** $ref を解決する (循環は null を返す)。seen は呼び出し側のパス集合を直接変更する。 */
 function resolveRef(node: Json, seen: Set<string>): Json {
 	let current = node;
 	while (current && typeof current === "object" && typeof current.$ref === "string") {
@@ -67,7 +67,10 @@ function resolveRef(node: Json, seen: Set<string>): Json {
 		seen.add(current.$ref);
 		const path = current.$ref.replace(/^#\//, "").split("/");
 		let target: Json = spec;
-		for (const key of path) target = target?.[decodeURIComponent(key)];
+		// JSON Pointer のエスケープ (~1 → /, ~0 → ~) を解いてから辿る
+		for (const key of path) {
+			target = target?.[decodeURIComponent(key).replace(/~1/g, "/").replace(/~0/g, "~")];
+		}
 		current = target;
 	}
 	return current;
@@ -80,28 +83,42 @@ function cleanDescription(desc: unknown): string | undefined {
 	return collapsed.length > DESC_MAX ? `${collapsed.slice(0, DESC_MAX)}…` : collapsed;
 }
 
-/** allOf を平坦化し、{type, properties, required, enum, items, description} を返す。 */
-function flatten(schema: Json, seen: Set<string>): Json {
-	const resolved = resolveRef(schema, new Set(seen));
+const MAX_FLATTEN_DEPTH = 50;
+
+/**
+ * allOf を平坦化し、{type, properties, required, enum, readOnly, items, description} を返す。
+ * seen は「現在の解決パス上の $ref 集合」。resolveRef がパスに沿って ref を蓄積し、
+ * 兄弟(別 allOf 分岐)へは copy を渡すことで、循環を検出しつつ兄弟間の重複参照は許容する。
+ * depth backstop は ref を介さない病的に深い allOf への保険。
+ */
+function flatten(schema: Json, seen: Set<string>, depth = 0): Json {
+	if (depth > MAX_FLATTEN_DEPTH) return {};
+	const path = new Set(seen);
+	const resolved = resolveRef(schema, path);
 	if (!resolved || typeof resolved !== "object") return {};
 	if (Array.isArray(resolved.allOf)) {
 		const merged: Json = { type: "object", properties: {}, required: [] as string[] };
-		// allOf と同階層に置かれた required (例: POST /clients の name/name_disp) も取り込む
+		// allOf と同階層のメタ情報 (required/properties/enum/readOnly) も取り込む
 		if (Array.isArray(resolved.required)) merged.required.push(...resolved.required);
 		if (resolved.properties) Object.assign(merged.properties, resolved.properties);
+		if (Array.isArray(resolved.enum)) merged.enum = resolved.enum;
+		if (resolved.readOnly === true) merged.readOnly = true;
 		for (const part of resolved.allOf) {
-			const flat = flatten(part, new Set(seen));
+			const flat = flatten(part, path, depth + 1);
 			if (flat.type && flat.type !== "object") merged.type = flat.type;
 			Object.assign(merged.properties, flat.properties ?? {});
 			if (Array.isArray(flat.required)) merged.required.push(...flat.required);
 			if (flat.items) merged.items = flat.items;
+			if (Array.isArray(flat.enum) && !merged.enum) merged.enum = flat.enum;
+			if (flat.readOnly === true) merged.readOnly = true;
+			if (flat.format && !merged.format) merged.format = flat.format;
 			if (flat.description && !merged.description) merged.description = flat.description;
 		}
 		return merged;
 	}
 	// oneOf/anyOf は先頭候補のみ採用 (構造の目安を示す)
-	if (Array.isArray(resolved.oneOf)) return flatten(resolved.oneOf[0], new Set(seen));
-	if (Array.isArray(resolved.anyOf)) return flatten(resolved.anyOf[0], new Set(seen));
+	if (Array.isArray(resolved.oneOf)) return flatten(resolved.oneOf[0], path, depth + 1);
+	if (Array.isArray(resolved.anyOf)) return flatten(resolved.anyOf[0], path, depth + 1);
 	return resolved;
 }
 
@@ -121,15 +138,16 @@ function toFields(schema: Json, seen: Set<string>, depth: number): MinimalField[
 		if (Array.isArray(prop.enum)) field.enum = prop.enum;
 		const desc = cleanDescription(prop.description);
 		if (desc) field.description = desc;
+		// type 文字列を省く spec もあるため、items/properties の有無で配列/オブジェクトを判定する
 		if (depth < MAX_DEPTH) {
-			if (prop.type === "array" && prop.items) {
+			if (prop.items) {
 				const itemFlat = flatten(prop.items, seen);
 				const item: { type?: string; properties?: MinimalField[] } = {};
 				if (itemFlat.type) item.type = itemFlat.type;
 				const itemFields = toFields(prop.items, seen, depth + 1);
 				if (itemFields.length > 0) item.properties = itemFields;
 				field.items = item;
-			} else if (prop.type === "object" && prop.properties) {
+			} else if (prop.properties) {
 				const nested = toFields(prop, seen, depth + 1);
 				if (nested.length > 0) field.properties = nested;
 			}

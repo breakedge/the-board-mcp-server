@@ -118,6 +118,43 @@ describe("extractRequestBody — readOnly 除外と required フィルタ", () =
 	});
 });
 
+describe("toFields — format 出力と type 推論", () => {
+	it("format を出力し、type は明示値を優先する", () => {
+		const schema: Json = {
+			type: "object",
+			properties: { estimate_date: { type: "string", format: "date" } },
+		};
+		const fields = toFields(schema, new Set(), 0);
+		const f = fields.find((x) => x.name === "estimate_date");
+		expect(f?.type).toBe("string");
+		expect(f?.format).toBe("date");
+	});
+
+	it("type 省略時は items の有無から array を推論する", () => {
+		const schema: Json = {
+			type: "object",
+			properties: { tags: { items: { type: "string" } } },
+		};
+		const f = toFields(schema, new Set(), 0).find((x) => x.name === "tags");
+		expect(f?.type).toBe("array");
+	});
+
+	it("type 省略時は properties の有無から object を推論する", () => {
+		const schema: Json = {
+			type: "object",
+			properties: { meta: { properties: { k: { type: "string" } } } },
+		};
+		const f = toFields(schema, new Set(), 0).find((x) => x.name === "meta");
+		expect(f?.type).toBe("object");
+	});
+
+	it("format が無いフィールドには format を付けない", () => {
+		const schema: Json = { type: "object", properties: { name: { type: "string" } } };
+		const f = toFields(schema, new Set(), 0).find((x) => x.name === "name");
+		expect(f?.format).toBeUndefined();
+	});
+});
+
 describe("toFields — allOf 平坦化", () => {
 	it("allOf の properties / required をマージする", () => {
 		const schema: Json = {

@@ -9,8 +9,11 @@
  *
  * Usage:
  *   npx tsx scripts/generate-minimal-schema.ts [input-path]
+ *   npx biome format --write openapi/the-board.minimal.json   # 生成後に必須
  *
  * input-path を省略した場合、公式 URL からダウンロードする。
+ * 出力 JSON は素の JSON.stringify(tab) で、コミット済みファイルは biome で整形済み。
+ * 再生成したら biome format を必ず通すこと (整形差分でレビューが埋もれるのを防ぐ)。
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -37,6 +40,7 @@ interface MinimalParameter {
 interface MinimalField {
 	name: string;
 	type?: string;
+	format?: string;
 	required?: boolean;
 	enum?: (string | number)[];
 	description?: string;
@@ -147,7 +151,16 @@ export function toFields(schema: Json, seen: Set<string>, depth: number): Minima
 		const prop = flatten(rawProp, seen);
 		if (prop.readOnly === true) continue; // 書き込みボディに設定不可
 		const field: MinimalField = { name };
-		if (prop.type) field.type = prop.type;
+		// type を省く spec でも items/properties の有無で配列/オブジェクトを補う
+		if (prop.type) {
+			field.type = prop.type;
+		} else if (prop.items) {
+			field.type = "array";
+		} else if (prop.properties) {
+			field.type = "object";
+		}
+		// format (date / date-time / int32 等) は describe で AI が値の形を掴むのに有用
+		if (typeof prop.format === "string") field.format = prop.format;
 		if (requiredSet.has(name)) field.required = true;
 		if (Array.isArray(prop.enum)) field.enum = prop.enum;
 		const desc = cleanDescription(prop.description);

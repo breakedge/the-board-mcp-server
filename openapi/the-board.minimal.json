@@ -129,23 +129,27 @@
 						{
 							"name": "payment_term_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "デフォルト支払条件ID - 新規登録時に未指定の場合は最初の支払条件が使用されます - [支払条件リスト取得API](#tag/payment_term/operation/getPaymentTerms)のレスポンスにある`id`です"
 						},
 						{
 							"name": "nda_flg",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1],
 							"description": "NDA締結 - 0：未 - 1：済"
 						},
 						{
 							"name": "basic_agreement_flg",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1],
 							"description": "基本契約書締結 - 0：未 - 1：済"
 						},
 						{
 							"name": "document_send_type",
 							"type": "integer",
+							"format": "int32",
 							"description": "書類送付方法 - 1：メール(DL) - 2：郵送 - 3：メール(DL)+郵送 - 4：メール(添付) - 5：メール(添付)+郵送 - または[カスタム書類送付方法](#tag/document_send_channel/operation/getDocumentSendChannels)のID"
 						},
 						{
@@ -164,6 +168,7 @@
 						{
 							"name": "wareki_flg",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1],
 							"description": "デフォルト和暦表示 - 0：西暦 - 1：和暦 ※「和暦表示」機能有効時のみ"
 						},
@@ -195,12 +200,14 @@
 						{
 							"name": "invoice_system_issuer_type",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1, 2],
 							"description": "適格請求書発行事業者 - 0：未設定 - 1：該当する - 2：該当しない"
 						},
 						{
 							"name": "bank_charge_to_client_flg",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1],
 							"description": "振込手数料負担 - 0：当方 - 1：先方"
 						},
@@ -212,6 +219,7 @@
 						{
 							"name": "company_bank_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "デフォルト振込口座ID ※このIDを取得するAPIはありません。画面上の「組織設定→振込口座管理」で対象の「編集」に行き、そのURLに含まれるIDを使用してください。例：`https://the-board.jp/company_banks/123456/edit` → 123456"
 						},
 						{
@@ -252,12 +260,14 @@
 						{
 							"name": "lang_kbn",
 							"type": "integer",
+							"format": "int32",
 							"enum": [1, 2],
 							"description": "デフォルト言語 - 1：日本語 - 2：英語 ※英語アドオン有効時のみ"
 						},
 						{
 							"name": "archive_flg",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1],
 							"description": "アーカイブ状態 - 0：未アーカイブ - 1：アーカイブ済み"
 						}
@@ -319,23 +329,27 @@
 						{
 							"name": "payment_term_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "デフォルト支払条件ID - 新規登録時に未指定の場合は最初の支払条件が使用されます - [支払条件リスト取得API](#tag/payment_term/operation/getPaymentTerms)のレスポンスにある`id`です"
 						},
 						{
 							"name": "nda_flg",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1],
 							"description": "NDA締結 - 0：未 - 1：済"
 						},
 						{
 							"name": "basic_agreement_flg",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1],
 							"description": "基本契約書締結 - 0：未 - 1：済"
 						},
 						{
 							"name": "document_send_type",
 							"type": "integer",
+							"format": "int32",
 							"description": "書類送付方法 - 1：メール(DL) - 2：郵送 - 3：メール(DL)+郵送 - 4：メール(添付) - 5：メール(添付)+郵送 - または[カスタム書類送付方法](#tag/document_send_channel/operation/getDocumentSendChannels)のID"
 						},
 						{
@@ -354,6 +368,7 @@
 						{
 							"name": "wareki_flg",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1],
 							"description": "デフォルト和暦表示 - 0：西暦 - 1：和暦 ※「和暦表示」機能有効時のみ"
 						},
@@ -385,12 +400,14 @@
 						{
 							"name": "invoice_system_issuer_type",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1, 2],
 							"description": "適格請求書発行事業者 - 0：未設定 - 1：該当する - 2：該当しない"
 						},
 						{
 							"name": "bank_charge_to_client_flg",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1],
 							"description": "振込手数料負担 - 0：当方 - 1：先方"
 						},
@@ -402,6 +419,7 @@
 						{
 							"name": "company_bank_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "デフォルト振込口座ID ※このIDを取得するAPIはありません。画面上の「組織設定→振込口座管理」で対象の「編集」に行き、そのURLに含まれるIDを使用してください。例：`https://the-board.jp/company_banks/123456/edit` → 123456"
 						},
 						{
@@ -442,12 +460,14 @@
 						{
 							"name": "lang_kbn",
 							"type": "integer",
+							"format": "int32",
 							"enum": [1, 2],
 							"description": "デフォルト言語 - 1：日本語 - 2：英語 ※英語アドオン有効時のみ"
 						},
 						{
 							"name": "archive_flg",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1],
 							"description": "アーカイブ状態 - 0：未アーカイブ - 1：アーカイブ済み"
 						}
@@ -511,6 +531,7 @@
 						{
 							"name": "client_id",
 							"type": "integer",
+							"format": "int32",
 							"required": true,
 							"description": "顧客ID ※[顧客登録API](#tag/client/operation/postClient)・[顧客リスト取得API](#tag/client/operation/getClients)のレスポンスにある`id`"
 						},
@@ -568,6 +589,7 @@
 						{
 							"name": "archive_flg",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1],
 							"description": "アーカイブ状態 - 0：未アーカイブ - 1：アーカイブ済み"
 						}
@@ -584,6 +606,7 @@
 						{
 							"name": "client_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "顧客ID ※[顧客登録API](#tag/client/operation/postClient)・[顧客リスト取得API](#tag/client/operation/getClients)のレスポンスにある`id`"
 						},
 						{
@@ -639,6 +662,7 @@
 						{
 							"name": "archive_flg",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1],
 							"description": "アーカイブ状態 - 0：未アーカイブ - 1：アーカイブ済み"
 						}
@@ -702,6 +726,7 @@
 						{
 							"name": "client_id",
 							"type": "integer",
+							"format": "int32",
 							"required": true,
 							"description": "顧客ID ※[顧客登録API](#tag/client/operation/postClient)・[顧客リスト取得API](#tag/client/operation/getClients)のレスポンスにある`id`"
 						},
@@ -744,6 +769,7 @@
 						{
 							"name": "archive_flg",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1],
 							"description": "アーカイブ状態 - 0：未アーカイブ - 1：アーカイブ済み"
 						},
@@ -785,6 +811,7 @@
 						{
 							"name": "client_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "顧客ID ※[顧客登録API](#tag/client/operation/postClient)・[顧客リスト取得API](#tag/client/operation/getClients)のレスポンスにある`id`"
 						},
 						{
@@ -825,6 +852,7 @@
 						{
 							"name": "archive_flg",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1],
 							"description": "アーカイブ状態 - 0：未アーカイブ - 1：アーカイブ済み"
 						},
@@ -1033,12 +1061,14 @@
 						{
 							"name": "client_id",
 							"type": "integer",
+							"format": "int32",
 							"required": true,
 							"description": "顧客ID ※[顧客登録API](#tag/client/operation/postClient)・[顧客リスト取得API](#tag/client/operation/getClients)のレスポンスにある`id`"
 						},
 						{
 							"name": "client_branch_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "顧客支社ID ※[顧客支社登録API](#tag/client_branch/operation/postClientBranch)・[顧客支社リスト取得API](#tag/client_branch/operation/getClientBranches)のレスポンスにある`id`"
 						},
 						{
@@ -1056,11 +1086,13 @@
 						{
 							"name": "contact_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "顧客担当者ID ※[顧客担当者登録API](#tag/contact/operation/postContact)・[顧客担当者リスト取得API](#tag/contact/operation/getContacts)のレスポンスにある`id`"
 						},
 						{
 							"name": "company_branch_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "自社支社ID ※このIDを取得するAPIはありません。画面上の「組織設定→支社管理」で対象の「編集」に行き、そのURLに含まれるIDを使用してください。例：`https://the-board.jp/company_branches/123456/edit` → 123456"
 						},
 						{
@@ -1078,17 +1110,20 @@
 						{
 							"name": "user_id",
 							"type": "integer",
+							"format": "int32",
 							"required": true,
 							"description": "担当者ID ※[ユーザーリスト取得API](#tag/user/operation/getUsers)のレスポンスにある`id`"
 						},
 						{
 							"name": "estimate_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "見積日 ※新規登録時に未指定の場合は、本日の日付がセットされます"
 						},
 						{
 							"name": "delivery_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "納期"
 						},
 						{
@@ -1099,6 +1134,7 @@
 						{
 							"name": "payment_term_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "支払条件ID - 新規登録時に未指定の場合は「デフォルト支払条件」が使用されます - [支払条件リスト取得API](#tag/payment_term/operation/getPaymentTerms)のレスポンスにある`id`です"
 						},
 						{
@@ -1124,21 +1160,25 @@
 						{
 							"name": "project_type_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "案件区分1ID ※[案件区分リスト取得API](#tag/project_type/operation/getProjectTypes)のレスポンスにある`id`"
 						},
 						{
 							"name": "project_type2_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "案件区分2ID ※[案件区分リスト取得API](#tag/project_type/operation/getProjectTypes)のレスポンスにある`id`"
 						},
 						{
 							"name": "project_type3_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "案件区分3ID ※[案件区分リスト取得API](#tag/project_type/operation/getProjectTypes)のレスポンスにある`id`"
 						},
 						{
 							"name": "group_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "グループID ※[グループリスト取得API](#tag/group/operation/getGroups)のレスポンスにある`id`"
 						},
 						{
@@ -1152,16 +1192,19 @@
 						{
 							"name": "accounting_type_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "会計区分1ID ※[会計区分リスト取得API](#tag/accounting_type/operation/getAccountingTypes)のレスポンスにある`id`"
 						},
 						{
 							"name": "accounting_type2_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "会計区分2ID ※[会計区分リスト取得API](#tag/accounting_type/operation/getAccountingTypes)のレスポンスにある`id`"
 						},
 						{
 							"name": "accounting_type3_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "会計区分3ID ※[会計区分リスト取得API](#tag/accounting_type/operation/getAccountingTypes)のレスポンスにある`id`"
 						},
 						{
@@ -1177,6 +1220,7 @@
 						{
 							"name": "ordered_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "受注日"
 						},
 						{
@@ -1210,6 +1254,7 @@
 						{
 							"name": "archive_flg",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1],
 							"description": "アーカイブ状態 - 0：未アーカイブ - 1：アーカイブ済み"
 						},
@@ -1222,6 +1267,7 @@
 						{
 							"name": "document_setting_id",
 							"type": "integer",
+							"format": "int64",
 							"description": "書類詳細設定ID ※このIDを取得するAPIはありません。画面上の「設定→書類詳細設定」で対象の「編集」に行き、そのURLに含まれるIDを使用してください。例：`https://the-board.jp/document_settings/123456/edit` → 123456"
 						},
 						{
@@ -1253,11 +1299,13 @@
 						{
 							"name": "exchange_rate",
 							"type": "number",
+							"format": "decimal",
 							"description": "為替レート ※英語アドオン有効時のみ"
 						},
 						{
 							"name": "invoice_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "請求日 ※一括請求用",
 							"items": {
 								"type": "string"
@@ -1266,11 +1314,13 @@
 						{
 							"name": "contract_start_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "請求開始日 ※定期請求用"
 						},
 						{
 							"name": "contract_end_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "請求終了日 ※定期請求用"
 						},
 						{
@@ -1341,11 +1391,13 @@
 						{
 							"name": "client_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "顧客ID ※[顧客登録API](#tag/client/operation/postClient)・[顧客リスト取得API](#tag/client/operation/getClients)のレスポンスにある`id`"
 						},
 						{
 							"name": "client_branch_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "顧客支社ID ※[顧客支社登録API](#tag/client_branch/operation/postClientBranch)・[顧客支社リスト取得API](#tag/client_branch/operation/getClientBranches)のレスポンスにある`id`"
 						},
 						{
@@ -1363,11 +1415,13 @@
 						{
 							"name": "contact_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "顧客担当者ID ※[顧客担当者登録API](#tag/contact/operation/postContact)・[顧客担当者リスト取得API](#tag/contact/operation/getContacts)のレスポンスにある`id`"
 						},
 						{
 							"name": "company_branch_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "自社支社ID ※このIDを取得するAPIはありません。画面上の「組織設定→支社管理」で対象の「編集」に行き、そのURLに含まれるIDを使用してください。例：`https://the-board.jp/company_branches/123456/edit` → 123456"
 						},
 						{
@@ -1385,16 +1439,19 @@
 						{
 							"name": "user_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "担当者ID ※[ユーザーリスト取得API](#tag/user/operation/getUsers)のレスポンスにある`id`"
 						},
 						{
 							"name": "estimate_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "見積日 ※新規登録時に未指定の場合は、本日の日付がセットされます"
 						},
 						{
 							"name": "delivery_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "納期"
 						},
 						{
@@ -1405,6 +1462,7 @@
 						{
 							"name": "payment_term_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "支払条件ID - 新規登録時に未指定の場合は「デフォルト支払条件」が使用されます - [支払条件リスト取得API](#tag/payment_term/operation/getPaymentTerms)のレスポンスにある`id`です"
 						},
 						{
@@ -1428,21 +1486,25 @@
 						{
 							"name": "project_type_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "案件区分1ID ※[案件区分リスト取得API](#tag/project_type/operation/getProjectTypes)のレスポンスにある`id`"
 						},
 						{
 							"name": "project_type2_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "案件区分2ID ※[案件区分リスト取得API](#tag/project_type/operation/getProjectTypes)のレスポンスにある`id`"
 						},
 						{
 							"name": "project_type3_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "案件区分3ID ※[案件区分リスト取得API](#tag/project_type/operation/getProjectTypes)のレスポンスにある`id`"
 						},
 						{
 							"name": "group_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "グループID ※[グループリスト取得API](#tag/group/operation/getGroups)のレスポンスにある`id`"
 						},
 						{
@@ -1456,16 +1518,19 @@
 						{
 							"name": "accounting_type_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "会計区分1ID ※[会計区分リスト取得API](#tag/accounting_type/operation/getAccountingTypes)のレスポンスにある`id`"
 						},
 						{
 							"name": "accounting_type2_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "会計区分2ID ※[会計区分リスト取得API](#tag/accounting_type/operation/getAccountingTypes)のレスポンスにある`id`"
 						},
 						{
 							"name": "accounting_type3_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "会計区分3ID ※[会計区分リスト取得API](#tag/accounting_type/operation/getAccountingTypes)のレスポンスにある`id`"
 						},
 						{
@@ -1481,6 +1546,7 @@
 						{
 							"name": "ordered_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "受注日"
 						},
 						{
@@ -1514,6 +1580,7 @@
 						{
 							"name": "archive_flg",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1],
 							"description": "アーカイブ状態 - 0：未アーカイブ - 1：アーカイブ済み"
 						},
@@ -1526,6 +1593,7 @@
 						{
 							"name": "document_setting_id",
 							"type": "integer",
+							"format": "int64",
 							"description": "書類詳細設定ID ※このIDを取得するAPIはありません。画面上の「設定→書類詳細設定」で対象の「編集」に行き、そのURLに含まれるIDを使用してください。例：`https://the-board.jp/document_settings/123456/edit` → 123456"
 						},
 						{
@@ -1557,11 +1625,13 @@
 						{
 							"name": "exchange_rate",
 							"type": "number",
+							"format": "decimal",
 							"description": "為替レート ※英語アドオン有効時のみ"
 						},
 						{
 							"name": "invoice_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "請求日 ※一括請求用",
 							"items": {
 								"type": "string"
@@ -1570,11 +1640,13 @@
 						{
 							"name": "contract_start_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "請求開始日 ※定期請求用"
 						},
 						{
 							"name": "contract_end_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "請求終了日 ※定期請求用"
 						},
 						{
@@ -1716,6 +1788,7 @@
 						{
 							"name": "project_id",
 							"type": "integer",
+							"format": "int32",
 							"required": true,
 							"description": "案件ID ※[案件登録API](#tag/project/operation/postProject)・[案件リスト取得API](#tag/project/operation/getProjects)のレスポンスにある`id`"
 						},
@@ -1728,18 +1801,21 @@
 						{
 							"name": "cost",
 							"type": "integer",
+							"format": "int32",
 							"required": true,
 							"description": "金額"
 						},
 						{
 							"name": "invoice_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"required": true,
 							"description": "請求日"
 						},
 						{
 							"name": "payment_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"required": true,
 							"description": "支払日"
 						}
@@ -1761,16 +1837,19 @@
 						{
 							"name": "cost",
 							"type": "integer",
+							"format": "int32",
 							"description": "金額"
 						},
 						{
 							"name": "invoice_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "請求日"
 						},
 						{
 							"name": "payment_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "支払日"
 						}
 					]
@@ -1979,16 +2058,19 @@
 						{
 							"name": "total",
 							"type": "number",
+							"format": "decimal",
 							"description": "小計 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
 						},
 						{
 							"name": "tax",
 							"type": "number",
+							"format": "decimal",
 							"description": "消費税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
 						},
 						{
 							"name": "tax_withholding",
 							"type": "number",
+							"format": "decimal",
 							"description": "源泉所得税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
 						},
 						{
@@ -2012,6 +2094,7 @@
 									{
 										"name": "detail_date",
 										"type": "string",
+										"format": "YYYY-MM-DD",
 										"description": "明細日付"
 									},
 									{
@@ -2022,6 +2105,7 @@
 									{
 										"name": "quantity",
 										"type": "number",
+										"format": "decimal",
 										"description": "数量"
 									},
 									{
@@ -2032,6 +2116,7 @@
 									{
 										"name": "unit_price",
 										"type": "number",
+										"format": "decimal",
 										"description": "単価"
 									},
 									{
@@ -2066,6 +2151,7 @@
 									{
 										"name": "section_subtotal",
 										"type": "number",
+										"format": "decimal",
 										"description": "見出し小計の金額 ※`document_detail_kbn`が「3：小計行」の場合のみ"
 									},
 									{
@@ -2124,16 +2210,19 @@
 						{
 							"name": "total",
 							"type": "number",
+							"format": "decimal",
 							"description": "小計 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
 						},
 						{
 							"name": "tax",
 							"type": "number",
+							"format": "decimal",
 							"description": "消費税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
 						},
 						{
 							"name": "tax_withholding",
 							"type": "number",
+							"format": "decimal",
 							"description": "源泉所得税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
 						},
 						{
@@ -2157,6 +2246,7 @@
 									{
 										"name": "detail_date",
 										"type": "string",
+										"format": "YYYY-MM-DD",
 										"description": "明細日付"
 									},
 									{
@@ -2167,6 +2257,7 @@
 									{
 										"name": "quantity",
 										"type": "number",
+										"format": "decimal",
 										"description": "数量"
 									},
 									{
@@ -2177,6 +2268,7 @@
 									{
 										"name": "unit_price",
 										"type": "number",
+										"format": "decimal",
 										"description": "単価"
 									},
 									{
@@ -2211,6 +2303,7 @@
 									{
 										"name": "section_subtotal",
 										"type": "number",
+										"format": "decimal",
 										"description": "見出し小計の金額 ※`document_detail_kbn`が「3：小計行」の場合のみ"
 									},
 									{
@@ -2231,11 +2324,13 @@
 						{
 							"name": "disp_order_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "発注日（表示設定）"
 						},
 						{
 							"name": "disp_order_receive_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "発注請日（表示設定）"
 						},
 						{
@@ -2279,16 +2374,19 @@
 						{
 							"name": "total",
 							"type": "number",
+							"format": "decimal",
 							"description": "小計 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
 						},
 						{
 							"name": "tax",
 							"type": "number",
+							"format": "decimal",
 							"description": "消費税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
 						},
 						{
 							"name": "tax_withholding",
 							"type": "number",
+							"format": "decimal",
 							"description": "源泉所得税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
 						},
 						{
@@ -2312,6 +2410,7 @@
 									{
 										"name": "detail_date",
 										"type": "string",
+										"format": "YYYY-MM-DD",
 										"description": "明細日付"
 									},
 									{
@@ -2322,6 +2421,7 @@
 									{
 										"name": "quantity",
 										"type": "number",
+										"format": "decimal",
 										"description": "数量"
 									},
 									{
@@ -2332,6 +2432,7 @@
 									{
 										"name": "unit_price",
 										"type": "number",
+										"format": "decimal",
 										"description": "単価"
 									},
 									{
@@ -2366,6 +2467,7 @@
 									{
 										"name": "section_subtotal",
 										"type": "number",
+										"format": "decimal",
 										"description": "見出し小計の金額 ※`document_detail_kbn`が「3：小計行」の場合のみ"
 									},
 									{
@@ -2386,16 +2488,19 @@
 						{
 							"name": "delivery_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "納品日"
 						},
 						{
 							"name": "disp_delivery_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "納品日（表示設定）"
 						},
 						{
 							"name": "disp_delivery_receive_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "検収日（表示設定）"
 						},
 						{
@@ -2439,16 +2544,19 @@
 						{
 							"name": "total",
 							"type": "number",
+							"format": "decimal",
 							"description": "小計 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
 						},
 						{
 							"name": "tax",
 							"type": "number",
+							"format": "decimal",
 							"description": "消費税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
 						},
 						{
 							"name": "tax_withholding",
 							"type": "number",
+							"format": "decimal",
 							"description": "源泉所得税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
 						},
 						{
@@ -2472,6 +2580,7 @@
 									{
 										"name": "detail_date",
 										"type": "string",
+										"format": "YYYY-MM-DD",
 										"description": "明細日付"
 									},
 									{
@@ -2482,6 +2591,7 @@
 									{
 										"name": "quantity",
 										"type": "number",
+										"format": "decimal",
 										"description": "数量"
 									},
 									{
@@ -2492,6 +2602,7 @@
 									{
 										"name": "unit_price",
 										"type": "number",
+										"format": "decimal",
 										"description": "単価"
 									},
 									{
@@ -2526,6 +2637,7 @@
 									{
 										"name": "section_subtotal",
 										"type": "number",
+										"format": "decimal",
 										"description": "見出し小計の金額 ※`document_detail_kbn`が「3：小計行」の場合のみ"
 									},
 									{
@@ -2546,6 +2658,7 @@
 						{
 							"name": "disp_invoice_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "請求日（表示設定）"
 						},
 						{
@@ -2595,16 +2708,19 @@
 						{
 							"name": "total",
 							"type": "number",
+							"format": "decimal",
 							"description": "小計 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
 						},
 						{
 							"name": "tax",
 							"type": "number",
+							"format": "decimal",
 							"description": "消費税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
 						},
 						{
 							"name": "tax_withholding",
 							"type": "number",
+							"format": "decimal",
 							"description": "源泉所得税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
 						},
 						{
@@ -2628,6 +2744,7 @@
 									{
 										"name": "detail_date",
 										"type": "string",
+										"format": "YYYY-MM-DD",
 										"description": "明細日付"
 									},
 									{
@@ -2638,6 +2755,7 @@
 									{
 										"name": "quantity",
 										"type": "number",
+										"format": "decimal",
 										"description": "数量"
 									},
 									{
@@ -2648,6 +2766,7 @@
 									{
 										"name": "unit_price",
 										"type": "number",
+										"format": "decimal",
 										"description": "単価"
 									},
 									{
@@ -2682,6 +2801,7 @@
 									{
 										"name": "section_subtotal",
 										"type": "number",
+										"format": "decimal",
 										"description": "見出し小計の金額 ※`document_detail_kbn`が「3：小計行」の場合のみ"
 									},
 									{
@@ -2702,6 +2822,7 @@
 						{
 							"name": "disp_receipt_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "発行日（表示設定）"
 						},
 						{
@@ -2860,23 +2981,27 @@
 						{
 							"name": "payment_term_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "デフォルト支払条件ID - 新規登録時に未指定の場合は最初の支払条件が使用されます - [支払条件リスト取得API](#tag/payment_term/operation/getPaymentTerms)のレスポンスにある`id`です"
 						},
 						{
 							"name": "nda_flg",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1],
 							"description": "NDA締結 - 0：未 - 1：済"
 						},
 						{
 							"name": "basic_agreement_flg",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1],
 							"description": "基本契約書締結 - 0：未 - 1：済"
 						},
 						{
 							"name": "document_send_type",
 							"type": "integer",
+							"format": "int32",
 							"description": "書類送付方法 - 1：メール(DL) - 2：郵送 - 3：メール(DL)+郵送 - 4：メール(添付) - 5：メール(添付)+郵送 - または[カスタム書類送付方法](#tag/document_send_channel/operation/getDocumentSendChannels)のID"
 						},
 						{
@@ -2895,6 +3020,7 @@
 						{
 							"name": "wareki_flg",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1],
 							"description": "デフォルト和暦表示 - 0：西暦 - 1：和暦 ※「和暦表示」機能有効時のみ"
 						},
@@ -2926,18 +3052,21 @@
 						{
 							"name": "invoice_system_issuer_type",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1, 2],
 							"description": "適格請求書発行事業者 - 0：未設定 - 1：該当する - 2：該当しない"
 						},
 						{
 							"name": "bank_charge_to_client_flg",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1],
 							"description": "振込手数料負担 - 0：当方 - 1：先方"
 						},
 						{
 							"name": "tax_withholding_kbn",
 							"type": "integer",
+							"format": "int32",
 							"enum": [1, 2, 3],
 							"description": "デフォルト源泉徴収 - 1：なし - 2：源泉徴収（復興特別所得税あり） - 3：源泉徴収（復興特別所得税なし）"
 						},
@@ -2984,12 +3113,14 @@
 						{
 							"name": "lang_kbn",
 							"type": "integer",
+							"format": "int32",
 							"enum": [1, 2],
 							"description": "デフォルト言語 - 1：日本語 - 2：英語 ※英語アドオン有効時のみ"
 						},
 						{
 							"name": "archive_flg",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1],
 							"description": "アーカイブ状態 - 0：未アーカイブ - 1：アーカイブ済み"
 						}
@@ -3051,23 +3182,27 @@
 						{
 							"name": "payment_term_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "デフォルト支払条件ID - 新規登録時に未指定の場合は最初の支払条件が使用されます - [支払条件リスト取得API](#tag/payment_term/operation/getPaymentTerms)のレスポンスにある`id`です"
 						},
 						{
 							"name": "nda_flg",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1],
 							"description": "NDA締結 - 0：未 - 1：済"
 						},
 						{
 							"name": "basic_agreement_flg",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1],
 							"description": "基本契約書締結 - 0：未 - 1：済"
 						},
 						{
 							"name": "document_send_type",
 							"type": "integer",
+							"format": "int32",
 							"description": "書類送付方法 - 1：メール(DL) - 2：郵送 - 3：メール(DL)+郵送 - 4：メール(添付) - 5：メール(添付)+郵送 - または[カスタム書類送付方法](#tag/document_send_channel/operation/getDocumentSendChannels)のID"
 						},
 						{
@@ -3086,6 +3221,7 @@
 						{
 							"name": "wareki_flg",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1],
 							"description": "デフォルト和暦表示 - 0：西暦 - 1：和暦 ※「和暦表示」機能有効時のみ"
 						},
@@ -3117,18 +3253,21 @@
 						{
 							"name": "invoice_system_issuer_type",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1, 2],
 							"description": "適格請求書発行事業者 - 0：未設定 - 1：該当する - 2：該当しない"
 						},
 						{
 							"name": "bank_charge_to_client_flg",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1],
 							"description": "振込手数料負担 - 0：当方 - 1：先方"
 						},
 						{
 							"name": "tax_withholding_kbn",
 							"type": "integer",
+							"format": "int32",
 							"enum": [1, 2, 3],
 							"description": "デフォルト源泉徴収 - 1：なし - 2：源泉徴収（復興特別所得税あり） - 3：源泉徴収（復興特別所得税なし）"
 						},
@@ -3175,12 +3314,14 @@
 						{
 							"name": "lang_kbn",
 							"type": "integer",
+							"format": "int32",
 							"enum": [1, 2],
 							"description": "デフォルト言語 - 1：日本語 - 2：英語 ※英語アドオン有効時のみ"
 						},
 						{
 							"name": "archive_flg",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1],
 							"description": "アーカイブ状態 - 0：未アーカイブ - 1：アーカイブ済み"
 						}
@@ -3244,6 +3385,7 @@
 						{
 							"name": "payee_id",
 							"type": "integer",
+							"format": "int32",
 							"required": true,
 							"description": "発注先ID ※[発注先登録API](#tag/payee/operation/postPayee)・[発注先リスト取得API](#tag/payee/operation/getPayees)のレスポンスにある`id`"
 						},
@@ -3301,6 +3443,7 @@
 						{
 							"name": "archive_flg",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1],
 							"description": "アーカイブ状態 - 0：未アーカイブ - 1：アーカイブ済み"
 						}
@@ -3317,6 +3460,7 @@
 						{
 							"name": "payee_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "発注先ID ※[発注先登録API](#tag/payee/operation/postPayee)・[発注先リスト取得API](#tag/payee/operation/getPayees)のレスポンスにある`id`"
 						},
 						{
@@ -3372,6 +3516,7 @@
 						{
 							"name": "archive_flg",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1],
 							"description": "アーカイブ状態 - 0：未アーカイブ - 1：アーカイブ済み"
 						}
@@ -3435,6 +3580,7 @@
 						{
 							"name": "payee_id",
 							"type": "integer",
+							"format": "int32",
 							"required": true,
 							"description": "発注先ID ※[発注先登録API](#tag/payee/operation/postPayee)・[発注先リスト取得API](#tag/payee/operation/getPayees)のレスポンスにある`id`"
 						},
@@ -3477,6 +3623,7 @@
 						{
 							"name": "archive_flg",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1],
 							"description": "アーカイブ状態 - 0：未アーカイブ - 1：アーカイブ済み"
 						},
@@ -3518,6 +3665,7 @@
 						{
 							"name": "payee_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "発注先ID ※[発注先登録API](#tag/payee/operation/postPayee)・[発注先リスト取得API](#tag/payee/operation/getPayees)のレスポンスにある`id`"
 						},
 						{
@@ -3558,6 +3706,7 @@
 						{
 							"name": "archive_flg",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1],
 							"description": "アーカイブ状態 - 0：未アーカイブ - 1：アーカイブ済み"
 						},
@@ -3743,12 +3892,14 @@
 						{
 							"name": "payee_id",
 							"type": "integer",
+							"format": "int32",
 							"required": true,
 							"description": "発注先ID ※[発注先登録API](#tag/payee/operation/postPayee)・[発注先リスト取得API](#tag/payee/operation/getPayees)のレスポンスにある`id`"
 						},
 						{
 							"name": "payee_branch_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "発注先支社ID ※[発注先支社登録API](#tag/payee_branch/operation/postPayeeBranch)・[発注先支社リスト取得API](#tag/payee_branch/operation/getPayeeBranches)のレスポンスにある`id`"
 						},
 						{
@@ -3766,11 +3917,13 @@
 						{
 							"name": "payee_contact_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "発注先担当者ID ※[発注先担当者登録API](#tag/payee_contact/operation/postPayeeContact)・[発注先担当者リスト取得API](#tag/payee_contact/operation/getPayeeContacts)のレスポンスにある`id`"
 						},
 						{
 							"name": "company_branch_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "自社支社ID ※このIDを取得するAPIはありません。画面上の「組織設定→支社管理」で対象の「編集」に行き、そのURLに含まれるIDを使用してください。例：`https://the-board.jp/company_branches/123456/edit` → 123456"
 						},
 						{
@@ -3788,17 +3941,20 @@
 						{
 							"name": "user_id",
 							"type": "integer",
+							"format": "int32",
 							"required": true,
 							"description": "担当者ID ※[ユーザーリスト取得API](#tag/user/operation/getUsers)のレスポンスにある`id`"
 						},
 						{
 							"name": "project_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "関連案件ID ※[案件登録API](#tag/project/operation/postProject)・[案件リスト取得API](#tag/project/operation/getProjects)のレスポンスにある`id`"
 						},
 						{
 							"name": "payment_term_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "支払条件ID - 新規登録時に未指定の場合は「デフォルト支払条件」が使用されます - [支払条件リスト取得API](#tag/payment_term/operation/getPaymentTerms)のレスポンスにある`id`です"
 						},
 						{
@@ -3835,16 +3991,19 @@
 						{
 							"name": "expenditure_type_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "発注区分1 ※[発注区分リスト取得API](#tag/expenditure_type/operation/getExpenditureTypes)のレスポンスにある`id`"
 						},
 						{
 							"name": "expenditure_type2_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "発注区分2 ※[発注区分リスト取得API](#tag/expenditure_type/operation/getExpenditureTypes)のレスポンスにある`id`"
 						},
 						{
 							"name": "expenditure_type3_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "発注区分3 ※[発注区分リスト取得API](#tag/expenditure_type/operation/getExpenditureTypes)のレスポンスにある`id`"
 						},
 						{
@@ -3858,26 +4017,31 @@
 						{
 							"name": "group_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "グループID ※[グループリスト取得API](#tag/group/operation/getGroups)のレスポンスにある`id`"
 						},
 						{
 							"name": "accounting_type_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "会計区分1ID ※[会計区分リスト取得API](#tag/accounting_type/operation/getAccountingTypes)のレスポンスにある`id`"
 						},
 						{
 							"name": "accounting_type2_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "会計区分2ID ※[会計区分リスト取得API](#tag/accounting_type/operation/getAccountingTypes)のレスポンスにある`id`"
 						},
 						{
 							"name": "accounting_type3_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "会計区分3ID ※[会計区分リスト取得API](#tag/accounting_type/operation/getAccountingTypes)のレスポンスにある`id`"
 						},
 						{
 							"name": "company_bank_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "集計用出金口座（振込口座ID） ※このIDを取得するAPIはありません。画面上の「組織設定→振込口座管理」で対象の「編集」に行き、そのURLに含まれるIDを使用してください。例：`https://the-board.jp/company_banks/123456/edit` → 123456"
 						},
 						{
@@ -3907,6 +4071,7 @@
 						{
 							"name": "archive_flg",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1],
 							"description": "アーカイブ状態 - 0：未アーカイブ - 1：アーカイブ済み"
 						},
@@ -3919,6 +4084,7 @@
 						{
 							"name": "document_setting_id",
 							"type": "integer",
+							"format": "int64",
 							"description": "書類詳細設定ID ※このIDを取得するAPIはありません。画面上の「設定→書類詳細設定」で対象の「編集」に行き、そのURLに含まれるIDを使用してください。例：`https://the-board.jp/document_settings/123456/edit` → 123456"
 						},
 						{
@@ -3960,11 +4126,13 @@
 						{
 							"name": "exchange_rate",
 							"type": "number",
+							"format": "decimal",
 							"description": "為替レート ※英語アドオン有効時のみ"
 						},
 						{
 							"name": "invoice_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "請求日 ※一括支払用",
 							"items": {
 								"type": "string"
@@ -3973,11 +4141,13 @@
 						{
 							"name": "total",
 							"type": "number",
+							"format": "decimal",
 							"description": "税抜金額"
 						},
 						{
 							"name": "tax",
 							"type": "number",
+							"format": "decimal",
 							"description": "消費税"
 						},
 						{
@@ -3988,11 +4158,13 @@
 						{
 							"name": "contract_start_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "請求開始日 ※定期支払用"
 						},
 						{
 							"name": "contract_end_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "請求終了日 ※定期支払用"
 						},
 						{
@@ -4035,18 +4207,21 @@
 									{
 										"name": "invoice_date",
 										"type": "string",
+										"format": "YYYY-MM-DD",
 										"required": true,
 										"description": "請求日"
 									},
 									{
 										"name": "total",
 										"type": "number",
+										"format": "decimal",
 										"required": true,
 										"description": "税抜金額"
 									},
 									{
 										"name": "tax",
 										"type": "number",
+										"format": "decimal",
 										"required": true,
 										"description": "消費税"
 									},
@@ -4083,11 +4258,13 @@
 						{
 							"name": "payee_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "発注先ID ※[発注先登録API](#tag/payee/operation/postPayee)・[発注先リスト取得API](#tag/payee/operation/getPayees)のレスポンスにある`id`"
 						},
 						{
 							"name": "payee_branch_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "発注先支社ID ※[発注先支社登録API](#tag/payee_branch/operation/postPayeeBranch)・[発注先支社リスト取得API](#tag/payee_branch/operation/getPayeeBranches)のレスポンスにある`id`"
 						},
 						{
@@ -4105,11 +4282,13 @@
 						{
 							"name": "payee_contact_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "発注先担当者ID ※[発注先担当者登録API](#tag/payee_contact/operation/postPayeeContact)・[発注先担当者リスト取得API](#tag/payee_contact/operation/getPayeeContacts)のレスポンスにある`id`"
 						},
 						{
 							"name": "company_branch_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "自社支社ID ※このIDを取得するAPIはありません。画面上の「組織設定→支社管理」で対象の「編集」に行き、そのURLに含まれるIDを使用してください。例：`https://the-board.jp/company_branches/123456/edit` → 123456"
 						},
 						{
@@ -4127,16 +4306,19 @@
 						{
 							"name": "user_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "担当者ID ※[ユーザーリスト取得API](#tag/user/operation/getUsers)のレスポンスにある`id`"
 						},
 						{
 							"name": "project_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "関連案件ID ※[案件登録API](#tag/project/operation/postProject)・[案件リスト取得API](#tag/project/operation/getProjects)のレスポンスにある`id`"
 						},
 						{
 							"name": "payment_term_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "支払条件ID - 新規登録時に未指定の場合は「デフォルト支払条件」が使用されます - [支払条件リスト取得API](#tag/payment_term/operation/getPaymentTerms)のレスポンスにある`id`です"
 						},
 						{
@@ -4170,16 +4352,19 @@
 						{
 							"name": "expenditure_type_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "発注区分1 ※[発注区分リスト取得API](#tag/expenditure_type/operation/getExpenditureTypes)のレスポンスにある`id`"
 						},
 						{
 							"name": "expenditure_type2_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "発注区分2 ※[発注区分リスト取得API](#tag/expenditure_type/operation/getExpenditureTypes)のレスポンスにある`id`"
 						},
 						{
 							"name": "expenditure_type3_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "発注区分3 ※[発注区分リスト取得API](#tag/expenditure_type/operation/getExpenditureTypes)のレスポンスにある`id`"
 						},
 						{
@@ -4193,26 +4378,31 @@
 						{
 							"name": "group_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "グループID ※[グループリスト取得API](#tag/group/operation/getGroups)のレスポンスにある`id`"
 						},
 						{
 							"name": "accounting_type_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "会計区分1ID ※[会計区分リスト取得API](#tag/accounting_type/operation/getAccountingTypes)のレスポンスにある`id`"
 						},
 						{
 							"name": "accounting_type2_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "会計区分2ID ※[会計区分リスト取得API](#tag/accounting_type/operation/getAccountingTypes)のレスポンスにある`id`"
 						},
 						{
 							"name": "accounting_type3_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "会計区分3ID ※[会計区分リスト取得API](#tag/accounting_type/operation/getAccountingTypes)のレスポンスにある`id`"
 						},
 						{
 							"name": "company_bank_id",
 							"type": "integer",
+							"format": "int32",
 							"description": "集計用出金口座（振込口座ID） ※このIDを取得するAPIはありません。画面上の「組織設定→振込口座管理」で対象の「編集」に行き、そのURLに含まれるIDを使用してください。例：`https://the-board.jp/company_banks/123456/edit` → 123456"
 						},
 						{
@@ -4242,6 +4432,7 @@
 						{
 							"name": "archive_flg",
 							"type": "integer",
+							"format": "int32",
 							"enum": [0, 1],
 							"description": "アーカイブ状態 - 0：未アーカイブ - 1：アーカイブ済み"
 						},
@@ -4254,6 +4445,7 @@
 						{
 							"name": "document_setting_id",
 							"type": "integer",
+							"format": "int64",
 							"description": "書類詳細設定ID ※このIDを取得するAPIはありません。画面上の「設定→書類詳細設定」で対象の「編集」に行き、そのURLに含まれるIDを使用してください。例：`https://the-board.jp/document_settings/123456/edit` → 123456"
 						},
 						{
@@ -4295,11 +4487,13 @@
 						{
 							"name": "exchange_rate",
 							"type": "number",
+							"format": "decimal",
 							"description": "為替レート ※英語アドオン有効時のみ"
 						},
 						{
 							"name": "invoice_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "請求日 ※一括支払用",
 							"items": {
 								"type": "string"
@@ -4308,11 +4502,13 @@
 						{
 							"name": "total",
 							"type": "number",
+							"format": "decimal",
 							"description": "税抜金額"
 						},
 						{
 							"name": "tax",
 							"type": "number",
+							"format": "decimal",
 							"description": "消費税"
 						},
 						{
@@ -4323,11 +4519,13 @@
 						{
 							"name": "contract_start_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "請求開始日 ※定期支払用"
 						},
 						{
 							"name": "contract_end_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "請求終了日 ※定期支払用"
 						},
 						{
@@ -4588,6 +4786,7 @@
 						{
 							"name": "estimate_request_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "依頼日"
 						},
 						{
@@ -4603,16 +4802,19 @@
 						{
 							"name": "total",
 							"type": "number",
+							"format": "decimal",
 							"description": "小計 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
 						},
 						{
 							"name": "tax",
 							"type": "number",
+							"format": "decimal",
 							"description": "消費税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
 						},
 						{
 							"name": "tax_withholding",
 							"type": "number",
+							"format": "decimal",
 							"description": "源泉所得税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
 						},
 						{
@@ -4636,6 +4838,7 @@
 									{
 										"name": "detail_date",
 										"type": "string",
+										"format": "YYYY-MM-DD",
 										"description": "明細日付"
 									},
 									{
@@ -4646,6 +4849,7 @@
 									{
 										"name": "quantity",
 										"type": "number",
+										"format": "decimal",
 										"description": "数量"
 									},
 									{
@@ -4656,6 +4860,7 @@
 									{
 										"name": "unit_price",
 										"type": "number",
+										"format": "decimal",
 										"description": "単価"
 									},
 									{
@@ -4690,6 +4895,7 @@
 									{
 										"name": "section_subtotal",
 										"type": "number",
+										"format": "decimal",
 										"description": "見出し小計の金額 ※`document_detail_kbn`が「3：小計行」の場合のみ"
 									},
 									{
@@ -4743,11 +4949,13 @@
 						{
 							"name": "order_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "発注日"
 						},
 						{
 							"name": "delivery_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "納期"
 						},
 						{
@@ -4758,16 +4966,19 @@
 						{
 							"name": "total",
 							"type": "number",
+							"format": "decimal",
 							"description": "小計 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
 						},
 						{
 							"name": "tax",
 							"type": "number",
+							"format": "decimal",
 							"description": "消費税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
 						},
 						{
 							"name": "tax_withholding",
 							"type": "number",
+							"format": "decimal",
 							"description": "源泉所得税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
 						},
 						{
@@ -4791,6 +5002,7 @@
 									{
 										"name": "detail_date",
 										"type": "string",
+										"format": "YYYY-MM-DD",
 										"description": "明細日付"
 									},
 									{
@@ -4801,6 +5013,7 @@
 									{
 										"name": "quantity",
 										"type": "number",
+										"format": "decimal",
 										"description": "数量"
 									},
 									{
@@ -4811,6 +5024,7 @@
 									{
 										"name": "unit_price",
 										"type": "number",
+										"format": "decimal",
 										"description": "単価"
 									},
 									{
@@ -4845,6 +5059,7 @@
 									{
 										"name": "section_subtotal",
 										"type": "number",
+										"format": "decimal",
 										"description": "見出し小計の金額 ※`document_detail_kbn`が「3：小計行」の場合のみ"
 									},
 									{
@@ -4898,11 +5113,13 @@
 						{
 							"name": "delivery_received_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "検収日"
 						},
 						{
 							"name": "disp_delivery_receive_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "検収日（表示設定）"
 						},
 						{
@@ -4913,16 +5130,19 @@
 						{
 							"name": "total",
 							"type": "number",
+							"format": "decimal",
 							"description": "小計 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
 						},
 						{
 							"name": "tax",
 							"type": "number",
+							"format": "decimal",
 							"description": "消費税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
 						},
 						{
 							"name": "tax_withholding",
 							"type": "number",
+							"format": "decimal",
 							"description": "源泉所得税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
 						},
 						{
@@ -4946,6 +5166,7 @@
 									{
 										"name": "detail_date",
 										"type": "string",
+										"format": "YYYY-MM-DD",
 										"description": "明細日付"
 									},
 									{
@@ -4956,6 +5177,7 @@
 									{
 										"name": "quantity",
 										"type": "number",
+										"format": "decimal",
 										"description": "数量"
 									},
 									{
@@ -4966,6 +5188,7 @@
 									{
 										"name": "unit_price",
 										"type": "number",
+										"format": "decimal",
 										"description": "単価"
 									},
 									{
@@ -5000,6 +5223,7 @@
 									{
 										"name": "section_subtotal",
 										"type": "number",
+										"format": "decimal",
 										"description": "見出し小計の金額 ※`document_detail_kbn`が「3：小計行」の場合のみ"
 									},
 									{
@@ -5053,6 +5277,7 @@
 						{
 							"name": "paid_date",
 							"type": "string",
+							"format": "YYYY-MM-DD",
 							"description": "支払日"
 						},
 						{
@@ -5063,16 +5288,19 @@
 						{
 							"name": "total",
 							"type": "number",
+							"format": "decimal",
 							"description": "小計 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
 						},
 						{
 							"name": "tax",
 							"type": "number",
+							"format": "decimal",
 							"description": "消費税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
 						},
 						{
 							"name": "tax_withholding",
 							"type": "number",
+							"format": "decimal",
 							"description": "源泉所得税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
 						},
 						{
@@ -5096,6 +5324,7 @@
 									{
 										"name": "detail_date",
 										"type": "string",
+										"format": "YYYY-MM-DD",
 										"description": "明細日付"
 									},
 									{
@@ -5106,6 +5335,7 @@
 									{
 										"name": "quantity",
 										"type": "number",
+										"format": "decimal",
 										"description": "数量"
 									},
 									{
@@ -5116,6 +5346,7 @@
 									{
 										"name": "unit_price",
 										"type": "number",
+										"format": "decimal",
 										"description": "単価"
 									},
 									{
@@ -5150,6 +5381,7 @@
 									{
 										"name": "section_subtotal",
 										"type": "number",
+										"format": "decimal",
 										"description": "見出し小計の金額 ※`document_detail_kbn`が「3：小計行」の場合のみ"
 									},
 									{

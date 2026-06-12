@@ -106,6 +106,25 @@ describe("makeApiRequest — GET with query params", () => {
 	});
 });
 
+describe("makeApiRequest — 配列クエリパラメータ", () => {
+	it("配列値は同名キーを繰り返して付与されること (Rails 形式 tags[]=A&tags[]=B)", async () => {
+		let requestUrl: string | null = null;
+
+		server.use(
+			http.get(`${TEST_BASE_URL}/v1/projects`, ({ request }) => {
+				requestUrl = request.url;
+				return HttpResponse.json([]);
+			}),
+		);
+
+		await makeApiRequest("GET", "/v1/projects", { "tags[]": ["A", "B"] });
+
+		expect(requestUrl).not.toBeNull();
+		const url = new URL(requestUrl as string);
+		expect(url.searchParams.getAll("tags[]")).toEqual(["A", "B"]);
+	});
+});
+
 describe("makeApiRequest — POST with JSON body", () => {
 	it("Content-Type: application/json と body が送信されること", async () => {
 		let capturedContentType: string | null = null;

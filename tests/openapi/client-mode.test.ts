@@ -106,6 +106,7 @@ describe("handleListPaths", () => {
 		// documents ドメインのパスは含まれない
 		expect(parsed.some((e: { path: string }) => e.path.startsWith("/v1/documents"))).toBe(false);
 	});
+
 });
 
 // ---------------------------------------------------------------------------
@@ -166,6 +167,50 @@ describe("handleGet", () => {
 		const result = await handleGet({ path: "/v1/clients" }, config, schema);
 		expect(result.isError).toBe(true);
 		expect(result.content[0].text).toContain("toolset");
+	});
+
+	it("未知のクエリパラメータ → isError + 有効パラメータ一覧を提示 (B0-1)", async () => {
+		// project_id は board では無視される。正解は project_no_eq。
+		const config = makeConfig();
+		const result = await handleGet(
+			{ path: "/v1/projects", query: { project_id: 123 } },
+			config,
+			schema,
+		);
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toContain("project_id");
+		expect(result.content[0].text).toContain("project_no_eq");
+	});
+
+	it("パラメータ定義の無いエンドポイントは未知キーでも通す (fail-open, B0-1)", async () => {
+		mswServer.use(http.get(`${TEST_BASE_URL}/v1/clients/1`, () => HttpResponse.json({ id: 1 })));
+		const config = makeConfig();
+		const result = await handleGet(
+			{ path: "/v1/clients/1", query: { anything: "x" } },
+			config,
+			schema,
+		);
+		expect(result.isError).toBeUndefined();
+	});
+
+	it("既知パラメータ (page) は拒否されない (B0-1 偽陽性防止)", async () => {
+		mswServer.use(http.get(`${TEST_BASE_URL}/v1/projects`, () => HttpResponse.json([])));
+		const config = makeConfig();
+		const result = await handleGet({ path: "/v1/projects", query: { page: 1 } }, config, schema);
+		expect(result.isError).toBeUndefined();
+	});
+
+	it("query 値にオブジェクトを渡すと API に送らず isError (B0-4)", async () => {
+		// 200 を返すハンドラを登録: 検証が無ければ [object Object] として送られ成功してしまう。
+		mswServer.use(http.get(`${TEST_BASE_URL}/v1/projects`, () => HttpResponse.json([])));
+		const config = makeConfig();
+		const result = await handleGet(
+			{ path: "/v1/projects", query: { "tags[]": { nested: 1 } } },
+			config,
+			schema,
+		);
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toContain("オブジェクト");
 	});
 });
 
@@ -254,6 +299,21 @@ describe("handlePatch", () => {
 		const config = makeConfig({ readOnly: true });
 		const result = await handlePatch({ path: "/v1/clients/1", body: {} }, config, schema);
 		expect(result.isError).toBe(true);
+	});
+
+	it("204 No Content の書き込みは成功マーカーを返す (リテラル null にしない, B2-4)", async () => {
+		mswServer.use(
+			http.patch(`${TEST_BASE_URL}/v1/clients/1`, () => new HttpResponse(null, { status: 204 })),
+		);
+		const config = makeConfig({ readOnly: false, enableWrites: true });
+		const result = await handlePatch(
+			{ path: "/v1/clients/1", body: { name: "x" } },
+			config,
+			schema,
+		);
+		expect(result.isError).toBeUndefined();
+		expect(result.content[0].text).not.toBe("null");
+		expect(result.content[0].text).toContain("success");
 	});
 
 	it("destructive パス (lock_flg) + enableDestructiveWrites=false → エラー", async () => {

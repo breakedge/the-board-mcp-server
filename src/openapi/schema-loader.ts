@@ -63,3 +63,25 @@ export function validatePath(method: string, path: string, schema: MinimalSchema
 	const pathObj = schema.paths[pattern];
 	return method.toUpperCase() in pathObj;
 }
+
+/**
+ * 指定 method + path の operation が宣言する既知クエリパラメータ名を返す。
+ * スキーマに parameters 定義が無い operation は null を返す(検証は fail-open)。
+ * minimal schema はクエリパラメータを GET リスト系のみ完全収録しているため、
+ * 定義がある場合はそれを権威ある集合として扱える。
+ */
+export function getKnownQueryParams(
+	method: string,
+	path: string,
+	schema: MinimalSchema,
+): Set<string> | null {
+	const pattern = matchPathPattern(path, schema);
+	if (pattern === null) {
+		return null;
+	}
+	const operation = schema.paths[pattern]?.[method.toUpperCase()];
+	if (!operation?.parameters || operation.parameters.length === 0) {
+		return null;
+	}
+	return new Set(operation.parameters.map((p) => p.name));
+}

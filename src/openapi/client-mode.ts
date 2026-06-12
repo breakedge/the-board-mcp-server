@@ -2,9 +2,49 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { getRateLimitStatus, makeApiRequest } from "../api/client.js";
 import type { Config } from "../config.js";
 import { createErrorResponse, createTextResponse, formatApiError } from "../utils/response.js";
-import { sanitizePath, validatePath } from "./schema-loader.js";
+import { getKnownQueryParams, sanitizePath, validatePath } from "./schema-loader.js";
 import { isPathEnabled } from "./toolsets.js";
 import type { MinimalSchema } from "./types.js";
+
+/**
+ * クエリパラメータを送信前に検証する。問題があればエラーメッセージ、無ければ null。
+ * - 値が(配列でない)オブジェクトは URL に直列化できず board 側で黙殺されるため拒否 (B0-4)。
+ * - スキーマが parameters を宣言する endpoint では、未知キーを有効パラメータ一覧付きで拒否 (B0-1)。
+ *   未知キーは board に無視され「フィルタ成功に見えて全件取得」のサイレント失敗を招くため。
+ */
+function validateQuery(
+	method: string,
+	path: string,
+	query: Record<string, unknown>,
+	schema: MinimalSchema,
+): string | null {
+	for (const [key, value] of Object.entries(query)) {
+		if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+			return `クエリパラメータ "${key}" にオブジェクトは指定できません。値は文字列・数値・真偽値・配列のいずれかにしてください。`;
+		}
+	}
+
+	const known = getKnownQueryParams(method, path, schema);
+	if (known) {
+		const unknown = Object.keys(query).filter((k) => !known.has(k));
+		if (unknown.length > 0) {
+			return `不明なクエリパラメータ: ${unknown.join(", ")}。このエンドポイントの有効なパラメータ: ${[...known].join(", ")}`;
+		}
+	}
+
+	return null;
+}
+
+/**
+ * 書き込み系の結果を整形する。204 No Content (null) は文字列 "null" ではなく
+ * 明示的な成功マーカーにして、AI が成否を判定できるようにする (B2-4)。
+ */
+function formatWriteResult(result: unknown): string {
+	if (result === null) {
+		return JSON.stringify({ success: true, message: "操作が完了しました (No Content)" });
+	}
+	return JSON.stringify(result, null, 2);
+}
 
 const DESTRUCTIVE_PATH_PATTERNS = [
 	"/lock_flg/",
@@ -71,6 +111,13 @@ export async function handleGet(
 		return createErrorResponse(`パスが見つかりません: ${sanitized}`);
 	}
 
+	if (args.query) {
+		const queryError = validateQuery("GET", sanitized, args.query, schema);
+		if (queryError) {
+			return createErrorResponse(queryError);
+		}
+	}
+
 	try {
 		const result = await makeApiRequest("GET", sanitized, args.query);
 		return createTextResponse(JSON.stringify(result, null, 2));
@@ -107,7 +154,7 @@ export async function handlePost(
 
 	try {
 		const result = await makeApiRequest("POST", sanitized, undefined, args.body);
-		return createTextResponse(JSON.stringify(result, null, 2));
+		return createTextResponse(formatWriteResult(result));
 	} catch (err) {
 		return createErrorResponse(formatApiError(err));
 	}
@@ -146,7 +193,7 @@ export async function handlePatch(
 
 	try {
 		const result = await makeApiRequest("PATCH", sanitized, undefined, args.body);
-		return createTextResponse(JSON.stringify(result, null, 2));
+		return createTextResponse(formatWriteResult(result));
 	} catch (err) {
 		return createErrorResponse(formatApiError(err));
 	}
@@ -180,7 +227,7 @@ export async function handleDelete(
 
 	try {
 		const result = await makeApiRequest("DELETE", sanitized);
-		return createTextResponse(JSON.stringify(result, null, 2));
+		return createTextResponse(formatWriteResult(result));
 	} catch (err) {
 		return createErrorResponse(formatApiError(err));
 	}

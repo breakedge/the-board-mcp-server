@@ -5,6 +5,7 @@ import type { Config } from "../../src/config.js";
 import {
 	handleAuthStatus,
 	handleDelete,
+	handleDescribe,
 	handleGet,
 	handleListPaths,
 	handlePatch,
@@ -124,6 +125,63 @@ describe("handleListPaths", () => {
 		const post = parsed.find((e: { path: string }) => e.path === "/v1/clients");
 		expect(post).toBeDefined();
 		expect(post.parameters).toBeUndefined();
+	});
+
+	it("list_paths のパラメータは軽量で enum/description を含めない (B1-3 lean)", () => {
+		// 詳細(enum/説明)は describe で取得する。discovery 出力は軽量に保つ。
+		const result = handleListPaths({ method: "GET", keyword: "projects" }, makeConfig(), schema);
+		const parsed = JSON.parse(result.content[0].text as string);
+		const projects = parsed.find(
+			(e: { path: string; method: string }) => e.path === "/v1/projects" && e.method === "GET",
+		);
+		const rg = projects.parameters.find((p: { name: string }) => p.name === "response_group");
+		expect(rg.type).toBe("string");
+		expect(rg.enum).toBeUndefined();
+		expect(rg.description).toBeUndefined();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// handleDescribe (B1-2)
+// ---------------------------------------------------------------------------
+describe("handleDescribe", () => {
+	it("GET のクエリパラメータを enum/説明込みで返す", () => {
+		const result = handleDescribe({ path: "/v1/projects", method: "GET" }, makeConfig(), schema);
+		expect(result.isError).toBeUndefined();
+		const parsed = JSON.parse(result.content[0].text as string);
+		const rg = parsed.parameters.find((p: { name: string }) => p.name === "response_group");
+		expect(rg.enum).toContain("all");
+	});
+
+	it("PATCH の requestBody フィールド(details[] と enum)を返す", () => {
+		const result = handleDescribe(
+			{ path: "/v1/documents/estimates/1", method: "PATCH" },
+			makeConfig(),
+			schema,
+		);
+		expect(result.isError).toBeUndefined();
+		const parsed = JSON.parse(result.content[0].text as string);
+		const details = parsed.requestBody.properties.find(
+			(p: { name: string }) => p.name === "details",
+		);
+		const kbn = details.items.properties.find(
+			(p: { name: string }) => p.name === "document_detail_kbn",
+		);
+		expect(kbn.enum).toEqual([1, 2, 3]);
+	});
+
+	it("存在しない path/method は isError", () => {
+		const result = handleDescribe({ path: "/v1/nonexistent", method: "GET" }, makeConfig(), schema);
+		expect(result.isError).toBe(true);
+	});
+
+	it("無効な toolset の path は isError", () => {
+		const result = handleDescribe(
+			{ path: "/v1/clients", method: "GET" },
+			makeConfig({ toolsets: ["projects"] }),
+			schema,
+		);
+		expect(result.isError).toBe(true);
 	});
 });
 

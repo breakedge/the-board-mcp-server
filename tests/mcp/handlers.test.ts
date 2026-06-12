@@ -62,6 +62,7 @@ describe("ツールの条件付き登録 (Write 3段階セーフティ)", () => 
 		const names = toolNames(await createMcpServer(getConfig([])));
 		expect(names).toContain("the_board_api_get");
 		expect(names).toContain("the_board_api_list_paths");
+		expect(names).toContain("the_board_api_describe");
 		expect(names).toContain("the_board_auth_status");
 		expect(names).not.toContain("the_board_api_post");
 		expect(names).not.toContain("the_board_api_patch");

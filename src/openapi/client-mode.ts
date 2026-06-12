@@ -2,7 +2,12 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { getRateLimitStatus, makeApiRequest } from "../api/client.js";
 import type { Config } from "../config.js";
 import { createErrorResponse, createTextResponse, formatApiError } from "../utils/response.js";
-import { getKnownQueryParams, sanitizePath, validatePath } from "./schema-loader.js";
+import {
+	getKnownQueryParams,
+	matchPathPattern,
+	sanitizePath,
+	validatePath,
+} from "./schema-loader.js";
 import { isPathEnabled } from "./toolsets.js";
 import type { MinimalSchema } from "./types.js";
 
@@ -87,17 +92,66 @@ export function handleListPaths(
 				}
 			}
 
-			// スキーマが宣言するクエリパラメータを同梱し、AI が外部 OpenAPI を見ずに
+			// スキーマが宣言するクエリパラメータ名を同梱し、AI が外部 OpenAPI を見ずに
 			// フィルタ名 (project_no_eq 等) を発見できるようにする (B1-3)。
+			// enum/説明などの詳細は discovery を軽量に保つため describe 側に委ねる。
 			const entry: (typeof results)[number] = { method: upperMethod, path, summary };
 			if (operation.parameters && operation.parameters.length > 0) {
-				entry.parameters = operation.parameters;
+				entry.parameters = operation.parameters.map((p) => ({
+					name: p.name,
+					required: p.required,
+					type: p.type,
+				}));
 			}
 			results.push(entry);
 		}
 	}
 
 	return createTextResponse(JSON.stringify(results));
+}
+
+/**
+ * 指定 endpoint の契約(クエリパラメータ + requestBody フィールド)を同梱スキーマから返す。
+ * AI が外部 OpenAPI を取得せずにボディ構造・enum・必須項目を把握できるようにする (B1-2)。
+ */
+export function handleDescribe(
+	args: { path: string; method: string },
+	config: Config,
+	schema: MinimalSchema,
+): CallToolResult {
+	let sanitized: string;
+	try {
+		sanitized = sanitizePath(args.path);
+	} catch (err) {
+		return createErrorResponse(err instanceof Error ? err.message : "Invalid path");
+	}
+
+	if (!isPathEnabled(sanitized, config.toolsets)) {
+		return createErrorResponse(
+			`このパスの toolset は無効です。--toolsets で有効化してください: ${sanitized}`,
+		);
+	}
+
+	const pattern = matchPathPattern(sanitized, schema);
+	const method = args.method.toUpperCase();
+	const operation = pattern ? schema.paths[pattern]?.[method] : undefined;
+	if (!pattern || !operation) {
+		return createErrorResponse(`エンドポイントが見つかりません: ${method} ${sanitized}`);
+	}
+
+	return createTextResponse(
+		JSON.stringify(
+			{
+				path: pattern,
+				method,
+				summary: operation.summary,
+				parameters: operation.parameters,
+				requestBody: operation.requestBody,
+			},
+			null,
+			2,
+		),
+	);
 }
 
 export async function handleGet(

@@ -7,6 +7,7 @@ import type { Config } from "../config.js";
 import {
 	handleAuthStatus,
 	handleDelete,
+	handleDescribe,
 	handleGet,
 	handleListPaths,
 	handlePatch,
@@ -25,8 +26,9 @@ export const INSTRUCTIONS = `You are connected to board (the-board.jp) MCP serve
 
 ## How to use
 1. Use the_board_api_list_paths to discover endpoints. Each entry includes its query "parameters" (filter names) when available.
-2. Use the_board_auth_status to check authentication and remaining rate-limit quota.
-3. Use the_board_api_get (and write tools when enabled) to interact with the API.
+2. Use the_board_api_describe(path, method) to get an endpoint's full contract — query parameters with their enums, and request body fields (names, types, required, enums). Do this before any POST/PATCH so you can build a correct body without external docs.
+3. Use the_board_auth_status to check authentication and remaining rate-limit quota.
+4. Use the_board_api_get (and write tools when enabled) to interact with the API.
 
 ## Path format
 - All paths start with /v1/ (e.g. /v1/clients, /v1/projects/123, /v1/invoices).
@@ -115,6 +117,22 @@ export async function createMcpServer(config: Config): Promise<McpServer> {
 			openWorldHint: false,
 		},
 		(args) => handleListPaths(args, config, schema),
+	);
+
+	// describe — endpoint の契約 (parameters + requestBody フィールド) を返す introspection
+	server.tool(
+		"the_board_api_describe",
+		"Describe one endpoint's contract: query parameters (with enums) and request body fields (names, types, required, enums). Use before POST/PATCH to build a correct body without external docs.",
+		{
+			path: z.string().describe("API path (e.g., /v1/projects, /v1/documents/estimates/123)"),
+			method: z.string().describe("HTTP method (GET, POST, PATCH, DELETE)"),
+		},
+		{
+			title: "Describe a board API endpoint",
+			readOnlyHint: true,
+			openWorldHint: false,
+		},
+		(args) => handleDescribe(args, config, schema),
 	);
 
 	// get

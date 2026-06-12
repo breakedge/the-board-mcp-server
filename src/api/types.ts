@@ -3,6 +3,8 @@ export class TheBoardApiError extends Error {
 		message: string,
 		public readonly status: number,
 		public readonly body: unknown,
+		public readonly method?: string,
+		public readonly path?: string,
 	) {
 		super(message);
 		this.name = "TheBoardApiError";

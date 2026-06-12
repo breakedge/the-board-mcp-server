@@ -57,6 +57,19 @@ describe("INSTRUCTIONS のAIエルゴノミクス必須事項 (B1-4/B1-5/B3-1/B3
 	});
 });
 
+describe("MCP prompts (B3-2)", () => {
+	function promptNames(server: Awaited<ReturnType<typeof createMcpServer>>): string[] {
+		return Object.keys(
+			(server as unknown as { _registeredPrompts: Record<string, unknown> })._registeredPrompts,
+		);
+	}
+
+	it("月次請求プロジェクト作成プロンプトが登録される", async () => {
+		const names = promptNames(await createMcpServer(getConfig([])));
+		expect(names).toContain("create_monthly_billing_project");
+	});
+});
+
 describe("ツールの条件付き登録 (Write 3段階セーフティ)", () => {
 	it("read-only (default): read 系のみ登録、write ツールは非登録", async () => {
 		const names = toolNames(await createMcpServer(getConfig([])));

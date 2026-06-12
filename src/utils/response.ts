@@ -48,24 +48,26 @@ function apiDetail(message: string): string {
 export function formatApiError(error: unknown): string {
 	if (error instanceof TheBoardApiError) {
 		const detail = apiDetail(error.message);
+		// どの呼び出しが失敗したかを示し、AI が id/種別の誤りを自己修正できるようにする (B2-2)。
+		const reqCtx = error.path ? ` [${error.method ?? ""} ${error.path}]`.replace("  ", " ") : "";
 		switch (error.status) {
 			case 400:
-				return `リクエストが不正です (400)${detail}`;
+				return `リクエストが不正です (400)${detail}${reqCtx}`;
 			case 401:
 				return `認証に失敗しました。API キーとトークンを確認してください。${detail}`;
 			case 403:
-				return `このリソースへのアクセス権限がありません。${detail}`;
+				return `このリソースへのアクセス権限がありません。${detail}${reqCtx}`;
 			case 404:
-				return `リソースが見つかりませんでした。${detail}`;
+				return `リソースが見つかりませんでした。${detail}${reqCtx}`;
 			case 422:
-				return `入力値が正しくありません。${extractValidationDetails(error.body)}${detail}`;
+				return `入力値が正しくありません。${extractValidationDetails(error.body)}${detail}${reqCtx}`;
 			case 429:
 				return `レート制限に達しました。しばらく待ってから再試行してください。${detail}`;
 			case 500:
 			case 503:
-				return `board API でエラーが発生しました。時間をおいて再試行してください。${detail}`;
+				return `board API でエラーが発生しました。時間をおいて再試行してください。${detail}${reqCtx}`;
 			default:
-				return `API エラーが発生しました (${error.status})${detail}`;
+				return `API エラーが発生しました (${error.status})${detail}${reqCtx}`;
 		}
 	}
 	// ネットワーク障害・環境変数未設定・スキーマロード失敗等を区別できるよう原因を添える (B2-3)。

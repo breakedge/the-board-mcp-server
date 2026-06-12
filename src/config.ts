@@ -1,6 +1,6 @@
 import yargs from "yargs";
 
-const ALL_TOOLSETS = [
+export const ALL_TOOLSETS = [
 	"projects",
 	"documents",
 	"customers",

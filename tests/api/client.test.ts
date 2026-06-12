@@ -187,7 +187,7 @@ describe("makeApiRequest — 成功レスポンス", () => {
 		);
 
 		const result = await makeApiRequest("GET", "/v1/clients");
-		expect(result).toEqual([{ id: 1, name: "Client A" }]);
+		expect(result.data).toEqual([{ id: 1, name: "Client A" }]);
 	});
 
 	it("201 レスポンスの JSON がパースされて返ること", async () => {
@@ -200,10 +200,10 @@ describe("makeApiRequest — 成功レスポンス", () => {
 		const result = await makeApiRequest("POST", "/v1/clients", undefined, {
 			name: "New Client",
 		});
-		expect(result).toEqual({ id: 2, name: "New Client" });
+		expect(result.data).toEqual({ id: 2, name: "New Client" });
 	});
 
-	it("204 レスポンスは null を返すこと", async () => {
+	it("204 レスポンスは data: null を返すこと", async () => {
 		server.use(
 			http.delete(`${TEST_BASE_URL}/v1/clients/1`, () => {
 				return new HttpResponse(null, { status: 204 });
@@ -211,7 +211,27 @@ describe("makeApiRequest — 成功レスポンス", () => {
 		);
 
 		const result = await makeApiRequest("DELETE", "/v1/clients/1");
-		expect(result).toBeNull();
+		expect(result.data).toBeNull();
+	});
+
+	it("ページネーションヘッダを pagination として返すこと (B2-5)", async () => {
+		server.use(
+			http.get(`${TEST_BASE_URL}/v1/clients`, () =>
+				HttpResponse.json([{ id: 1 }], {
+					headers: { "X-Total-Count": "57", "X-Page": "1", "X-Per-Page": "20" },
+				}),
+			),
+		);
+
+		const result = await makeApiRequest("GET", "/v1/clients");
+		expect(result.data).toEqual([{ id: 1 }]);
+		expect(result.pagination).toEqual({ totalCount: 57, page: 1, perPage: 20 });
+	});
+
+	it("ページネーションヘッダが無ければ pagination は undefined", async () => {
+		server.use(http.get(`${TEST_BASE_URL}/v1/clients`, () => HttpResponse.json([{ id: 1 }])));
+		const result = await makeApiRequest("GET", "/v1/clients");
+		expect(result.pagination).toBeUndefined();
 	});
 });
 

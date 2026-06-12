@@ -1,5 +1,10 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { getRateLimitStatus, makeApiRequest, type Pagination } from "../api/client.js";
+import {
+	getRateLimitStatus,
+	makeApiRequest,
+	type Pagination,
+	redactSecrets,
+} from "../api/client.js";
 import { TheBoardApiError } from "../api/types.js";
 import { ALL_TOOLSETS, type Config } from "../config.js";
 import { createErrorResponse, createTextResponse, formatApiError } from "../utils/response.js";
@@ -388,7 +393,7 @@ export async function handleAuthStatus(args: { validate?: boolean } = {}): Promi
 				} else {
 					// ネットワーク等で検証不能。誤って invalid 判定しないよう null とする。
 					status.credentialsValid = null;
-					status.validationError = err instanceof Error ? err.message : "unknown";
+					status.validationError = err instanceof Error ? redactSecrets(err.message) : "unknown";
 				}
 			}
 		}

@@ -1,4 +1,5 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { redactSecrets } from "../api/client.js";
 import { TheBoardApiError } from "../api/types.js";
 
 export function createTextResponse(text: string): CallToolResult {
@@ -71,8 +72,9 @@ export function formatApiError(error: unknown): string {
 		}
 	}
 	// ネットワーク障害・環境変数未設定・スキーマロード失敗等を区別できるよう原因を添える (B2-3)。
+	// 生メッセージは資格情報を載せない想定だが defense-in-depth で伏字化する。
 	if (error instanceof Error) {
-		return `予期しないエラーが発生しました: ${error.message}`;
+		return `予期しないエラーが発生しました: ${redactSecrets(error.message)}`;
 	}
 	return "予期しないエラーが発生しました。";
 }

@@ -64,9 +64,9 @@ describe("MCP prompts (B3-2)", () => {
 		);
 	}
 
-	it("月次請求プロジェクト作成プロンプトが登録される", async () => {
+	it("書類作成ガイドのプロンプトが登録される", async () => {
 		const names = promptNames(await createMcpServer(getConfig([])));
-		expect(names).toContain("create_monthly_billing_project");
+		expect(names).toContain("create_project_with_documents");
 	});
 });
 

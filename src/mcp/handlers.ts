@@ -49,7 +49,7 @@ export const INSTRUCTIONS = `You are connected to board (the-board.jp) MCP serve
 
 ## Document creation model (project-centric — documents are NOT created directly)
 You cannot POST an estimate/invoice directly. The flow is:
-1. POST /v1/projects to create a project. board auto-creates empty documents (estimate, and one invoice per invoice date). Set invoice_timing_kbn and, for split billing, invoice_dates[] AT CREATION — invoice_dates cannot be changed by a later PATCH.
+1. POST /v1/projects to create a project. board auto-generates its documents (estimate, invoices) from the project's billing settings. invoice_timing_kbn selects the billing mode; depending on the mode, some fields must be set AT CREATION and cannot be changed by a later PATCH. Call describe('/v1/projects','POST') to see which fields apply to the mode you need.
 2. GET /v1/projects/{id}?response_group=all to read the generated document IDs: .estimate.id, .invoices[].id, .order.id.
 3. PATCH /v1/documents/estimates/{id} and PATCH /v1/documents/invoices/{id} to fill each document (details[], message, total, tax).
 
@@ -75,7 +75,7 @@ Note: the id from /v1/invoices is a billing id, which is NOT the same as the doc
   (in that spec servers.url is /v1, so paths omit the leading /v1).
 
 ## Important
-- Financial data (invoices, estimates) requires careful handling. After writing, re-read with response_group=all and verify total/tax are non-zero.`;
+- Financial data (invoices, estimates) requires careful handling. After writing, re-read with response_group=all and verify each document's total/tax are set as intended (board leaves them 0 when not sent).`;
 
 export async function createMcpServer(config: Config): Promise<McpServer> {
 	const schema = await loadSchema();
@@ -215,30 +215,28 @@ export async function createMcpServer(config: Config): Promise<McpServer> {
 		(args) => handleAuthStatus(args),
 	);
 
-	// 案件中心モデルでの「見積 + 月次請求」作成手順を案内する prompt (B3-2)。
+	// 案件中心モデルでの書類作成手順 (案件作成 → 自動生成された書類を埋める) を案内する prompt (B3-2)。
 	server.prompt(
-		"create_monthly_billing_project",
-		"Step-by-step guide to create a board project with one estimate and monthly invoices (project-centric model).",
+		"create_project_with_documents",
+		"Step-by-step guide to create a board project and fill its auto-generated documents (estimate, invoices) using the project-centric model.",
 		{
 			client_id: z.string().describe("顧客ID (client_id)"),
 			project_name: z.string().describe("案件名"),
-			months: z.string().describe("請求の月数 (例: 3)"),
 		},
-		({ client_id, project_name, months }) => ({
+		({ client_id, project_name }) => ({
 			messages: [
 				{
 					role: "user",
 					content: {
 						type: "text",
-						text: `board で「${project_name}」(顧客 client_id=${client_id})を、見積 1 件 + 月次請求 ${months} 件で作成してください。
+						text: `board で顧客 client_id=${client_id} の案件「${project_name}」を作成し、自動生成される書類(見積・請求書)を埋めてください。
 
 board は書類を直接 POST できない案件中心モデルです。次の手順で進めてください:
-1. the_board_api_describe("/v1/projects", "POST") でボディ項目を確認する。
-2. POST /v1/projects で案件を作成。invoice_timing_kbn と、分割請求なら invoice_dates[] を ${months} 件分指定する(invoice_dates は作成後に変更不可)。これで空の見積・請求書が自動生成される。
-3. GET /v1/projects/{id}?response_group=all で .estimate.id と .invoices[].id を取得する。
-4. the_board_api_describe("/v1/documents/estimates/{id}", "PATCH") で details[] の項目を確認し、PATCH /v1/documents/estimates/{id} に details[](document_detail_kbn=1 の通常行)と total(税抜)・tax を明示送信する。total/tax は自動集計されない。
-5. 各 PATCH /v1/documents/invoices/{id} を同様に埋める。
-6. 最後に GET ?response_group=all で各書類の total/tax が 0 でないことを確認する。
+1. the_board_api_describe("/v1/projects", "POST") でボディ項目を確認する。invoice_timing_kbn(請求方式)など、請求方式によって作成時に指定が要る項目(作成後に変更できないものを含む)を把握する。
+2. POST /v1/projects で案件を作成する。請求方式に応じた項目を指定すると、board が見積・請求書を自動生成する。
+3. GET /v1/projects/{id}?response_group=all で生成された書類ID(.estimate.id / .invoices[].id / .order.id)を取得する。
+4. the_board_api_describe で各書類の PATCH エンドポイントの項目を確認し、PATCH /v1/documents/estimates/{id} や PATCH /v1/documents/invoices/{id} に details[](document_detail_kbn=1 の通常行)と total(税抜)・tax を明示送信する。total/tax は自動集計されない。
+5. 最後に GET /v1/projects/{id}?response_group=all で各書類の内容(明細・金額)が意図どおりか検証する。
 
 書き込みツールが見つからない場合は、--enable-writes での再起動を依頼してください。`,
 					},

@@ -12,7 +12,7 @@ An unofficial [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) s
 
 ## Features
 
-- Access all 89 endpoints of the board API v1.6.0 via 6 generic MCP tools
+- Access all 89 endpoints of the board API v1.8.0 via 7 generic MCP tools
 - OpenAPI schema-driven path validation
 - 3-tier write safety (`--read-only` default → `--enable-writes` → `--enable-destructive-writes`)
 - Built-in rate limiting (3 req/sec, 3,000 req/day)
@@ -84,9 +84,10 @@ MCP client configuration with Docker:
 | `the_board_api_patch` | PATCH request — update resources, change status, lock/unlock |
 | `the_board_api_delete` | DELETE request — delete resources |
 | `the_board_api_list_paths` | Search available API endpoints |
+| `the_board_api_describe` | Get an endpoint's query parameters and requestBody field definitions (type, required, enum) |
 | `the_board_auth_status` | Check authentication status and rate limit remaining |
 
-> **Note**: Write tools are registered only when the matching flag is set. `the_board_api_post` / `the_board_api_patch` appear with `--enable-writes`, and `the_board_api_delete` with `--enable-destructive-writes`. In the default read-only mode, only the GET, `list_paths`, and `auth_status` tools are available.
+> **Note**: Write tools are registered only when the matching flag is set. `the_board_api_post` / `the_board_api_patch` appear with `--enable-writes`, and `the_board_api_delete` with `--enable-destructive-writes`. In the default read-only mode, only the GET, `list_paths`, `describe`, and `auth_status` tools are available.
 
 ## Configuration
 

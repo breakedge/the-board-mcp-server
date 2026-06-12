@@ -116,9 +116,23 @@ function flatten(schema: Json, seen: Set<string>, depth = 0): Json {
 		}
 		return merged;
 	}
-	// oneOf/anyOf は先頭候補のみ採用 (構造の目安を示す)
-	if (Array.isArray(resolved.oneOf)) return flatten(resolved.oneOf[0], path, depth + 1);
-	if (Array.isArray(resolved.anyOf)) return flatten(resolved.anyOf[0], path, depth + 1);
+	// oneOf/anyOf は相互排他な分岐だが、describe では全候補のフィールドを提示したいので、
+	// 先頭(基底)分岐の type/required/enum を維持しつつ、後続分岐の properties を union する。
+	// 例: POST /projects は請求形態別の anyOf で、基底分岐に共通フィールド+必須、後続分岐に
+	// invoice_dates / periodical_invoice_* / contract_* が分かれて入る。先頭のみだと脱落する。
+	const variants = resolved.oneOf ?? resolved.anyOf;
+	if (Array.isArray(variants) && variants.length > 0) {
+		const flats = variants.map((v) => flatten(v, path, depth + 1));
+		const base = flats[0];
+		// properties を持たない分岐 (スカラ等) は先頭候補のみ採用 (従来挙動)。
+		if (!base || typeof base !== "object" || !base.properties) return base;
+		// base は spec ノード参照の可能性があるため、properties は複製してから統合する。
+		const merged: Json = { ...base, properties: { ...base.properties } };
+		for (let i = 1; i < flats.length; i++) {
+			if (flats[i]?.properties) Object.assign(merged.properties, flats[i].properties);
+		}
+		return merged;
+	}
 	return resolved;
 }
 

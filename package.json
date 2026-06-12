@@ -1,6 +1,6 @@
 {
 	"name": "@breakedge/the-board-mcp-server",
-	"version": "0.2.0",
+	"version": "0.2.1",
 	"description": "Unofficial MCP server for board (the-board.jp) - cloud-based invoicing and project management SaaS",
 	"type": "module",
 	"engines": {

@@ -107,6 +107,24 @@ describe("handleListPaths", () => {
 		expect(parsed.some((e: { path: string }) => e.path.startsWith("/v1/documents"))).toBe(false);
 	});
 
+	it("parameters を持つエンドポイントは出力に parameters を含む (B1-3)", () => {
+		const result = handleListPaths({ method: "GET", keyword: "projects" }, makeConfig(), schema);
+		const parsed = JSON.parse(result.content[0].text as string);
+		const projects = parsed.find(
+			(e: { path: string; method: string }) => e.path === "/v1/projects" && e.method === "GET",
+		);
+		expect(projects).toBeDefined();
+		expect(Array.isArray(projects.parameters)).toBe(true);
+		expect(projects.parameters.map((p: { name: string }) => p.name)).toContain("project_no_eq");
+	});
+
+	it("parameters を持たないエンドポイントには parameters を付けない (B1-3)", () => {
+		const result = handleListPaths({ method: "POST", keyword: "client" }, makeConfig(), schema);
+		const parsed = JSON.parse(result.content[0].text as string);
+		const post = parsed.find((e: { path: string }) => e.path === "/v1/clients");
+		expect(post).toBeDefined();
+		expect(post.parameters).toBeUndefined();
+	});
 });
 
 // ---------------------------------------------------------------------------

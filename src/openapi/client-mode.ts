@@ -59,7 +59,12 @@ export function handleListPaths(
 	config: Config,
 	schema: MinimalSchema,
 ): CallToolResult {
-	const results: { method: string; path: string; summary: string }[] = [];
+	const results: {
+		method: string;
+		path: string;
+		summary: string;
+		parameters?: MinimalSchema["paths"][string][string]["parameters"];
+	}[] = [];
 
 	for (const [path, pathObj] of Object.entries(schema.paths)) {
 		// 無効な toolset に属するパスは列挙しない
@@ -82,7 +87,13 @@ export function handleListPaths(
 				}
 			}
 
-			results.push({ method: upperMethod, path, summary });
+			// スキーマが宣言するクエリパラメータを同梱し、AI が外部 OpenAPI を見ずに
+			// フィルタ名 (project_no_eq 等) を発見できるようにする (B1-3)。
+			const entry: (typeof results)[number] = { method: upperMethod, path, summary };
+			if (operation.parameters && operation.parameters.length > 0) {
+				entry.parameters = operation.parameters;
+			}
+			results.push(entry);
 		}
 	}
 

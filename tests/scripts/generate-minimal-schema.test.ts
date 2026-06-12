@@ -170,3 +170,13 @@ describe("toFields — allOf 平坦化", () => {
 		expect(fields.find((f) => f.name === "a")?.required).toBe(true);
 	});
 });
+
+describe("resolveRef — spec 未ロード時の contract", () => {
+	it("$ref 入りスキーマを import 経由 (spec 未ロード) で渡すと黙って欠落させず throw する", () => {
+		// generator は spec をモジュールグローバルに持ち main() でのみ代入する。
+		// export した関数を $ref 入りで呼ぶと従来は黙って {} を返し欠落していた。fail-loud を保証する。
+		expect(() => flatten({ $ref: "#/components/schemas/Foo" }, new Set())).toThrow(
+			/spec not loaded/i,
+		);
+	});
+});

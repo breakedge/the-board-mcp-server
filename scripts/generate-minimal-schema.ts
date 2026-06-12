@@ -68,6 +68,14 @@ function resolveRef(node: Json, seen: Set<string>): Json {
 	let current = node;
 	while (current && typeof current === "object" && typeof current.$ref === "string") {
 		if (seen.has(current.$ref)) return null;
+		// export した関数を spec 未ロードで呼ぶと $ref が黙って欠落する footgun を防ぐ。
+		// 回帰テストは $ref を展開済みのインラインスキーマで書くこと (resolveRef を通さない)。
+		if (spec === undefined) {
+			throw new Error(
+				`Cannot resolve $ref "${current.$ref}": OpenAPI spec not loaded. ` +
+					"generator 関数を import して使う場合は $ref 展開済みのスキーマを渡すこと。",
+			);
+		}
 		seen.add(current.$ref);
 		const path = current.$ref.replace(/^#\//, "").split("/");
 		let target: Json = spec;

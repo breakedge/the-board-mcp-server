@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.2.0
+
+### Minor Changes
+
+- bed5fd3: AI エージェントからの使用性を改善
+
+  - `the_board_api_describe(path, method)` ツールを追加。エンドポイントのクエリパラメータ(enum 込み)と requestBody フィールド(型・必須・enum・ネスト構造)を返し、外部 OpenAPI を見ずに書き込みボディを組めるようにした。
+  - 同梱スキーマを requestBody/enum 込みで再生成(board API v1.8.0 ベース)。
+  - `the_board_api_list_paths` が各エンドポイントのクエリパラメータ名を返すようにした。
+  - 未知のクエリパラメータを有効パラメータ一覧付きで拒否し、サイレントな誤フィルタを防止。配列クエリを Rails 形式で正しく直列化。
+  - API エラー応答に board の実メッセージを併記し、204 応答を明示的な成功マーカーで返すようにした。
+  - サーバ instructions にドメインモデル(案件中心の書類作成フロー)・フィルタ命名規約・`response_group=all` を追記。
+
+- 850c643: AI エージェント向けの使用性をさらに改善
+
+  - エラーメッセージに失敗したリクエスト(method + path)を併記し、AI がどの id/種別が誤りかを自己修正しやすくした。
+  - 明細(details)を含む文書の書き込みで total が未指定/0 の場合に警告を返す(board は合計を自動集計しないため)。
+  - リスト取得時にページネーション情報(総件数・ページ・per_page)を提示し、全件取得できているか判断できるようにした。
+  - `the_board_auth_status` に `validate` オプションを追加し、資格情報が実際に有効かを軽量 API 呼び出しで確認できるようにした。
+  - 案件作成から自動生成書類の記入までを案内する MCP prompt(`create_project_with_documents`)を追加。
+  - `the_board_api_list_paths` が toolset で絞り込み中であることを注記するようにした。
+
 ## 0.1.4
 
 ### Patch Changes

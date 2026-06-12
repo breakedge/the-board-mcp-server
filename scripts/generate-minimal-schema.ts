@@ -14,7 +14,7 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUTPUT_PATH = join(__dirname, "../openapi/the-board.minimal.json");
@@ -91,7 +91,7 @@ const MAX_FLATTEN_DEPTH = 50;
  * 兄弟(別 allOf 分岐)へは copy を渡すことで、循環を検出しつつ兄弟間の重複参照は許容する。
  * depth backstop は ref を介さない病的に深い allOf への保険。
  */
-function flatten(schema: Json, seen: Set<string>, depth = 0): Json {
+export function flatten(schema: Json, seen: Set<string>, depth = 0): Json {
 	if (depth > MAX_FLATTEN_DEPTH) return {};
 	const path = new Set(seen);
 	const resolved = resolveRef(schema, path);
@@ -137,7 +137,7 @@ function flatten(schema: Json, seen: Set<string>, depth = 0): Json {
 }
 
 /** スキーマのプロパティ集合を MinimalField[] に変換 (depth 制限・readOnly 除外)。 */
-function toFields(schema: Json, seen: Set<string>, depth: number): MinimalField[] {
+export function toFields(schema: Json, seen: Set<string>, depth: number): MinimalField[] {
 	const flat = flatten(schema, seen);
 	const props = flat.properties as Record<string, Json> | undefined;
 	if (!props) return [];
@@ -190,7 +190,7 @@ function extractParameters(op: Json): MinimalParameter[] | undefined {
 	return result.length > 0 ? result : undefined;
 }
 
-function extractRequestBody(op: Json): MinimalRequestBody | undefined {
+export function extractRequestBody(op: Json): MinimalRequestBody | undefined {
 	const schema = op.requestBody?.content?.["application/json"]?.schema;
 	if (!schema) return undefined;
 	const properties = toFields(schema, new Set(), 0);
@@ -253,7 +253,11 @@ async function main() {
 	console.log(`Output: ${OUTPUT_PATH} (${Buffer.byteLength(json)} bytes)`);
 }
 
-main().catch((err) => {
-	console.error(err);
-	process.exit(1);
-});
+// スクリプトとして直接実行されたときだけ生成を走らせる。
+// テストから import する際に副作用 (spec の fetch / ファイル書き込み) を防ぐ。
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+	main().catch((err) => {
+		console.error(err);
+		process.exit(1);
+	});
+}

@@ -12,7 +12,7 @@
 
 ## 特徴
 
-- board API v1.8.0 の全 89 エンドポイントに 6 つの汎用 MCP ツールでアクセス
+- board API v1.8.0 の全 89 エンドポイントに 7 つの汎用 MCP ツールでアクセス
 - OpenAPI スキーマ駆動のパス検証
 - 3 段階の書き込み安全機構（`--read-only` デフォルト → `--enable-writes` → `--enable-destructive-writes`）
 - 組み込みレートリミット（3 req/sec、3,000 req/day）
@@ -84,9 +84,10 @@ Docker を使う MCP クライアント設定:
 | `the_board_api_patch` | PATCH リクエスト — リソースの更新、ステータス変更、ロック/解除 |
 | `the_board_api_delete` | DELETE リクエスト — リソースの削除 |
 | `the_board_api_list_paths` | 利用可能な API エンドポイントの検索 |
+| `the_board_api_describe` | エンドポイントのクエリパラメータ・requestBody フィールド定義（型・必須・enum）の取得 |
 | `the_board_auth_status` | 認証状態とレートリミット残量の確認 |
 
-> **注意**: 書き込みツールは対応するフラグを付けた場合のみ登録されます。`the_board_api_post` / `the_board_api_patch` は `--enable-writes`、`the_board_api_delete` は `--enable-destructive-writes` を付けたときに現れます。デフォルトの読み取り専用モードでは GET・`list_paths`・`auth_status` のみが利用可能です。
+> **注意**: 書き込みツールは対応するフラグを付けた場合のみ登録されます。`the_board_api_post` / `the_board_api_patch` は `--enable-writes`、`the_board_api_delete` は `--enable-destructive-writes` を付けたときに現れます。デフォルトの読み取り専用モードでは GET・`list_paths`・`describe`・`auth_status` のみが利用可能です。
 
 ## 設定
 

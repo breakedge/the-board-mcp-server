@@ -344,6 +344,18 @@ describe("handleGet", () => {
 		);
 		expect(result.isError).toBe(true);
 	});
+
+	it("配列内に undefined を含むクエリは API に送らず isError (B0-4 allowlist)", async () => {
+		// allowlist 化前は typeof undefined !== "object" ですり抜け、String(undefined)="undefined" が送られていた。
+		mswServer.use(http.get(`${TEST_BASE_URL}/v1/projects`, () => HttpResponse.json([])));
+		const config = makeConfig();
+		const result = await handleGet(
+			{ path: "/v1/projects", query: { "tags[]": ["ok", undefined] } },
+			config,
+			schema,
+		);
+		expect(result.isError).toBe(true);
+	});
 });
 
 // ---------------------------------------------------------------------------

@@ -43,9 +43,12 @@ function validateQuery(
 ): string | null {
 	for (const [key, value] of Object.entries(query)) {
 		if (Array.isArray(value)) {
-			// 配列要素は URL に直列化できるスカラのみ許可(typeof null/配列/オブジェクト === "object")
-			if (value.some((v) => typeof v === "object")) {
-				return `クエリパラメータ "${key}" の配列要素は文字列・数値・真偽値のみ指定できます(オブジェクト・配列・null は不可)。`;
+			// 配列要素は URL に直列化できるスカラのみ許可(allowlist)。
+			// object/配列/null だけでなく undefined/bigint/symbol 等も String() で壊れるため弾く。
+			const isScalar = (v: unknown) =>
+				typeof v === "string" || typeof v === "number" || typeof v === "boolean";
+			if (value.some((v) => !isScalar(v))) {
+				return `クエリパラメータ "${key}" の配列要素は文字列・数値・真偽値のみ指定できます(オブジェクト・配列・null 等は不可)。`;
 			}
 		} else if (value !== null && typeof value === "object") {
 			return `クエリパラメータ "${key}" にオブジェクトは指定できません。値は文字列・数値・真偽値・スカラ配列のいずれかにしてください。`;

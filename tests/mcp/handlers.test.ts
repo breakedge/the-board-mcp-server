@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { getConfig } from "../../src/config.js";
-import { createMcpServer } from "../../src/mcp/handlers.js";
+import { createMcpServer, INSTRUCTIONS } from "../../src/mcp/handlers.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -38,6 +38,24 @@ function toolNames(server: Awaited<ReturnType<typeof createMcpServer>>): string[
 		(server as unknown as { _registeredTools: Record<string, unknown> })._registeredTools,
 	);
 }
+
+describe("INSTRUCTIONS のAIエルゴノミクス必須事項 (B1-4/B1-5/B3-1/B3-3)", () => {
+	it("response_group=all を案内する (ドキュメントID取得の唯一手段)", () => {
+		expect(INSTRUCTIONS).toContain("response_group=all");
+	});
+
+	it("案件中心の書類作成フロー (POST /v1/projects → 空書類) を案内する", () => {
+		expect(INSTRUCTIONS).toContain("POST /v1/projects");
+	});
+
+	it("正しいフィルタ名 project_no_eq を案内する (project_id は無視される)", () => {
+		expect(INSTRUCTIONS).toContain("project_no_eq");
+	});
+
+	it("文書合計 total/tax は自動集計されないことを警告する", () => {
+		expect(INSTRUCTIONS).toContain("total");
+	});
+});
 
 describe("ツールの条件付き登録 (Write 3段階セーフティ)", () => {
 	it("read-only (default): read 系のみ登録、write ツールは非登録", async () => {

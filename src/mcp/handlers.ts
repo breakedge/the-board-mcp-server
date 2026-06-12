@@ -21,20 +21,40 @@ const pkg = JSON.parse(readFileSync(join(__dirname, "../../package.json"), "utf-
 	version: string;
 };
 
-const INSTRUCTIONS = `You are connected to board (the-board.jp) MCP server.
+export const INSTRUCTIONS = `You are connected to board (the-board.jp) MCP server.
 
 ## How to use
-1. Use the_board_api_list_paths to discover available API endpoints
-2. Use the_board_auth_status to check authentication status
-3. Use the_board_api_get (and write tools when enabled) to interact with the API
+1. Use the_board_api_list_paths to discover endpoints. Each entry includes its query "parameters" (filter names) when available.
+2. Use the_board_auth_status to check authentication and remaining rate-limit quota.
+3. Use the_board_api_get (and write tools when enabled) to interact with the API.
 
 ## Path format
-- All paths start with /v1/
-- Example: /v1/clients, /v1/projects/123, /v1/invoices
+- All paths start with /v1/ (e.g. /v1/clients, /v1/projects/123, /v1/invoices).
 
-## Pagination
-- Use query parameters: per_page (default varies), page (1-based)
-- Use response_group: small (default), medium, large
+## Pagination and response_group
+- Pagination query params: per_page, page (1-based).
+- response_group controls how much each resource returns:
+  - small (default), medium, large: increasing field detail.
+  - all: includes related documents. REQUIRED to obtain document IDs (see below).
+- Unknown query params are rejected with the list of valid params. Prefer the names shown by list_paths.
+
+## Filter naming conventions (important — wrong names are otherwise silently ignored)
+- Suffixes: _eq (exact), _cont (substring), _gteq / _lteq (range), _in[] (multi-select array).
+- Use project_no_eq to filter projects by number. project_id does NOT work.
+- The invoice list (/v1/invoices) filters projects via project_project_no_eq (nested entity prefix).
+- Array filters use the [] suffix, e.g. tags[], order_status_in[]. Pass them as arrays: { "tags[]": ["a","b"] }.
+
+## Document creation model (project-centric — documents are NOT created directly)
+You cannot POST an estimate/invoice directly. The flow is:
+1. POST /v1/projects to create a project. board auto-creates empty documents (estimate, and one invoice per invoice date). Set invoice_timing_kbn and, for split billing, invoice_dates[] AT CREATION — invoice_dates cannot be changed by a later PATCH.
+2. GET /v1/projects/{id}?response_group=all to read the generated document IDs: .estimate.id, .invoices[].id, .order.id.
+3. PATCH /v1/documents/estimates/{id} and PATCH /v1/documents/invoices/{id} to fill each document (details[], message, total, tax).
+
+Note: the id from /v1/invoices is a billing id, which is NOT the same as the document id used by /v1/documents/invoices/{id}. Always take document IDs from the project's response_group=all output.
+
+## Document fields
+- Detail rows use document_detail_kbn: 1 = normal line, 2 = section heading (text in section_description), 3 = subtotal line.
+- Document total (tax-exclusive) and tax are NOT auto-summed from details. You must compute and send total and tax explicitly, or the document will show 0.
 
 ## Write operations
 - Read-only mode is enabled by default, so only GET tools are available.
@@ -43,8 +63,15 @@ const INSTRUCTIONS = `You are connected to board (the-board.jp) MCP server.
   - the_board_api_delete requires --enable-destructive-writes (or THE_BOARD_ENABLE_DESTRUCTIVE_WRITES=true)
 - If a write tool is not in your tool list, ask the user to restart the server with the appropriate flag.
 
+## Rate limits
+- 3 requests/second and 3,000 requests/day. Check the_board_auth_status for remaining daily quota.
+
+## Reference
+- Full official OpenAPI spec (request/response schemas): https://developers.the-board.jp/doc/board_openapi.json
+  (in that spec servers.url is /v1, so paths omit the leading /v1).
+
 ## Important
-- Financial data (invoices, estimates) requires careful handling`;
+- Financial data (invoices, estimates) requires careful handling. After writing, re-read with response_group=all and verify total/tax are non-zero.`;
 
 export async function createMcpServer(config: Config): Promise<McpServer> {
 	const schema = await loadSchema();

@@ -212,7 +212,7 @@ export async function createMcpServer(config: Config): Promise<McpServer> {
 			title: "Check the board API authentication status",
 			readOnlyHint: true,
 		},
-		(args) => handleAuthStatus(args),
+		(args) => handleAuthStatus(args, config),
 	);
 
 	// 案件中心モデルでの書類作成手順 (案件作成 → 自動生成された書類を埋める) を案内する prompt (B3-2)。

@@ -6,7 +6,7 @@ import {
 	redactSecrets,
 } from "../api/client.js";
 import { TheBoardApiError } from "../api/types.js";
-import { ALL_TOOLSETS, type Config } from "../config.js";
+import { ALL_TOOLSETS, type Config, type Toolset } from "../config.js";
 import { createErrorResponse, createTextResponse, formatApiError } from "../utils/response.js";
 import {
 	getKnownQueryParams,
@@ -369,7 +369,32 @@ export async function handleDelete(
 	}
 }
 
-export async function handleAuthStatus(args: { validate?: boolean } = {}): Promise<CallToolResult> {
+// validate 用の probe エンドポイント。有効な toolset 内の軽量 GET を選び、
+// 運用者が無効化した toolset のエンドポイントを検証で叩かないようにする。
+const VALIDATION_PROBES: { toolset: Toolset; path: string }[] = [
+	{ toolset: "customers", path: "/v1/clients" },
+	{ toolset: "projects", path: "/v1/projects" },
+	{ toolset: "master", path: "/v1/users" },
+	{ toolset: "payees", path: "/v1/payees" },
+	{ toolset: "expenditures", path: "/v1/expenditures" },
+	{ toolset: "documents", path: "/v1/invoices" },
+	{ toolset: "analytics", path: "/v1/analyses" },
+];
+
+function validationProbePath(config?: Config): string {
+	if (config) {
+		for (const probe of VALIDATION_PROBES) {
+			if (config.toolsets.includes(probe.toolset)) return probe.path;
+		}
+	}
+	// config 無し / 全 toolset が未知 (理論上起きない) 時のフォールバック
+	return "/v1/clients";
+}
+
+export async function handleAuthStatus(
+	args: { validate?: boolean } = {},
+	config?: Config,
+): Promise<CallToolResult> {
 	const apiKeyConfigured = Boolean(process.env.THE_BOARD_API_KEY);
 	const apiTokenConfigured = Boolean(process.env.THE_BOARD_API_TOKEN);
 	const { dailyRequestsRemaining, dailyRequestLimit } = getRateLimitStatus();
@@ -388,11 +413,15 @@ export async function handleAuthStatus(args: { validate?: boolean } = {}): Promi
 			status.credentialsValid = false;
 		} else {
 			try {
-				await makeApiRequest("GET", "/v1/clients", { per_page: 1 });
+				await makeApiRequest("GET", validationProbePath(config), { per_page: 1 });
 				status.credentialsValid = true;
 			} catch (err) {
-				if (err instanceof TheBoardApiError && (err.status === 401 || err.status === 403)) {
+				if (err instanceof TheBoardApiError && err.status === 401) {
+					// 401 = 認証失敗。資格情報そのものが無効。
 					status.credentialsValid = false;
+				} else if (err instanceof TheBoardApiError && err.status === 403) {
+					// 403 = 認証は通ったが当該リソースの権限不足。資格情報自体は有効。
+					status.credentialsValid = true;
 				} else {
 					// ネットワーク等で検証不能。誤って invalid 判定しないよう null とする。
 					status.credentialsValid = null;

@@ -647,4 +647,15 @@ describe("handleAuthStatus", () => {
 		expect(clientsCalled).toBe(false);
 		expect(projectsCalled).toBe(true);
 	});
+
+	it("validate=true: ネットワーク障害は credentialsValid:null + validationError(伏字化済み)", async () => {
+		// 401/403 以外・非 TheBoardApiError の分岐。誤って invalid 判定せず null とし、
+		// validationError は redactSecrets を通す(防御的措置)。
+		mswServer.use(http.get(`${TEST_BASE_URL}/v1/clients`, () => HttpResponse.error()));
+		const result = await handleAuthStatus({ validate: true }, makeConfig());
+		const parsed = JSON.parse(result.content[0].text as string);
+		expect(parsed.credentialsValid).toBeNull();
+		expect(typeof parsed.validationError).toBe("string");
+		expect(parsed.validationError).not.toContain("test-token");
+	});
 });

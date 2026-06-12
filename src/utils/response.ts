@@ -37,27 +37,40 @@ function extractValidationDetails(body: unknown): string {
 	return "";
 }
 
+/**
+ * board API が返した実メッセージ(client 側でトークン等をサニタイズ済み)を
+ * ` (…)` 形式で添える。AI がどの id/フィールドが不正かを自己修正できるようにする (B2-1)。
+ */
+function apiDetail(message: string): string {
+	return message ? ` (${message})` : "";
+}
+
 export function formatApiError(error: unknown): string {
 	if (error instanceof TheBoardApiError) {
+		const detail = apiDetail(error.message);
 		switch (error.status) {
 			case 400:
-				return "リクエストが不正です (400)";
+				return `リクエストが不正です (400)${detail}`;
 			case 401:
-				return "認証に失敗しました。API キーとトークンを確認してください。";
+				return `認証に失敗しました。API キーとトークンを確認してください。${detail}`;
 			case 403:
-				return "このリソースへのアクセス権限がありません。";
+				return `このリソースへのアクセス権限がありません。${detail}`;
 			case 404:
-				return "リソースが見つかりませんでした。";
+				return `リソースが見つかりませんでした。${detail}`;
 			case 422:
-				return `入力値が正しくありません。${extractValidationDetails(error.body)}`;
+				return `入力値が正しくありません。${extractValidationDetails(error.body)}${detail}`;
 			case 429:
-				return "レート制限に達しました。しばらく待ってから再試行してください。";
+				return `レート制限に達しました。しばらく待ってから再試行してください。${detail}`;
 			case 500:
 			case 503:
-				return "board API でエラーが発生しました。時間をおいて再試行してください。";
+				return `board API でエラーが発生しました。時間をおいて再試行してください。${detail}`;
 			default:
-				return `API エラーが発生しました (${error.status})`;
+				return `API エラーが発生しました (${error.status})${detail}`;
 		}
+	}
+	// ネットワーク障害・環境変数未設定・スキーマロード失敗等を区別できるよう原因を添える (B2-3)。
+	if (error instanceof Error) {
+		return `予期しないエラーが発生しました: ${error.message}`;
 	}
 	return "予期しないエラーが発生しました。";
 }

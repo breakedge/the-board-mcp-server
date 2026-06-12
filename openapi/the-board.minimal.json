@@ -1,5 +1,5 @@
 {
-	"version": "1.6.0",
+	"version": "1.8.0",
 	"paths": {
 		"/v1/clients": {
 			"GET": {
@@ -8,67 +8,451 @@
 					{
 						"name": "name_cont",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "顧客名（部分一致） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "name_disp_cont",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "顧客略称名（部分一致） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "invoice_system_number_eq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "適格請求書発行事業者の登録番号"
 					},
 					{
 						"name": "tags[]",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "タグ（複数の場合はカンマ区切り） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "include_archive_flg",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"enum": [0, 1],
+						"description": "アーカイブを含むか - 0：アーカイブ済みは除く - 1：アーカイブ済みも含む"
 					},
 					{
 						"name": "updated_at_gteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "更新日時（指定日時以降） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "updated_at_lteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "更新日時（指定日時以前） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "custom_no_eq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "顧客番号"
 					},
 					{
 						"name": "per_page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "1ページあたりの要素数（最大100まで）"
 					},
 					{
 						"name": "page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "現在のページ番号"
 					},
 					{
 						"name": "response_group",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"enum": ["small", "large"],
+						"description": "レスポンスグループ | response_group | 項目 | |:-----------|:------------| | small | id, name, name_disp, title, zip, pref, address1, address2, tel, fax, payment_term_id, payment_term_name, company_number, invoic…"
 					}
 				]
 			},
 			"POST": {
-				"summary": "顧客登録"
+				"summary": "顧客登録",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "name",
+							"type": "string",
+							"required": true,
+							"description": "顧客名"
+						},
+						{
+							"name": "name_disp",
+							"type": "string",
+							"required": true,
+							"description": "顧客略称名"
+						},
+						{
+							"name": "zip",
+							"type": "string",
+							"description": "郵便番号（ハイフン区切り）"
+						},
+						{
+							"name": "pref",
+							"type": "string",
+							"description": "都道府県"
+						},
+						{
+							"name": "address1",
+							"type": "string",
+							"description": "市区町村・番地"
+						},
+						{
+							"name": "address2",
+							"type": "string",
+							"description": "建物名"
+						},
+						{
+							"name": "tel",
+							"type": "string",
+							"description": "TEL（ハイフン区切り）"
+						},
+						{
+							"name": "fax",
+							"type": "string",
+							"description": "FAX（ハイフン区切り）"
+						},
+						{
+							"name": "title",
+							"type": "string",
+							"description": "敬称"
+						},
+						{
+							"name": "payment_term_id",
+							"type": "integer",
+							"description": "デフォルト支払条件ID - 新規登録時に未指定の場合は最初の支払条件が使用されます - [支払条件リスト取得API](#tag/payment_term/operation/getPaymentTerms)のレスポンスにある`id`です"
+						},
+						{
+							"name": "nda_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "NDA締結 - 0：未 - 1：済"
+						},
+						{
+							"name": "basic_agreement_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "基本契約書締結 - 0：未 - 1：済"
+						},
+						{
+							"name": "document_send_type",
+							"type": "integer",
+							"description": "書類送付方法 - 1：メール(DL) - 2：郵送 - 3：メール(DL)+郵送 - 4：メール(添付) - 5：メール(添付)+郵送 - または[カスタム書類送付方法](#tag/document_send_channel/operation/getDocumentSendChannels)のID"
+						},
+						{
+							"name": "note",
+							"type": "string",
+							"description": "備考"
+						},
+						{
+							"name": "tags",
+							"type": "array",
+							"description": "タグ ※タグ名の配列",
+							"items": {
+								"type": "string"
+							}
+						},
+						{
+							"name": "wareki_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "デフォルト和暦表示 - 0：西暦 - 1：和暦 ※「和暦表示」機能有効時のみ"
+						},
+						{
+							"name": "company_number",
+							"type": "string",
+							"description": "法人番号"
+						},
+						{
+							"name": "accounting_code",
+							"type": "string",
+							"description": "会計用名称・コード ※「会計連携機能」機能有効時のみ"
+						},
+						{
+							"name": "to",
+							"type": "string",
+							"description": "TO（メールアドレス） ※複数指定する場合はカンマ区切り"
+						},
+						{
+							"name": "cc",
+							"type": "string",
+							"description": "CC（メールアドレス） ※複数指定する場合はカンマ区切り"
+						},
+						{
+							"name": "invoice_system_number",
+							"type": "string",
+							"description": "適格請求書発行事業者の登録番号"
+						},
+						{
+							"name": "invoice_system_issuer_type",
+							"type": "integer",
+							"enum": [0, 1, 2],
+							"description": "適格請求書発行事業者 - 0：未設定 - 1：該当する - 2：該当しない"
+						},
+						{
+							"name": "bank_charge_to_client_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "振込手数料負担 - 0：当方 - 1：先方"
+						},
+						{
+							"name": "custom_no",
+							"type": "string",
+							"description": "顧客番号"
+						},
+						{
+							"name": "company_bank_id",
+							"type": "integer",
+							"description": "デフォルト振込口座ID ※このIDを取得するAPIはありません。画面上の「組織設定→振込口座管理」で対象の「編集」に行き、そのURLに含まれるIDを使用してください。例：`https://the-board.jp/company_banks/123456/edit` → 123456"
+						},
+						{
+							"name": "name_en",
+							"type": "string",
+							"description": "顧客名（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "address_en",
+							"type": "string",
+							"description": "住所（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "phone_country_code",
+							"type": "string",
+							"description": "国番号（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "currency",
+							"type": "string",
+							"enum": [
+								"JPY",
+								"USD",
+								"EUR",
+								"GBP",
+								"CNY",
+								"HKD",
+								"TWD",
+								"KRW",
+								"SGD",
+								"AUD",
+								"IDR",
+								"THB",
+								"CAD"
+							],
+							"description": "デフォルト通貨 ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "lang_kbn",
+							"type": "integer",
+							"enum": [1, 2],
+							"description": "デフォルト言語 - 1：日本語 - 2：英語 ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "archive_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "アーカイブ状態 - 0：未アーカイブ - 1：アーカイブ済み"
+						}
+					],
+					"required": ["name", "name_disp"]
+				}
 			}
 		},
 		"/v1/clients/{id}": {
 			"PATCH": {
-				"summary": "顧客更新"
+				"summary": "顧客更新",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "name",
+							"type": "string",
+							"description": "顧客名"
+						},
+						{
+							"name": "name_disp",
+							"type": "string",
+							"description": "顧客略称名"
+						},
+						{
+							"name": "zip",
+							"type": "string",
+							"description": "郵便番号（ハイフン区切り）"
+						},
+						{
+							"name": "pref",
+							"type": "string",
+							"description": "都道府県"
+						},
+						{
+							"name": "address1",
+							"type": "string",
+							"description": "市区町村・番地"
+						},
+						{
+							"name": "address2",
+							"type": "string",
+							"description": "建物名"
+						},
+						{
+							"name": "tel",
+							"type": "string",
+							"description": "TEL（ハイフン区切り）"
+						},
+						{
+							"name": "fax",
+							"type": "string",
+							"description": "FAX（ハイフン区切り）"
+						},
+						{
+							"name": "title",
+							"type": "string",
+							"description": "敬称"
+						},
+						{
+							"name": "payment_term_id",
+							"type": "integer",
+							"description": "デフォルト支払条件ID - 新規登録時に未指定の場合は最初の支払条件が使用されます - [支払条件リスト取得API](#tag/payment_term/operation/getPaymentTerms)のレスポンスにある`id`です"
+						},
+						{
+							"name": "nda_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "NDA締結 - 0：未 - 1：済"
+						},
+						{
+							"name": "basic_agreement_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "基本契約書締結 - 0：未 - 1：済"
+						},
+						{
+							"name": "document_send_type",
+							"type": "integer",
+							"description": "書類送付方法 - 1：メール(DL) - 2：郵送 - 3：メール(DL)+郵送 - 4：メール(添付) - 5：メール(添付)+郵送 - または[カスタム書類送付方法](#tag/document_send_channel/operation/getDocumentSendChannels)のID"
+						},
+						{
+							"name": "note",
+							"type": "string",
+							"description": "備考"
+						},
+						{
+							"name": "tags",
+							"type": "array",
+							"description": "タグ ※タグ名の配列",
+							"items": {
+								"type": "string"
+							}
+						},
+						{
+							"name": "wareki_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "デフォルト和暦表示 - 0：西暦 - 1：和暦 ※「和暦表示」機能有効時のみ"
+						},
+						{
+							"name": "company_number",
+							"type": "string",
+							"description": "法人番号"
+						},
+						{
+							"name": "accounting_code",
+							"type": "string",
+							"description": "会計用名称・コード ※「会計連携機能」機能有効時のみ"
+						},
+						{
+							"name": "to",
+							"type": "string",
+							"description": "TO（メールアドレス） ※複数指定する場合はカンマ区切り"
+						},
+						{
+							"name": "cc",
+							"type": "string",
+							"description": "CC（メールアドレス） ※複数指定する場合はカンマ区切り"
+						},
+						{
+							"name": "invoice_system_number",
+							"type": "string",
+							"description": "適格請求書発行事業者の登録番号"
+						},
+						{
+							"name": "invoice_system_issuer_type",
+							"type": "integer",
+							"enum": [0, 1, 2],
+							"description": "適格請求書発行事業者 - 0：未設定 - 1：該当する - 2：該当しない"
+						},
+						{
+							"name": "bank_charge_to_client_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "振込手数料負担 - 0：当方 - 1：先方"
+						},
+						{
+							"name": "custom_no",
+							"type": "string",
+							"description": "顧客番号"
+						},
+						{
+							"name": "company_bank_id",
+							"type": "integer",
+							"description": "デフォルト振込口座ID ※このIDを取得するAPIはありません。画面上の「組織設定→振込口座管理」で対象の「編集」に行き、そのURLに含まれるIDを使用してください。例：`https://the-board.jp/company_banks/123456/edit` → 123456"
+						},
+						{
+							"name": "name_en",
+							"type": "string",
+							"description": "顧客名（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "address_en",
+							"type": "string",
+							"description": "住所（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "phone_country_code",
+							"type": "string",
+							"description": "国番号（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "currency",
+							"type": "string",
+							"enum": [
+								"JPY",
+								"USD",
+								"EUR",
+								"GBP",
+								"CNY",
+								"HKD",
+								"TWD",
+								"KRW",
+								"SGD",
+								"AUD",
+								"IDR",
+								"THB",
+								"CAD"
+							],
+							"description": "デフォルト通貨 ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "lang_kbn",
+							"type": "integer",
+							"enum": [1, 2],
+							"description": "デフォルト言語 - 1：日本語 - 2：英語 ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "archive_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "アーカイブ状態 - 0：未アーカイブ - 1：アーカイブ済み"
+						}
+					]
+				}
 			},
 			"DELETE": {
 				"summary": "顧客削除"
@@ -84,42 +468,182 @@
 					{
 						"name": "client_id_eq",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "顧客ID ※[顧客登録API](#tag/client/operation/postClient)・[顧客リスト取得API](#tag/client/operation/getClients)のレスポンスにある`id`"
 					},
 					{
 						"name": "include_archive_flg",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"enum": [0, 1],
+						"description": "アーカイブを含むか - 0：アーカイブ済みは除く - 1：アーカイブ済みも含む"
 					},
 					{
 						"name": "updated_at_gteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "更新日時（指定日時以降） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "updated_at_lteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "更新日時（指定日時以前） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "per_page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "1ページあたりの要素数（最大100まで）"
 					},
 					{
 						"name": "page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "現在のページ番号"
 					}
 				]
 			},
 			"POST": {
-				"summary": "顧客支社登録"
+				"summary": "顧客支社登録",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "client_id",
+							"type": "integer",
+							"required": true,
+							"description": "顧客ID ※[顧客登録API](#tag/client/operation/postClient)・[顧客リスト取得API](#tag/client/operation/getClients)のレスポンスにある`id`"
+						},
+						{
+							"name": "name",
+							"type": "string",
+							"required": true,
+							"description": "顧客支社名"
+						},
+						{
+							"name": "zip",
+							"type": "string",
+							"description": "郵便番号（ハイフン区切り）"
+						},
+						{
+							"name": "pref",
+							"type": "string",
+							"description": "都道府県"
+						},
+						{
+							"name": "address1",
+							"type": "string",
+							"description": "市区町村・番地"
+						},
+						{
+							"name": "address2",
+							"type": "string",
+							"description": "建物名"
+						},
+						{
+							"name": "tel",
+							"type": "string",
+							"description": "TEL（ハイフン区切り）"
+						},
+						{
+							"name": "fax",
+							"type": "string",
+							"description": "FAX（ハイフン区切り）"
+						},
+						{
+							"name": "name_en",
+							"type": "string",
+							"description": "顧客支社名（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "address_en",
+							"type": "string",
+							"description": "住所（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "phone_country_code",
+							"type": "string",
+							"description": "国番号（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "archive_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "アーカイブ状態 - 0：未アーカイブ - 1：アーカイブ済み"
+						}
+					],
+					"required": ["client_id", "name"]
+				}
 			}
 		},
 		"/v1/client_branches/{id}": {
 			"PATCH": {
-				"summary": "顧客支社更新"
+				"summary": "顧客支社更新",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "client_id",
+							"type": "integer",
+							"description": "顧客ID ※[顧客登録API](#tag/client/operation/postClient)・[顧客リスト取得API](#tag/client/operation/getClients)のレスポンスにある`id`"
+						},
+						{
+							"name": "name",
+							"type": "string",
+							"description": "顧客支社名"
+						},
+						{
+							"name": "zip",
+							"type": "string",
+							"description": "郵便番号（ハイフン区切り）"
+						},
+						{
+							"name": "pref",
+							"type": "string",
+							"description": "都道府県"
+						},
+						{
+							"name": "address1",
+							"type": "string",
+							"description": "市区町村・番地"
+						},
+						{
+							"name": "address2",
+							"type": "string",
+							"description": "建物名"
+						},
+						{
+							"name": "tel",
+							"type": "string",
+							"description": "TEL（ハイフン区切り）"
+						},
+						{
+							"name": "fax",
+							"type": "string",
+							"description": "FAX（ハイフン区切り）"
+						},
+						{
+							"name": "name_en",
+							"type": "string",
+							"description": "顧客支社名（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "address_en",
+							"type": "string",
+							"description": "住所（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "phone_country_code",
+							"type": "string",
+							"description": "国番号（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "archive_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "アーカイブ状態 - 0：未アーカイブ - 1：アーカイブ済み"
+						}
+					]
+				}
 			},
 			"DELETE": {
 				"summary": "顧客支社削除"
@@ -135,42 +659,202 @@
 					{
 						"name": "client_id_eq",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "顧客ID ※[顧客登録API](#tag/client/operation/postClient)・[顧客リスト取得API](#tag/client/operation/getClients)のレスポンスにある`id`"
 					},
 					{
 						"name": "include_archive_flg",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"enum": [0, 1],
+						"description": "アーカイブを含むか - 0：アーカイブ済みは除く - 1：アーカイブ済みも含む"
 					},
 					{
 						"name": "updated_at_gteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "更新日時（指定日時以降） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "updated_at_lteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "更新日時（指定日時以前） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "per_page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "1ページあたりの要素数（最大100まで）"
 					},
 					{
 						"name": "page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "現在のページ番号"
 					}
 				]
 			},
 			"POST": {
-				"summary": "顧客担当者登録"
+				"summary": "顧客担当者登録",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "client_id",
+							"type": "integer",
+							"required": true,
+							"description": "顧客ID ※[顧客登録API](#tag/client/operation/postClient)・[顧客リスト取得API](#tag/client/operation/getClients)のレスポンスにある`id`"
+						},
+						{
+							"name": "last_name",
+							"type": "string",
+							"required": true,
+							"description": "姓"
+						},
+						{
+							"name": "first_name",
+							"type": "string",
+							"description": "名"
+						},
+						{
+							"name": "honorific_title",
+							"type": "string",
+							"description": "敬称"
+						},
+						{
+							"name": "title",
+							"type": "string",
+							"description": "肩書"
+						},
+						{
+							"name": "department",
+							"type": "string",
+							"description": "部署"
+						},
+						{
+							"name": "email",
+							"type": "string",
+							"description": "email"
+						},
+						{
+							"name": "note",
+							"type": "string",
+							"description": "備考"
+						},
+						{
+							"name": "archive_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "アーカイブ状態 - 0：未アーカイブ - 1：アーカイブ済み"
+						},
+						{
+							"name": "last_name_en",
+							"type": "string",
+							"description": "姓（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "first_name_en",
+							"type": "string",
+							"description": "名（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "prefix_en",
+							"type": "string",
+							"description": "敬称（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "title_en",
+							"type": "string",
+							"description": "肩書（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "department_en",
+							"type": "string",
+							"description": "部署（英語表記） ※英語アドオン有効時のみ"
+						}
+					],
+					"required": ["client_id", "last_name"]
+				}
 			}
 		},
 		"/v1/contacts/{id}": {
 			"PATCH": {
-				"summary": "顧客担当者更新"
+				"summary": "顧客担当者更新",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "client_id",
+							"type": "integer",
+							"description": "顧客ID ※[顧客登録API](#tag/client/operation/postClient)・[顧客リスト取得API](#tag/client/operation/getClients)のレスポンスにある`id`"
+						},
+						{
+							"name": "last_name",
+							"type": "string",
+							"description": "姓"
+						},
+						{
+							"name": "first_name",
+							"type": "string",
+							"description": "名"
+						},
+						{
+							"name": "honorific_title",
+							"type": "string",
+							"description": "敬称"
+						},
+						{
+							"name": "title",
+							"type": "string",
+							"description": "肩書"
+						},
+						{
+							"name": "department",
+							"type": "string",
+							"description": "部署"
+						},
+						{
+							"name": "email",
+							"type": "string",
+							"description": "email"
+						},
+						{
+							"name": "note",
+							"type": "string",
+							"description": "備考"
+						},
+						{
+							"name": "archive_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "アーカイブ状態 - 0：未アーカイブ - 1：アーカイブ済み"
+						},
+						{
+							"name": "last_name_en",
+							"type": "string",
+							"description": "姓（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "first_name_en",
+							"type": "string",
+							"description": "名（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "prefix_en",
+							"type": "string",
+							"description": "敬称（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "title_en",
+							"type": "string",
+							"description": "肩書（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "department_en",
+							"type": "string",
+							"description": "部署（英語表記） ※英語アドオン有効時のみ"
+						}
+					]
+				}
 			},
 			"DELETE": {
 				"summary": "顧客担当者削除"
@@ -186,127 +870,629 @@
 					{
 						"name": "name_cont",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "案件名（部分一致） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "client_id_eq",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "顧客ID ※[顧客登録API](#tag/client/operation/postClient)・[顧客リスト取得API](#tag/client/operation/getClients)のレスポンスにある`id`"
 					},
 					{
 						"name": "client_name_cont",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "顧客名（部分一致） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "client_name_disp_cont",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "顧客略称名（部分一致） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "order_status_in[]",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "受注ステータス - 1：見積中(高) - 2：見積中(中) - 3：見積中(低) - 8：見積中(除) - 4：受注確定 - 5：受注済 - 9：失注 ※複数の場合はカンマ区切り ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "delivery_status_in[]",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "進捗状況 - 1：未着手 - 2：着手中 - 3：納品済 - 4：検収済 ※複数の場合はカンマ区切り ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "project_no_eq",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "案件No"
 					},
 					{
 						"name": "management_no_eq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "管理番号"
 					},
 					{
 						"name": "delivery_date_gteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "納期（指定日時以降）"
 					},
 					{
 						"name": "delivery_date_lteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "納期（指定日時以前）"
 					},
 					{
 						"name": "invoice_date_gteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "請求日（指定日時以降）"
 					},
 					{
 						"name": "invoice_date_lteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "請求日（指定日時以前）"
 					},
 					{
 						"name": "invoice_timing_kbn_in[]",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "請求タイミング - 1：一括請求 - 2：定期請求 - 3：分割請求 ※複数の場合はカンマ区切り ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "tags[]",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "タグ（OR条件、複数の場合はカンマ区切り） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "created_at_gteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "作成日時（指定日時以降） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "created_at_lteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "作成日時（指定日時以前） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "updated_at_gteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "更新日時（指定日時以降） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "updated_at_lteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "更新日時（指定日時以前） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "include_lost_flg",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "失注を含むか - 0：失注は除く - 1：失注も含む"
 					},
 					{
 						"name": "include_archive_flg",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"enum": [0, 1],
+						"description": "アーカイブを含むか - 0：アーカイブ済みは除く - 1：アーカイブ済みも含む"
 					},
 					{
 						"name": "per_page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "1ページあたりの要素数（最大100まで）"
 					},
 					{
 						"name": "page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "現在のページ番号"
 					},
 					{
 						"name": "response_group",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"enum": [
+							"small",
+							"medium",
+							"large",
+							"estimate",
+							"order",
+							"delivery",
+							"invoice",
+							"receipt",
+							"project_cost",
+							"all"
+						],
+						"description": "レスポンスグループ | response_group | 項目 | |:-----------|:------------| | small | id, project_no, management_no, name, client, contact, user, total, tax, estimate_date, invoice_dates, order_status, order_statu…"
 					}
 				]
 			},
 			"POST": {
-				"summary": "案件登録"
+				"summary": "案件登録",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "name",
+							"type": "string",
+							"required": true,
+							"description": "案件名"
+						},
+						{
+							"name": "client_id",
+							"type": "integer",
+							"required": true,
+							"description": "顧客ID ※[顧客登録API](#tag/client/operation/postClient)・[顧客リスト取得API](#tag/client/operation/getClients)のレスポンスにある`id`"
+						},
+						{
+							"name": "client_branch_id",
+							"type": "integer",
+							"description": "顧客支社ID ※[顧客支社登録API](#tag/client_branch/operation/postClientBranch)・[顧客支社リスト取得API](#tag/client_branch/operation/getClientBranches)のレスポンスにある`id`"
+						},
+						{
+							"name": "client_name_disp_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3],
+							"description": "顧客支社（書類上の表示） - 1：会社名のみ - 2：会社名＋支社名 - 3：支社名のみ ※顧客支社を指定する場合のみ"
+						},
+						{
+							"name": "client_name_for_post_disp_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3],
+							"description": "顧客支社（郵送時の表示） - 1：会社名のみ - 2：会社名＋支社名 - 3：支社名のみ ※顧客支社を指定する場合のみ"
+						},
+						{
+							"name": "contact_id",
+							"type": "integer",
+							"description": "顧客担当者ID ※[顧客担当者登録API](#tag/contact/operation/postContact)・[顧客担当者リスト取得API](#tag/contact/operation/getContacts)のレスポンスにある`id`"
+						},
+						{
+							"name": "company_branch_id",
+							"type": "integer",
+							"description": "自社支社ID ※このIDを取得するAPIはありません。画面上の「組織設定→支社管理」で対象の「編集」に行き、そのURLに含まれるIDを使用してください。例：`https://the-board.jp/company_branches/123456/edit` → 123456"
+						},
+						{
+							"name": "company_name_disp_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3],
+							"description": "自社支社（書類上の表示） - 1：会社名のみ - 2：会社名＋支社名 - 3：支社名のみ ※自社支社を指定する場合のみ"
+						},
+						{
+							"name": "company_name_for_post_disp_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3],
+							"description": "自社支社（郵送時の表示） - 1：会社名のみ - 2：会社名＋支社名 - 3：支社名のみ ※自社支社を指定する場合のみ"
+						},
+						{
+							"name": "user_id",
+							"type": "integer",
+							"required": true,
+							"description": "担当者ID ※[ユーザーリスト取得API](#tag/user/operation/getUsers)のレスポンスにある`id`"
+						},
+						{
+							"name": "estimate_date",
+							"type": "string",
+							"description": "見積日 ※新規登録時に未指定の場合は、本日の日付がセットされます"
+						},
+						{
+							"name": "delivery_date",
+							"type": "string",
+							"description": "納期"
+						},
+						{
+							"name": "delivery_date_text",
+							"type": "string",
+							"description": "納期テキスト"
+						},
+						{
+							"name": "payment_term_id",
+							"type": "integer",
+							"description": "支払条件ID - 新規登録時に未指定の場合は「デフォルト支払条件」が使用されます - [支払条件リスト取得API](#tag/payment_term/operation/getPaymentTerms)のレスポンスにある`id`です"
+						},
+						{
+							"name": "order_status",
+							"type": "integer",
+							"required": true,
+							"enum": [1, 2, 3, 4, 5, 8, 9],
+							"description": "受注ステータス - 1：見積中(高) - 2：見積中(中) - 3：見積中(低) - 8：見積中(除) - 4：受注確定 - 5：受注済 - 9：失注"
+						},
+						{
+							"name": "delivery_status",
+							"type": "integer",
+							"enum": [1, 2, 3, 4],
+							"description": "進捗状況 - 1：未着手 - 2：着手中 - 3：納品済 - 4：検収済"
+						},
+						{
+							"name": "invoice_timing_kbn",
+							"type": "integer",
+							"required": true,
+							"enum": [1, 2, 3],
+							"description": "請求タイミング - 1：一括請求 - 2：定期請求 - 3：分割請求"
+						},
+						{
+							"name": "project_type_id",
+							"type": "integer",
+							"description": "案件区分1ID ※[案件区分リスト取得API](#tag/project_type/operation/getProjectTypes)のレスポンスにある`id`"
+						},
+						{
+							"name": "project_type2_id",
+							"type": "integer",
+							"description": "案件区分2ID ※[案件区分リスト取得API](#tag/project_type/operation/getProjectTypes)のレスポンスにある`id`"
+						},
+						{
+							"name": "project_type3_id",
+							"type": "integer",
+							"description": "案件区分3ID ※[案件区分リスト取得API](#tag/project_type/operation/getProjectTypes)のレスポンスにある`id`"
+						},
+						{
+							"name": "group_id",
+							"type": "integer",
+							"description": "グループID ※[グループリスト取得API](#tag/group/operation/getGroups)のレスポンスにある`id`"
+						},
+						{
+							"name": "tags",
+							"type": "array",
+							"description": "タグ ※タグ名の配列",
+							"items": {
+								"type": "string"
+							}
+						},
+						{
+							"name": "accounting_type_id",
+							"type": "integer",
+							"description": "会計区分1ID ※[会計区分リスト取得API](#tag/accounting_type/operation/getAccountingTypes)のレスポンスにある`id`"
+						},
+						{
+							"name": "accounting_type2_id",
+							"type": "integer",
+							"description": "会計区分2ID ※[会計区分リスト取得API](#tag/accounting_type/operation/getAccountingTypes)のレスポンスにある`id`"
+						},
+						{
+							"name": "accounting_type3_id",
+							"type": "integer",
+							"description": "会計区分3ID ※[会計区分リスト取得API](#tag/accounting_type/operation/getAccountingTypes)のレスポンスにある`id`"
+						},
+						{
+							"name": "in_house_memo",
+							"type": "string",
+							"description": "社内メモ"
+						},
+						{
+							"name": "management_no",
+							"type": "string",
+							"description": "管理番号"
+						},
+						{
+							"name": "ordered_date",
+							"type": "string",
+							"description": "受注日"
+						},
+						{
+							"name": "payment_method_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3, 4, 5, 6, 7],
+							"description": "支払方法 - 1：銀行振込 - 2：口座振替 - 3：クレジットカード - 4：現金支払 - 5：代金引換 - 6：コンビニ支払 - 7：郵便振替"
+						},
+						{
+							"name": "tax_rule_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3],
+							"description": "端数処理 - 1：四捨五入 - 2：切り捨て - 3：切り上げ ※デフォルトはアカウントの端数処理設定による"
+						},
+						{
+							"name": "to",
+							"type": "string",
+							"description": "TO（メールアドレス） ※複数指定する場合はカンマ区切り"
+						},
+						{
+							"name": "cc",
+							"type": "string",
+							"description": "CC（メールアドレス） ※複数指定する場合はカンマ区切り"
+						},
+						{
+							"name": "wareki_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "和暦表示 - 0：西暦 - 1：和暦 ※「和暦表示」機能有効時のみ"
+						},
+						{
+							"name": "archive_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "アーカイブ状態 - 0：未アーカイブ - 1：アーカイブ済み"
+						},
+						{
+							"name": "reduced_tax_rate_kbn",
+							"type": "integer",
+							"enum": [1, 2],
+							"description": "軽減税率 - 1：対象外 - 2：対象 ※「軽減税率」機能有効時のみ"
+						},
+						{
+							"name": "document_setting_id",
+							"type": "integer",
+							"description": "書類詳細設定ID ※このIDを取得するAPIはありません。画面上の「設定→書類詳細設定」で対象の「編集」に行き、そのURLに含まれるIDを使用してください。例：`https://the-board.jp/document_settings/123456/edit` → 123456"
+						},
+						{
+							"name": "currency",
+							"type": "string",
+							"enum": [
+								"JPY",
+								"USD",
+								"EUR",
+								"GBP",
+								"CNY",
+								"HKD",
+								"TWD",
+								"KRW",
+								"SGD",
+								"AUD",
+								"IDR",
+								"THB",
+								"CAD"
+							],
+							"description": "通貨 ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "lang_kbn",
+							"type": "integer",
+							"enum": [1, 2],
+							"description": "言語 - 1：日本語 - 2：英語 ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "exchange_rate",
+							"type": "number",
+							"description": "為替レート ※英語アドオン有効時のみ"
+						}
+					],
+					"required": ["name", "client_id", "user_id", "order_status", "invoice_timing_kbn"]
+				}
 			}
 		},
 		"/v1/projects/{id}": {
 			"PATCH": {
-				"summary": "案件更新"
+				"summary": "案件更新",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "name",
+							"type": "string",
+							"description": "案件名"
+						},
+						{
+							"name": "client_id",
+							"type": "integer",
+							"description": "顧客ID ※[顧客登録API](#tag/client/operation/postClient)・[顧客リスト取得API](#tag/client/operation/getClients)のレスポンスにある`id`"
+						},
+						{
+							"name": "client_branch_id",
+							"type": "integer",
+							"description": "顧客支社ID ※[顧客支社登録API](#tag/client_branch/operation/postClientBranch)・[顧客支社リスト取得API](#tag/client_branch/operation/getClientBranches)のレスポンスにある`id`"
+						},
+						{
+							"name": "client_name_disp_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3],
+							"description": "顧客支社（書類上の表示） - 1：会社名のみ - 2：会社名＋支社名 - 3：支社名のみ ※顧客支社を指定する場合のみ"
+						},
+						{
+							"name": "client_name_for_post_disp_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3],
+							"description": "顧客支社（郵送時の表示） - 1：会社名のみ - 2：会社名＋支社名 - 3：支社名のみ ※顧客支社を指定する場合のみ"
+						},
+						{
+							"name": "contact_id",
+							"type": "integer",
+							"description": "顧客担当者ID ※[顧客担当者登録API](#tag/contact/operation/postContact)・[顧客担当者リスト取得API](#tag/contact/operation/getContacts)のレスポンスにある`id`"
+						},
+						{
+							"name": "company_branch_id",
+							"type": "integer",
+							"description": "自社支社ID ※このIDを取得するAPIはありません。画面上の「組織設定→支社管理」で対象の「編集」に行き、そのURLに含まれるIDを使用してください。例：`https://the-board.jp/company_branches/123456/edit` → 123456"
+						},
+						{
+							"name": "company_name_disp_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3],
+							"description": "自社支社（書類上の表示） - 1：会社名のみ - 2：会社名＋支社名 - 3：支社名のみ ※自社支社を指定する場合のみ"
+						},
+						{
+							"name": "company_name_for_post_disp_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3],
+							"description": "自社支社（郵送時の表示） - 1：会社名のみ - 2：会社名＋支社名 - 3：支社名のみ ※自社支社を指定する場合のみ"
+						},
+						{
+							"name": "user_id",
+							"type": "integer",
+							"description": "担当者ID ※[ユーザーリスト取得API](#tag/user/operation/getUsers)のレスポンスにある`id`"
+						},
+						{
+							"name": "estimate_date",
+							"type": "string",
+							"description": "見積日 ※新規登録時に未指定の場合は、本日の日付がセットされます"
+						},
+						{
+							"name": "delivery_date",
+							"type": "string",
+							"description": "納期"
+						},
+						{
+							"name": "delivery_date_text",
+							"type": "string",
+							"description": "納期テキスト"
+						},
+						{
+							"name": "payment_term_id",
+							"type": "integer",
+							"description": "支払条件ID - 新規登録時に未指定の場合は「デフォルト支払条件」が使用されます - [支払条件リスト取得API](#tag/payment_term/operation/getPaymentTerms)のレスポンスにある`id`です"
+						},
+						{
+							"name": "order_status",
+							"type": "integer",
+							"enum": [1, 2, 3, 4, 5, 8, 9],
+							"description": "受注ステータス - 1：見積中(高) - 2：見積中(中) - 3：見積中(低) - 8：見積中(除) - 4：受注確定 - 5：受注済 - 9：失注"
+						},
+						{
+							"name": "delivery_status",
+							"type": "integer",
+							"enum": [1, 2, 3, 4],
+							"description": "進捗状況 - 1：未着手 - 2：着手中 - 3：納品済 - 4：検収済"
+						},
+						{
+							"name": "invoice_timing_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3],
+							"description": "請求タイミング - 1：一括請求 - 2：定期請求 - 3：分割請求"
+						},
+						{
+							"name": "project_type_id",
+							"type": "integer",
+							"description": "案件区分1ID ※[案件区分リスト取得API](#tag/project_type/operation/getProjectTypes)のレスポンスにある`id`"
+						},
+						{
+							"name": "project_type2_id",
+							"type": "integer",
+							"description": "案件区分2ID ※[案件区分リスト取得API](#tag/project_type/operation/getProjectTypes)のレスポンスにある`id`"
+						},
+						{
+							"name": "project_type3_id",
+							"type": "integer",
+							"description": "案件区分3ID ※[案件区分リスト取得API](#tag/project_type/operation/getProjectTypes)のレスポンスにある`id`"
+						},
+						{
+							"name": "group_id",
+							"type": "integer",
+							"description": "グループID ※[グループリスト取得API](#tag/group/operation/getGroups)のレスポンスにある`id`"
+						},
+						{
+							"name": "tags",
+							"type": "array",
+							"description": "タグ ※タグ名の配列",
+							"items": {
+								"type": "string"
+							}
+						},
+						{
+							"name": "accounting_type_id",
+							"type": "integer",
+							"description": "会計区分1ID ※[会計区分リスト取得API](#tag/accounting_type/operation/getAccountingTypes)のレスポンスにある`id`"
+						},
+						{
+							"name": "accounting_type2_id",
+							"type": "integer",
+							"description": "会計区分2ID ※[会計区分リスト取得API](#tag/accounting_type/operation/getAccountingTypes)のレスポンスにある`id`"
+						},
+						{
+							"name": "accounting_type3_id",
+							"type": "integer",
+							"description": "会計区分3ID ※[会計区分リスト取得API](#tag/accounting_type/operation/getAccountingTypes)のレスポンスにある`id`"
+						},
+						{
+							"name": "in_house_memo",
+							"type": "string",
+							"description": "社内メモ"
+						},
+						{
+							"name": "management_no",
+							"type": "string",
+							"description": "管理番号"
+						},
+						{
+							"name": "ordered_date",
+							"type": "string",
+							"description": "受注日"
+						},
+						{
+							"name": "payment_method_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3, 4, 5, 6, 7],
+							"description": "支払方法 - 1：銀行振込 - 2：口座振替 - 3：クレジットカード - 4：現金支払 - 5：代金引換 - 6：コンビニ支払 - 7：郵便振替"
+						},
+						{
+							"name": "tax_rule_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3],
+							"description": "端数処理 - 1：四捨五入 - 2：切り捨て - 3：切り上げ ※デフォルトはアカウントの端数処理設定による"
+						},
+						{
+							"name": "to",
+							"type": "string",
+							"description": "TO（メールアドレス） ※複数指定する場合はカンマ区切り"
+						},
+						{
+							"name": "cc",
+							"type": "string",
+							"description": "CC（メールアドレス） ※複数指定する場合はカンマ区切り"
+						},
+						{
+							"name": "wareki_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "和暦表示 - 0：西暦 - 1：和暦 ※「和暦表示」機能有効時のみ"
+						},
+						{
+							"name": "archive_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "アーカイブ状態 - 0：未アーカイブ - 1：アーカイブ済み"
+						},
+						{
+							"name": "reduced_tax_rate_kbn",
+							"type": "integer",
+							"enum": [1, 2],
+							"description": "軽減税率 - 1：対象外 - 2：対象 ※「軽減税率」機能有効時のみ"
+						},
+						{
+							"name": "document_setting_id",
+							"type": "integer",
+							"description": "書類詳細設定ID ※このIDを取得するAPIはありません。画面上の「設定→書類詳細設定」で対象の「編集」に行き、そのURLに含まれるIDを使用してください。例：`https://the-board.jp/document_settings/123456/edit` → 123456"
+						},
+						{
+							"name": "currency",
+							"type": "string",
+							"enum": [
+								"JPY",
+								"USD",
+								"EUR",
+								"GBP",
+								"CNY",
+								"HKD",
+								"TWD",
+								"KRW",
+								"SGD",
+								"AUD",
+								"IDR",
+								"THB",
+								"CAD"
+							],
+							"description": "通貨 ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "lang_kbn",
+							"type": "integer",
+							"enum": [1, 2],
+							"description": "言語 - 1：日本語 - 2：英語 ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "exchange_rate",
+							"type": "number",
+							"description": "為替レート ※英語アドオン有効時のみ"
+						}
+					]
+				}
 			},
 			"DELETE": {
 				"summary": "案件削除"
@@ -317,7 +1503,20 @@
 					{
 						"name": "response_group",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"enum": [
+							"small",
+							"medium",
+							"large",
+							"estimate",
+							"order",
+							"delivery",
+							"invoice",
+							"receipt",
+							"project_cost",
+							"all"
+						],
+						"description": "レスポンスグループ | response_group | 項目 | |:-----------|:------------| | small | id, project_no, management_no, name, client, contact, user, total, tax, estimate_date, invoice_dates, order_status, order_statu…"
 					}
 				]
 			}
@@ -329,57 +1528,125 @@
 					{
 						"name": "project_id_eq",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "案件ID ※[案件登録API](#tag/project/operation/postProject)・[案件リスト取得API](#tag/project/operation/getProjects)のレスポンスにある`id`"
 					},
 					{
 						"name": "created_at_gteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "作成日時（指定日時以降） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "created_at_lteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "作成日時（指定日時以前） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "invoice_date_gteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "請求日（指定日時以降）"
 					},
 					{
 						"name": "invoice_date_lteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "請求日（指定日以前）"
 					},
 					{
 						"name": "payment_date_gteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "支払日（指定日時以降）"
 					},
 					{
 						"name": "payment_date_lteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "支払日（指定日以前）"
 					},
 					{
 						"name": "per_page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "1ページあたりの要素数（最大100まで）"
 					},
 					{
 						"name": "page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "現在のページ番号"
 					}
 				]
 			},
 			"POST": {
-				"summary": "案件原価登録"
+				"summary": "案件原価登録",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "project_id",
+							"type": "integer",
+							"required": true,
+							"description": "案件ID ※[案件登録API](#tag/project/operation/postProject)・[案件リスト取得API](#tag/project/operation/getProjects)のレスポンスにある`id`"
+						},
+						{
+							"name": "description",
+							"type": "string",
+							"required": true,
+							"description": "費用の説明"
+						},
+						{
+							"name": "cost",
+							"type": "integer",
+							"required": true,
+							"description": "金額"
+						},
+						{
+							"name": "invoice_date",
+							"type": "string",
+							"required": true,
+							"description": "請求日"
+						},
+						{
+							"name": "payment_date",
+							"type": "string",
+							"required": true,
+							"description": "支払日"
+						}
+					],
+					"required": ["project_id", "description", "cost", "invoice_date", "payment_date"]
+				}
 			}
 		},
 		"/v1/project_costs/{id}": {
 			"PATCH": {
-				"summary": "案件原価更新"
+				"summary": "案件原価更新",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "description",
+							"type": "string",
+							"description": "費用の説明"
+						},
+						{
+							"name": "cost",
+							"type": "integer",
+							"description": "金額"
+						},
+						{
+							"name": "invoice_date",
+							"type": "string",
+							"description": "請求日"
+						},
+						{
+							"name": "payment_date",
+							"type": "string",
+							"description": "支払日"
+						}
+					]
+				}
 			},
 			"DELETE": {
 				"summary": "案件原価削除"
@@ -390,12 +1657,36 @@
 		},
 		"/v1/projects/order_status/{id}": {
 			"PATCH": {
-				"summary": "受注ステータス変更"
+				"summary": "受注ステータス変更",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "order_status",
+							"type": "integer",
+							"required": true,
+							"enum": [1, 2, 3, 4, 5, 8, 9],
+							"description": "受注ステータス - 1：見積中(高) - 2：見積中(中) - 3：見積中(低) - 8：見積中(除) - 4：受注確定 - 5：受注済 - 9：失注"
+						}
+					],
+					"required": ["order_status"]
+				}
 			}
 		},
 		"/v1/projects/lock_flg/{id}": {
 			"PATCH": {
-				"summary": "案件のロック"
+				"summary": "案件のロック",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "lock_flg",
+							"type": "integer",
+							"required": true,
+							"enum": [0, 1],
+							"description": "ロックフラグ - 0：未ロック - 1：ロック済み"
+						}
+					],
+					"required": ["lock_flg"]
+				}
 			}
 		},
 		"/v1/invoices": {
@@ -405,104 +1696,273 @@
 					{
 						"name": "invoice_date_gteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "請求日（指定日以降）"
 					},
 					{
 						"name": "invoice_date_lteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "請求日（指定日以前）"
 					},
 					{
 						"name": "invoice_payment_limit_date_gteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "支払期限（指定日以降）"
 					},
 					{
 						"name": "invoice_payment_limit_date_lteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "支払期限（指定日以前）"
 					},
 					{
 						"name": "project_order_status_in[]",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "受注ステータス - 1：見積中(高) - 2：見積中(中) - 3：見積中(低) - 8：見積中(除) - 4：受注確定 - 5：受注済 - 9：失注 ※複数の場合はカンマ区切り ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "invoice_status_in[]",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "請求ステータス - 1：未請求 - 4：請求OK - 2：請求済 - 5：一部入金済 - 3：入金済 - 9：回収不能 ※複数の場合はカンマ区切り ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "project_project_no_eq",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "案件No"
 					},
 					{
 						"name": "project_management_no_eq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "管理番号"
 					},
 					{
 						"name": "project_name_cont",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "案件名（部分一致） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "project_client_id_eq",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "顧客ID ※[顧客登録API](#tag/client/operation/postClient)・[顧客リスト取得API](#tag/client/operation/getClients)のレスポンスにある`id`"
 					},
 					{
 						"name": "project_client_name_cont",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "顧客名（部分一致） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "project_client_name_disp_cont",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "顧客略称名（部分一致） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "project_tags[]",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "タグ（OR条件、複数の場合はカンマ区切り） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "updated_at_gteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "更新日時（指定日時以降） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "updated_at_lteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "更新日時（指定日時以前） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "per_page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "1ページあたりの要素数（最大100まで）"
 					},
 					{
 						"name": "page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "現在のページ番号"
 					},
 					{
 						"name": "response_group",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"enum": [
+							"small",
+							"medium",
+							"large",
+							"estimate",
+							"order",
+							"delivery",
+							"invoice",
+							"receipt",
+							"project_cost",
+							"all"
+						],
+						"description": "レスポンスグループ | response_group | 項目 | |:-----------|:------------| | small | id, project_id, project_no, management_no, name, client, contact, user, total, tax, cost_total, cost_tax, invoice_date, payment…"
 					}
 				]
 			}
 		},
 		"/v1/invoices/invoice_status/{id}": {
 			"PATCH": {
-				"summary": "請求ステータス変更"
+				"summary": "請求ステータス変更",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "invoice_status",
+							"type": "integer",
+							"required": true,
+							"enum": [1, 2, 3, 4, 5, 9],
+							"description": "請求ステータス - 1：未請求 - 4：請求OK - 2：請求済 - 5：一部入金済 - 3：入金済 - 9：回収不能"
+						}
+					],
+					"required": ["invoice_status"]
+				}
 			}
 		},
 		"/v1/documents/estimates/{id}": {
 			"PATCH": {
-				"summary": "見積書更新"
+				"summary": "見積書更新",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "valid_period",
+							"type": "string",
+							"description": "有効期限"
+						},
+						{
+							"name": "message",
+							"type": "string",
+							"description": "備考"
+						},
+						{
+							"name": "total",
+							"type": "number",
+							"description": "小計 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
+						},
+						{
+							"name": "tax",
+							"type": "number",
+							"description": "消費税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
+						},
+						{
+							"name": "tax_withholding",
+							"type": "number",
+							"description": "源泉所得税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
+						},
+						{
+							"name": "document_amount_disp_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3, 4],
+							"description": "金額表示 - 1：税込表示 - 2：合計欄を税抜表示＋明細下の小計・消費税行非表示 - 3：合計欄のみ税抜表示 - 4：合計表示なし ※デフォルトは「デフォルト設定」によって決まります"
+						},
+						{
+							"name": "delivery_place",
+							"type": "string",
+							"description": "納品場所"
+						},
+						{
+							"name": "details",
+							"type": "array",
+							"description": "明細行",
+							"items": {
+								"type": "object",
+								"properties": [
+									{
+										"name": "detail_date",
+										"type": "string",
+										"description": "明細日付"
+									},
+									{
+										"name": "description",
+										"type": "string",
+										"description": "摘要"
+									},
+									{
+										"name": "quantity",
+										"type": "number",
+										"description": "数量"
+									},
+									{
+										"name": "unit",
+										"type": "string",
+										"description": "単位"
+									},
+									{
+										"name": "unit_price",
+										"type": "number",
+										"description": "単価"
+									},
+									{
+										"name": "tax_rate",
+										"type": "number",
+										"enum": [10, 8, 5, 0],
+										"description": "税率"
+									},
+									{
+										"name": "tax_withholding_flg",
+										"type": "integer",
+										"enum": [0, 1],
+										"description": "源泉徴収対象 - 0：源泉徴収対象ではない - 1：源泉徴収対象"
+									},
+									{
+										"name": "tax_included_flg",
+										"type": "integer",
+										"enum": [0, 1],
+										"description": "内税フラグ - 0：外税 - 1：内税"
+									},
+									{
+										"name": "reduced_tax_rate_kbn",
+										"type": "integer",
+										"enum": [1, 2],
+										"description": "軽減税率区分 - 1：軽減税率対象外 - 2：軽減税率対象"
+									},
+									{
+										"name": "section_description",
+										"type": "string",
+										"description": "見出し行・小計行のテキスト ※`document_detail_kbn`が「2：見出し行」または「3：小計行」の場合のみ"
+									},
+									{
+										"name": "section_subtotal",
+										"type": "number",
+										"description": "見出し小計の金額 ※`document_detail_kbn`が「3：小計行」の場合のみ"
+									},
+									{
+										"name": "document_detail_kbn",
+										"type": "integer",
+										"enum": [1, 2, 3],
+										"description": "書類明細区分 - 1：通常行 - 2：見出し行 - 3：小計行"
+									},
+									{
+										"name": "deduction_applicable",
+										"type": "boolean",
+										"enum": [false, true],
+										"description": "控除対象 - false：控除対象外 - true：控除対象 ※「双方向インボイス」の場合のみ"
+									}
+								]
+							}
+						},
+						{
+							"name": "blank_date_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "見積日空欄 - 0：表示 - 1：空欄にする"
+						}
+					]
+				}
 			},
 			"GET": {
 				"summary": "見積書取得"
@@ -510,12 +1970,154 @@
 		},
 		"/v1/documents/estimates/lock_flg/{id}": {
 			"PATCH": {
-				"summary": "見積書ロック"
+				"summary": "見積書ロック",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "lock_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "ロックフラグ - 0：未ロック - 1：ロック済み"
+						}
+					]
+				}
 			}
 		},
 		"/v1/documents/orders/{id}": {
 			"PATCH": {
-				"summary": "発注書更新"
+				"summary": "発注書更新",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "message",
+							"type": "string",
+							"description": "備考"
+						},
+						{
+							"name": "total",
+							"type": "number",
+							"description": "小計 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
+						},
+						{
+							"name": "tax",
+							"type": "number",
+							"description": "消費税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
+						},
+						{
+							"name": "tax_withholding",
+							"type": "number",
+							"description": "源泉所得税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
+						},
+						{
+							"name": "document_amount_disp_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3, 4],
+							"description": "金額表示 - 1：税込表示 - 2：合計欄を税抜表示＋明細下の小計・消費税行非表示 - 3：合計欄のみ税抜表示 - 4：合計表示なし ※デフォルトは「デフォルト設定」によって決まります"
+						},
+						{
+							"name": "delivery_place",
+							"type": "string",
+							"description": "納品場所"
+						},
+						{
+							"name": "details",
+							"type": "array",
+							"description": "明細行",
+							"items": {
+								"type": "object",
+								"properties": [
+									{
+										"name": "detail_date",
+										"type": "string",
+										"description": "明細日付"
+									},
+									{
+										"name": "description",
+										"type": "string",
+										"description": "摘要"
+									},
+									{
+										"name": "quantity",
+										"type": "number",
+										"description": "数量"
+									},
+									{
+										"name": "unit",
+										"type": "string",
+										"description": "単位"
+									},
+									{
+										"name": "unit_price",
+										"type": "number",
+										"description": "単価"
+									},
+									{
+										"name": "tax_rate",
+										"type": "number",
+										"enum": [10, 8, 5, 0],
+										"description": "税率"
+									},
+									{
+										"name": "tax_withholding_flg",
+										"type": "integer",
+										"enum": [0, 1],
+										"description": "源泉徴収対象 - 0：源泉徴収対象ではない - 1：源泉徴収対象"
+									},
+									{
+										"name": "tax_included_flg",
+										"type": "integer",
+										"enum": [0, 1],
+										"description": "内税フラグ - 0：外税 - 1：内税"
+									},
+									{
+										"name": "reduced_tax_rate_kbn",
+										"type": "integer",
+										"enum": [1, 2],
+										"description": "軽減税率区分 - 1：軽減税率対象外 - 2：軽減税率対象"
+									},
+									{
+										"name": "section_description",
+										"type": "string",
+										"description": "見出し行・小計行のテキスト ※`document_detail_kbn`が「2：見出し行」または「3：小計行」の場合のみ"
+									},
+									{
+										"name": "section_subtotal",
+										"type": "number",
+										"description": "見出し小計の金額 ※`document_detail_kbn`が「3：小計行」の場合のみ"
+									},
+									{
+										"name": "document_detail_kbn",
+										"type": "integer",
+										"enum": [1, 2, 3],
+										"description": "書類明細区分 - 1：通常行 - 2：見出し行 - 3：小計行"
+									},
+									{
+										"name": "deduction_applicable",
+										"type": "boolean",
+										"enum": [false, true],
+										"description": "控除対象 - false：控除対象外 - true：控除対象 ※「双方向インボイス」の場合のみ"
+									}
+								]
+							}
+						},
+						{
+							"name": "disp_order_date",
+							"type": "string",
+							"description": "発注日（表示設定）"
+						},
+						{
+							"name": "disp_order_receive_date",
+							"type": "string",
+							"description": "発注請日（表示設定）"
+						},
+						{
+							"name": "blank_date_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "発注請日空欄 - 0：表示 - 1：空欄にする"
+						}
+					]
+				}
 			},
 			"GET": {
 				"summary": "発注書取得"
@@ -523,12 +2125,159 @@
 		},
 		"/v1/documents/orders/lock_flg/{id}": {
 			"PATCH": {
-				"summary": "発注書ロック"
+				"summary": "発注書ロック",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "lock_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "ロックフラグ - 0：未ロック - 1：ロック済み"
+						}
+					]
+				}
 			}
 		},
 		"/v1/documents/deliveries/{id}": {
 			"PATCH": {
-				"summary": "納品書更新"
+				"summary": "納品書更新",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "message",
+							"type": "string",
+							"description": "備考"
+						},
+						{
+							"name": "total",
+							"type": "number",
+							"description": "小計 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
+						},
+						{
+							"name": "tax",
+							"type": "number",
+							"description": "消費税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
+						},
+						{
+							"name": "tax_withholding",
+							"type": "number",
+							"description": "源泉所得税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
+						},
+						{
+							"name": "document_amount_disp_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3, 4],
+							"description": "金額表示 - 1：税込表示 - 2：合計欄を税抜表示＋明細下の小計・消費税行非表示 - 3：合計欄のみ税抜表示 - 4：合計表示なし ※デフォルトは「デフォルト設定」によって決まります"
+						},
+						{
+							"name": "delivery_place",
+							"type": "string",
+							"description": "納品場所"
+						},
+						{
+							"name": "details",
+							"type": "array",
+							"description": "明細行",
+							"items": {
+								"type": "object",
+								"properties": [
+									{
+										"name": "detail_date",
+										"type": "string",
+										"description": "明細日付"
+									},
+									{
+										"name": "description",
+										"type": "string",
+										"description": "摘要"
+									},
+									{
+										"name": "quantity",
+										"type": "number",
+										"description": "数量"
+									},
+									{
+										"name": "unit",
+										"type": "string",
+										"description": "単位"
+									},
+									{
+										"name": "unit_price",
+										"type": "number",
+										"description": "単価"
+									},
+									{
+										"name": "tax_rate",
+										"type": "number",
+										"enum": [10, 8, 5, 0],
+										"description": "税率"
+									},
+									{
+										"name": "tax_withholding_flg",
+										"type": "integer",
+										"enum": [0, 1],
+										"description": "源泉徴収対象 - 0：源泉徴収対象ではない - 1：源泉徴収対象"
+									},
+									{
+										"name": "tax_included_flg",
+										"type": "integer",
+										"enum": [0, 1],
+										"description": "内税フラグ - 0：外税 - 1：内税"
+									},
+									{
+										"name": "reduced_tax_rate_kbn",
+										"type": "integer",
+										"enum": [1, 2],
+										"description": "軽減税率区分 - 1：軽減税率対象外 - 2：軽減税率対象"
+									},
+									{
+										"name": "section_description",
+										"type": "string",
+										"description": "見出し行・小計行のテキスト ※`document_detail_kbn`が「2：見出し行」または「3：小計行」の場合のみ"
+									},
+									{
+										"name": "section_subtotal",
+										"type": "number",
+										"description": "見出し小計の金額 ※`document_detail_kbn`が「3：小計行」の場合のみ"
+									},
+									{
+										"name": "document_detail_kbn",
+										"type": "integer",
+										"enum": [1, 2, 3],
+										"description": "書類明細区分 - 1：通常行 - 2：見出し行 - 3：小計行"
+									},
+									{
+										"name": "deduction_applicable",
+										"type": "boolean",
+										"enum": [false, true],
+										"description": "控除対象 - false：控除対象外 - true：控除対象 ※「双方向インボイス」の場合のみ"
+									}
+								]
+							}
+						},
+						{
+							"name": "delivery_date",
+							"type": "string",
+							"description": "納品日"
+						},
+						{
+							"name": "disp_delivery_date",
+							"type": "string",
+							"description": "納品日（表示設定）"
+						},
+						{
+							"name": "disp_delivery_receive_date",
+							"type": "string",
+							"description": "検収日（表示設定）"
+						},
+						{
+							"name": "blank_date_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "納品日空欄 - 0：表示 - 1：空欄にする"
+						}
+					]
+				}
 			},
 			"GET": {
 				"summary": "納品書取得"
@@ -536,12 +2285,155 @@
 		},
 		"/v1/documents/deliveries/lock_flg/{id}": {
 			"PATCH": {
-				"summary": "納品書ロック"
+				"summary": "納品書ロック",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "lock_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "ロックフラグ - 0：未ロック - 1：ロック済み"
+						}
+					]
+				}
 			}
 		},
 		"/v1/documents/invoices/{id}": {
 			"PATCH": {
-				"summary": "請求書更新"
+				"summary": "請求書更新",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "message",
+							"type": "string",
+							"description": "備考"
+						},
+						{
+							"name": "total",
+							"type": "number",
+							"description": "小計 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
+						},
+						{
+							"name": "tax",
+							"type": "number",
+							"description": "消費税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
+						},
+						{
+							"name": "tax_withholding",
+							"type": "number",
+							"description": "源泉所得税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
+						},
+						{
+							"name": "document_amount_disp_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3, 4],
+							"description": "金額表示 - 1：税込表示 - 2：合計欄を税抜表示＋明細下の小計・消費税行非表示 - 3：合計欄のみ税抜表示 - 4：合計表示なし ※デフォルトは「デフォルト設定」によって決まります"
+						},
+						{
+							"name": "delivery_place",
+							"type": "string",
+							"description": "納品場所"
+						},
+						{
+							"name": "details",
+							"type": "array",
+							"description": "明細行",
+							"items": {
+								"type": "object",
+								"properties": [
+									{
+										"name": "detail_date",
+										"type": "string",
+										"description": "明細日付"
+									},
+									{
+										"name": "description",
+										"type": "string",
+										"description": "摘要"
+									},
+									{
+										"name": "quantity",
+										"type": "number",
+										"description": "数量"
+									},
+									{
+										"name": "unit",
+										"type": "string",
+										"description": "単位"
+									},
+									{
+										"name": "unit_price",
+										"type": "number",
+										"description": "単価"
+									},
+									{
+										"name": "tax_rate",
+										"type": "number",
+										"enum": [10, 8, 5, 0],
+										"description": "税率"
+									},
+									{
+										"name": "tax_withholding_flg",
+										"type": "integer",
+										"enum": [0, 1],
+										"description": "源泉徴収対象 - 0：源泉徴収対象ではない - 1：源泉徴収対象"
+									},
+									{
+										"name": "tax_included_flg",
+										"type": "integer",
+										"enum": [0, 1],
+										"description": "内税フラグ - 0：外税 - 1：内税"
+									},
+									{
+										"name": "reduced_tax_rate_kbn",
+										"type": "integer",
+										"enum": [1, 2],
+										"description": "軽減税率区分 - 1：軽減税率対象外 - 2：軽減税率対象"
+									},
+									{
+										"name": "section_description",
+										"type": "string",
+										"description": "見出し行・小計行のテキスト ※`document_detail_kbn`が「2：見出し行」または「3：小計行」の場合のみ"
+									},
+									{
+										"name": "section_subtotal",
+										"type": "number",
+										"description": "見出し小計の金額 ※`document_detail_kbn`が「3：小計行」の場合のみ"
+									},
+									{
+										"name": "document_detail_kbn",
+										"type": "integer",
+										"enum": [1, 2, 3],
+										"description": "書類明細区分 - 1：通常行 - 2：見出し行 - 3：小計行"
+									},
+									{
+										"name": "deduction_applicable",
+										"type": "boolean",
+										"enum": [false, true],
+										"description": "控除対象 - false：控除対象外 - true：控除対象 ※「双方向インボイス」の場合のみ"
+									}
+								]
+							}
+						},
+						{
+							"name": "disp_invoice_date",
+							"type": "string",
+							"description": "請求日（表示設定）"
+						},
+						{
+							"name": "blank_date_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "請求日空欄 - 0：表示 - 1：空欄にする"
+						},
+						{
+							"name": "multi_bank_info_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "複数口座表示 - 0：OFF - 1：ON ※デフォルトは設定による"
+						}
+					]
+				}
 			},
 			"GET": {
 				"summary": "請求書取得"
@@ -549,12 +2441,149 @@
 		},
 		"/v1/documents/invoices/lock_flg/{id}": {
 			"PATCH": {
-				"summary": "請求書ロック"
+				"summary": "請求書ロック",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "lock_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "ロックフラグ - 0：未ロック - 1：ロック済み"
+						}
+					]
+				}
 			}
 		},
 		"/v1/documents/receipts/{id}": {
 			"PATCH": {
-				"summary": "領収書更新"
+				"summary": "領収書更新",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "message",
+							"type": "string",
+							"description": "備考"
+						},
+						{
+							"name": "total",
+							"type": "number",
+							"description": "小計 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
+						},
+						{
+							"name": "tax",
+							"type": "number",
+							"description": "消費税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
+						},
+						{
+							"name": "tax_withholding",
+							"type": "number",
+							"description": "源泉所得税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
+						},
+						{
+							"name": "document_amount_disp_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3, 4],
+							"description": "金額表示 - 1：税込表示 - 2：合計欄を税抜表示＋明細下の小計・消費税行非表示 - 3：合計欄のみ税抜表示 - 4：合計表示なし ※デフォルトは「デフォルト設定」によって決まります"
+						},
+						{
+							"name": "delivery_place",
+							"type": "string",
+							"description": "納品場所"
+						},
+						{
+							"name": "details",
+							"type": "array",
+							"description": "明細行",
+							"items": {
+								"type": "object",
+								"properties": [
+									{
+										"name": "detail_date",
+										"type": "string",
+										"description": "明細日付"
+									},
+									{
+										"name": "description",
+										"type": "string",
+										"description": "摘要"
+									},
+									{
+										"name": "quantity",
+										"type": "number",
+										"description": "数量"
+									},
+									{
+										"name": "unit",
+										"type": "string",
+										"description": "単位"
+									},
+									{
+										"name": "unit_price",
+										"type": "number",
+										"description": "単価"
+									},
+									{
+										"name": "tax_rate",
+										"type": "number",
+										"enum": [10, 8, 5, 0],
+										"description": "税率"
+									},
+									{
+										"name": "tax_withholding_flg",
+										"type": "integer",
+										"enum": [0, 1],
+										"description": "源泉徴収対象 - 0：源泉徴収対象ではない - 1：源泉徴収対象"
+									},
+									{
+										"name": "tax_included_flg",
+										"type": "integer",
+										"enum": [0, 1],
+										"description": "内税フラグ - 0：外税 - 1：内税"
+									},
+									{
+										"name": "reduced_tax_rate_kbn",
+										"type": "integer",
+										"enum": [1, 2],
+										"description": "軽減税率区分 - 1：軽減税率対象外 - 2：軽減税率対象"
+									},
+									{
+										"name": "section_description",
+										"type": "string",
+										"description": "見出し行・小計行のテキスト ※`document_detail_kbn`が「2：見出し行」または「3：小計行」の場合のみ"
+									},
+									{
+										"name": "section_subtotal",
+										"type": "number",
+										"description": "見出し小計の金額 ※`document_detail_kbn`が「3：小計行」の場合のみ"
+									},
+									{
+										"name": "document_detail_kbn",
+										"type": "integer",
+										"enum": [1, 2, 3],
+										"description": "書類明細区分 - 1：通常行 - 2：見出し行 - 3：小計行"
+									},
+									{
+										"name": "deduction_applicable",
+										"type": "boolean",
+										"enum": [false, true],
+										"description": "控除対象 - false：控除対象外 - true：控除対象 ※「双方向インボイス」の場合のみ"
+									}
+								]
+							}
+						},
+						{
+							"name": "disp_receipt_date",
+							"type": "string",
+							"description": "発行日（表示設定）"
+						},
+						{
+							"name": "blank_date_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "発行日空欄 - 0：表示 - 1：空欄にする"
+						}
+					]
+				}
 			},
 			"GET": {
 				"summary": "領収書取得"
@@ -562,7 +2591,17 @@
 		},
 		"/v1/documents/receipts/lock_flg/{id}": {
 			"PATCH": {
-				"summary": "領収書ロック"
+				"summary": "領収書ロック",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "lock_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "ロックフラグ - 0：未ロック - 1：ロック済み"
+						}
+					]
+				}
 			}
 		},
 		"/v1/payees": {
@@ -572,67 +2611,453 @@
 					{
 						"name": "name_cont",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "発注先名（部分一致） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "name_disp_cont",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "発注先略称名（部分一致） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "invoice_system_number_eq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "適格請求書発行事業者の登録番号"
 					},
 					{
 						"name": "tags[]",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "タグ（複数の場合はカンマ区切り） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "include_archive_flg",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"enum": [0, 1],
+						"description": "アーカイブを含むか - 0：アーカイブ済みは除く - 1：アーカイブ済みも含む"
 					},
 					{
 						"name": "updated_at_gteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "更新日時（指定日時以降） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "updated_at_lteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "更新日時（指定日時以前） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "custom_no_eq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "発注先番号"
 					},
 					{
 						"name": "per_page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "1ページあたりの要素数（最大100まで）"
 					},
 					{
 						"name": "page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "現在のページ番号"
 					},
 					{
 						"name": "response_group",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"enum": ["small", "large"],
+						"description": "レスポンスグループ | response_group | 項目 | |:-----------|:------------| | small | id, name, name_disp, title, zip, pref, address1, address2, tel, fax, payment_term_id, payment_term_name, company_number, invoic…"
 					}
 				]
 			},
 			"POST": {
-				"summary": "発注先登録"
+				"summary": "発注先登録",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "name",
+							"type": "string",
+							"required": true,
+							"description": "発注先名"
+						},
+						{
+							"name": "name_disp",
+							"type": "string",
+							"required": true,
+							"description": "発注先略称名"
+						},
+						{
+							"name": "zip",
+							"type": "string",
+							"description": "郵便番号（ハイフン区切り）"
+						},
+						{
+							"name": "pref",
+							"type": "string",
+							"description": "都道府県"
+						},
+						{
+							"name": "address1",
+							"type": "string",
+							"description": "市区町村・番地"
+						},
+						{
+							"name": "address2",
+							"type": "string",
+							"description": "建物名"
+						},
+						{
+							"name": "tel",
+							"type": "string",
+							"description": "TEL（ハイフン区切り）"
+						},
+						{
+							"name": "fax",
+							"type": "string",
+							"description": "FAX（ハイフン区切り）"
+						},
+						{
+							"name": "title",
+							"type": "string",
+							"description": "敬称"
+						},
+						{
+							"name": "payment_term_id",
+							"type": "integer",
+							"description": "デフォルト支払条件ID - 新規登録時に未指定の場合は最初の支払条件が使用されます - [支払条件リスト取得API](#tag/payment_term/operation/getPaymentTerms)のレスポンスにある`id`です"
+						},
+						{
+							"name": "nda_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "NDA締結 - 0：未 - 1：済"
+						},
+						{
+							"name": "basic_agreement_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "基本契約書締結 - 0：未 - 1：済"
+						},
+						{
+							"name": "document_send_type",
+							"type": "integer",
+							"description": "書類送付方法 - 1：メール(DL) - 2：郵送 - 3：メール(DL)+郵送 - 4：メール(添付) - 5：メール(添付)+郵送 - または[カスタム書類送付方法](#tag/document_send_channel/operation/getDocumentSendChannels)のID"
+						},
+						{
+							"name": "note",
+							"type": "string",
+							"description": "備考"
+						},
+						{
+							"name": "tags",
+							"type": "array",
+							"description": "タグ ※タグ名の配列",
+							"items": {
+								"type": "string"
+							}
+						},
+						{
+							"name": "wareki_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "デフォルト和暦表示 - 0：西暦 - 1：和暦 ※「和暦表示」機能有効時のみ"
+						},
+						{
+							"name": "company_number",
+							"type": "string",
+							"description": "法人番号"
+						},
+						{
+							"name": "accounting_code",
+							"type": "string",
+							"description": "会計用名称・コード ※「会計連携機能」機能有効時のみ"
+						},
+						{
+							"name": "to",
+							"type": "string",
+							"description": "TO（メールアドレス） ※複数指定する場合はカンマ区切り"
+						},
+						{
+							"name": "cc",
+							"type": "string",
+							"description": "CC（メールアドレス） ※複数指定する場合はカンマ区切り"
+						},
+						{
+							"name": "invoice_system_number",
+							"type": "string",
+							"description": "適格請求書発行事業者の登録番号"
+						},
+						{
+							"name": "invoice_system_issuer_type",
+							"type": "integer",
+							"enum": [0, 1, 2],
+							"description": "適格請求書発行事業者 - 0：未設定 - 1：該当する - 2：該当しない"
+						},
+						{
+							"name": "bank_charge_to_client_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "振込手数料負担 - 0：当方 - 1：先方"
+						},
+						{
+							"name": "tax_withholding_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3],
+							"description": "デフォルト源泉徴収 - 1：なし - 2：源泉徴収（復興特別所得税あり） - 3：源泉徴収（復興特別所得税なし）"
+						},
+						{
+							"name": "custom_no",
+							"type": "string",
+							"description": "発注先番号"
+						},
+						{
+							"name": "name_en",
+							"type": "string",
+							"description": "発注先名（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "address_en",
+							"type": "string",
+							"description": "住所（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "phone_country_code",
+							"type": "string",
+							"description": "国番号（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "currency",
+							"type": "string",
+							"enum": [
+								"JPY",
+								"USD",
+								"EUR",
+								"GBP",
+								"CNY",
+								"HKD",
+								"TWD",
+								"KRW",
+								"SGD",
+								"AUD",
+								"IDR",
+								"THB",
+								"CAD"
+							],
+							"description": "デフォルト通貨 ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "lang_kbn",
+							"type": "integer",
+							"enum": [1, 2],
+							"description": "デフォルト言語 - 1：日本語 - 2：英語 ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "archive_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "アーカイブ状態 - 0：未アーカイブ - 1：アーカイブ済み"
+						}
+					],
+					"required": ["name", "name_disp"]
+				}
 			}
 		},
 		"/v1/payees/{id}": {
 			"PATCH": {
-				"summary": "発注先更新"
+				"summary": "発注先更新",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "name",
+							"type": "string",
+							"description": "発注先名"
+						},
+						{
+							"name": "name_disp",
+							"type": "string",
+							"description": "発注先略称名"
+						},
+						{
+							"name": "zip",
+							"type": "string",
+							"description": "郵便番号（ハイフン区切り）"
+						},
+						{
+							"name": "pref",
+							"type": "string",
+							"description": "都道府県"
+						},
+						{
+							"name": "address1",
+							"type": "string",
+							"description": "市区町村・番地"
+						},
+						{
+							"name": "address2",
+							"type": "string",
+							"description": "建物名"
+						},
+						{
+							"name": "tel",
+							"type": "string",
+							"description": "TEL（ハイフン区切り）"
+						},
+						{
+							"name": "fax",
+							"type": "string",
+							"description": "FAX（ハイフン区切り）"
+						},
+						{
+							"name": "title",
+							"type": "string",
+							"description": "敬称"
+						},
+						{
+							"name": "payment_term_id",
+							"type": "integer",
+							"description": "デフォルト支払条件ID - 新規登録時に未指定の場合は最初の支払条件が使用されます - [支払条件リスト取得API](#tag/payment_term/operation/getPaymentTerms)のレスポンスにある`id`です"
+						},
+						{
+							"name": "nda_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "NDA締結 - 0：未 - 1：済"
+						},
+						{
+							"name": "basic_agreement_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "基本契約書締結 - 0：未 - 1：済"
+						},
+						{
+							"name": "document_send_type",
+							"type": "integer",
+							"description": "書類送付方法 - 1：メール(DL) - 2：郵送 - 3：メール(DL)+郵送 - 4：メール(添付) - 5：メール(添付)+郵送 - または[カスタム書類送付方法](#tag/document_send_channel/operation/getDocumentSendChannels)のID"
+						},
+						{
+							"name": "note",
+							"type": "string",
+							"description": "備考"
+						},
+						{
+							"name": "tags",
+							"type": "array",
+							"description": "タグ ※タグ名の配列",
+							"items": {
+								"type": "string"
+							}
+						},
+						{
+							"name": "wareki_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "デフォルト和暦表示 - 0：西暦 - 1：和暦 ※「和暦表示」機能有効時のみ"
+						},
+						{
+							"name": "company_number",
+							"type": "string",
+							"description": "法人番号"
+						},
+						{
+							"name": "accounting_code",
+							"type": "string",
+							"description": "会計用名称・コード ※「会計連携機能」機能有効時のみ"
+						},
+						{
+							"name": "to",
+							"type": "string",
+							"description": "TO（メールアドレス） ※複数指定する場合はカンマ区切り"
+						},
+						{
+							"name": "cc",
+							"type": "string",
+							"description": "CC（メールアドレス） ※複数指定する場合はカンマ区切り"
+						},
+						{
+							"name": "invoice_system_number",
+							"type": "string",
+							"description": "適格請求書発行事業者の登録番号"
+						},
+						{
+							"name": "invoice_system_issuer_type",
+							"type": "integer",
+							"enum": [0, 1, 2],
+							"description": "適格請求書発行事業者 - 0：未設定 - 1：該当する - 2：該当しない"
+						},
+						{
+							"name": "bank_charge_to_client_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "振込手数料負担 - 0：当方 - 1：先方"
+						},
+						{
+							"name": "tax_withholding_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3],
+							"description": "デフォルト源泉徴収 - 1：なし - 2：源泉徴収（復興特別所得税あり） - 3：源泉徴収（復興特別所得税なし）"
+						},
+						{
+							"name": "custom_no",
+							"type": "string",
+							"description": "発注先番号"
+						},
+						{
+							"name": "name_en",
+							"type": "string",
+							"description": "発注先名（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "address_en",
+							"type": "string",
+							"description": "住所（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "phone_country_code",
+							"type": "string",
+							"description": "国番号（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "currency",
+							"type": "string",
+							"enum": [
+								"JPY",
+								"USD",
+								"EUR",
+								"GBP",
+								"CNY",
+								"HKD",
+								"TWD",
+								"KRW",
+								"SGD",
+								"AUD",
+								"IDR",
+								"THB",
+								"CAD"
+							],
+							"description": "デフォルト通貨 ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "lang_kbn",
+							"type": "integer",
+							"enum": [1, 2],
+							"description": "デフォルト言語 - 1：日本語 - 2：英語 ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "archive_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "アーカイブ状態 - 0：未アーカイブ - 1：アーカイブ済み"
+						}
+					]
+				}
 			},
 			"DELETE": {
 				"summary": "発注先削除"
@@ -648,42 +3073,182 @@
 					{
 						"name": "payee_id_eq",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "発注先ID ※[発注先登録API](#tag/payee/operation/postPayee)・[発注先リスト取得API](#tag/payee/operation/getPayees)のレスポンスにある`id`"
 					},
 					{
 						"name": "include_archive_flg",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"enum": [0, 1],
+						"description": "アーカイブを含むか - 0：アーカイブ済みは除く - 1：アーカイブ済みも含む"
 					},
 					{
 						"name": "updated_at_gteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "更新日時（指定日時以降） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "updated_at_lteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "更新日時（指定日時以前） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "per_page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "1ページあたりの要素数（最大100まで）"
 					},
 					{
 						"name": "page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "現在のページ番号"
 					}
 				]
 			},
 			"POST": {
-				"summary": "発注先支社登録"
+				"summary": "発注先支社登録",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "payee_id",
+							"type": "integer",
+							"required": true,
+							"description": "発注先ID ※[発注先登録API](#tag/payee/operation/postPayee)・[発注先リスト取得API](#tag/payee/operation/getPayees)のレスポンスにある`id`"
+						},
+						{
+							"name": "name",
+							"type": "string",
+							"required": true,
+							"description": "発注先支社名"
+						},
+						{
+							"name": "zip",
+							"type": "string",
+							"description": "郵便番号（ハイフン区切り）"
+						},
+						{
+							"name": "pref",
+							"type": "string",
+							"description": "都道府県"
+						},
+						{
+							"name": "address1",
+							"type": "string",
+							"description": "市区町村・番地"
+						},
+						{
+							"name": "address2",
+							"type": "string",
+							"description": "建物名"
+						},
+						{
+							"name": "tel",
+							"type": "string",
+							"description": "TEL（ハイフン区切り）"
+						},
+						{
+							"name": "fax",
+							"type": "string",
+							"description": "FAX（ハイフン区切り）"
+						},
+						{
+							"name": "name_en",
+							"type": "string",
+							"description": "発注先支社名（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "address_en",
+							"type": "string",
+							"description": "住所（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "phone_country_code",
+							"type": "string",
+							"description": "国番号（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "archive_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "アーカイブ状態 - 0：未アーカイブ - 1：アーカイブ済み"
+						}
+					],
+					"required": ["payee_id", "name"]
+				}
 			}
 		},
 		"/v1/payee_branches/{id}": {
 			"PATCH": {
-				"summary": "発注先支社更新"
+				"summary": "発注先支社更新",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "payee_id",
+							"type": "integer",
+							"description": "発注先ID ※[発注先登録API](#tag/payee/operation/postPayee)・[発注先リスト取得API](#tag/payee/operation/getPayees)のレスポンスにある`id`"
+						},
+						{
+							"name": "name",
+							"type": "string",
+							"description": "発注先支社名"
+						},
+						{
+							"name": "zip",
+							"type": "string",
+							"description": "郵便番号（ハイフン区切り）"
+						},
+						{
+							"name": "pref",
+							"type": "string",
+							"description": "都道府県"
+						},
+						{
+							"name": "address1",
+							"type": "string",
+							"description": "市区町村・番地"
+						},
+						{
+							"name": "address2",
+							"type": "string",
+							"description": "建物名"
+						},
+						{
+							"name": "tel",
+							"type": "string",
+							"description": "TEL（ハイフン区切り）"
+						},
+						{
+							"name": "fax",
+							"type": "string",
+							"description": "FAX（ハイフン区切り）"
+						},
+						{
+							"name": "name_en",
+							"type": "string",
+							"description": "発注先支社名（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "address_en",
+							"type": "string",
+							"description": "住所（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "phone_country_code",
+							"type": "string",
+							"description": "国番号（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "archive_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "アーカイブ状態 - 0：未アーカイブ - 1：アーカイブ済み"
+						}
+					]
+				}
 			},
 			"DELETE": {
 				"summary": "発注先支社削除"
@@ -699,42 +3264,202 @@
 					{
 						"name": "payee_id_eq",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "発注先ID ※[発注先登録API](#tag/payee/operation/postPayee)・[発注先リスト取得API](#tag/payee/operation/getPayees)のレスポンスにある`id`"
 					},
 					{
 						"name": "include_archive_flg",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"enum": [0, 1],
+						"description": "アーカイブを含むか - 0：アーカイブ済みは除く - 1：アーカイブ済みも含む"
 					},
 					{
 						"name": "updated_at_gteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "更新日時（指定日時以降） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "updated_at_lteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "更新日時（指定日時以前） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "per_page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "1ページあたりの要素数（最大100まで）"
 					},
 					{
 						"name": "page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "現在のページ番号"
 					}
 				]
 			},
 			"POST": {
-				"summary": "発注先担当者登録"
+				"summary": "発注先担当者登録",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "payee_id",
+							"type": "integer",
+							"required": true,
+							"description": "発注先ID ※[発注先登録API](#tag/payee/operation/postPayee)・[発注先リスト取得API](#tag/payee/operation/getPayees)のレスポンスにある`id`"
+						},
+						{
+							"name": "last_name",
+							"type": "string",
+							"required": true,
+							"description": "姓"
+						},
+						{
+							"name": "first_name",
+							"type": "string",
+							"description": "名"
+						},
+						{
+							"name": "honorific_title",
+							"type": "string",
+							"description": "敬称"
+						},
+						{
+							"name": "title",
+							"type": "string",
+							"description": "肩書"
+						},
+						{
+							"name": "department",
+							"type": "string",
+							"description": "部署"
+						},
+						{
+							"name": "email",
+							"type": "string",
+							"description": "email"
+						},
+						{
+							"name": "note",
+							"type": "string",
+							"description": "備考"
+						},
+						{
+							"name": "archive_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "アーカイブ状態 - 0：未アーカイブ - 1：アーカイブ済み"
+						},
+						{
+							"name": "last_name_en",
+							"type": "string",
+							"description": "姓（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "first_name_en",
+							"type": "string",
+							"description": "名（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "prefix_en",
+							"type": "string",
+							"description": "敬称（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "title_en",
+							"type": "string",
+							"description": "肩書（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "department_en",
+							"type": "string",
+							"description": "部署（英語表記） ※英語アドオン有効時のみ"
+						}
+					],
+					"required": ["payee_id", "last_name"]
+				}
 			}
 		},
 		"/v1/payee_contacts/{id}": {
 			"PATCH": {
-				"summary": "発注先担当者更新"
+				"summary": "発注先担当者更新",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "payee_id",
+							"type": "integer",
+							"description": "発注先ID ※[発注先登録API](#tag/payee/operation/postPayee)・[発注先リスト取得API](#tag/payee/operation/getPayees)のレスポンスにある`id`"
+						},
+						{
+							"name": "last_name",
+							"type": "string",
+							"description": "姓"
+						},
+						{
+							"name": "first_name",
+							"type": "string",
+							"description": "名"
+						},
+						{
+							"name": "honorific_title",
+							"type": "string",
+							"description": "敬称"
+						},
+						{
+							"name": "title",
+							"type": "string",
+							"description": "肩書"
+						},
+						{
+							"name": "department",
+							"type": "string",
+							"description": "部署"
+						},
+						{
+							"name": "email",
+							"type": "string",
+							"description": "email"
+						},
+						{
+							"name": "note",
+							"type": "string",
+							"description": "備考"
+						},
+						{
+							"name": "archive_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "アーカイブ状態 - 0：未アーカイブ - 1：アーカイブ済み"
+						},
+						{
+							"name": "last_name_en",
+							"type": "string",
+							"description": "姓（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "first_name_en",
+							"type": "string",
+							"description": "名（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "prefix_en",
+							"type": "string",
+							"description": "敬称（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "title_en",
+							"type": "string",
+							"description": "肩書（英語表記） ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "department_en",
+							"type": "string",
+							"description": "部署（英語表記） ※英語アドオン有効時のみ"
+						}
+					]
+				}
 			},
 			"DELETE": {
 				"summary": "発注先担当者削除"
@@ -750,112 +3475,606 @@
 					{
 						"name": "name_cont",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "発注名（部分一致） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "payee_id_eq",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "発注先ID ※[発注先登録API](#tag/payee/operation/postPayee)・[発注先リスト取得API](#tag/payee/operation/getPayees)のレスポンスにある`id`"
 					},
 					{
 						"name": "payee_name_cont",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "発注先名（部分一致） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "payee_name_disp_cont",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "発注先略称名（部分一致） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "expenditure_status_in[]",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "発注ステータス - 1：見積中(高) - 2：見積中(中) - 3：見積中(低) - 8：見積中(除) - 4：発注確定 - 5：発注済 - 9：見送り ※複数の場合はカンマ区切り ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "delivery_status_in[]",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "進捗状況 - 1：未着手 - 2：着手中 - 3：納品済 - 4：検収済 ※複数の場合はカンマ区切り ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "expenditure_no_eq",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "発注No"
 					},
 					{
 						"name": "management_no_eq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "管理番号"
 					},
 					{
 						"name": "tags[]",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "タグ（OR条件、複数の場合はカンマ区切り） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
+					},
+					{
+						"name": "project_id_eq",
+						"required": false,
+						"type": "integer",
+						"description": "関連案件ID ※[案件登録API](#tag/project/operation/postProject)・[案件リスト取得API](#tag/project/operation/getProjects)のレスポンスにある`id`"
 					},
 					{
 						"name": "created_at_gteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "作成日時（指定日時以降） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "created_at_lteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "作成日時（指定日時以前） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "updated_at_gteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "更新日時（指定日時以降） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "updated_at_lteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "更新日時（指定日時以前） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "include_not_ordered_flg",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "見送りステータスを含むか - 0：見送りは除く - 1：見送りも含む"
 					},
 					{
 						"name": "include_archive_flg",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"enum": [0, 1],
+						"description": "アーカイブを含むか - 0：アーカイブ済みは除く - 1：アーカイブ済みも含む"
 					},
 					{
 						"name": "expenditure_order_order_date_gteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "発注日（指定日以降）"
 					},
 					{
 						"name": "expenditure_order_order_date_lteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "発注日（指定日以前）"
 					},
 					{
 						"name": "per_page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "1ページあたりの要素数（最大100まで）"
 					},
 					{
 						"name": "page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "現在のページ番号"
 					},
 					{
 						"name": "response_group",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"enum": ["small", "medium", "large", "estimate", "order", "delivery", "invoice", "all"],
+						"description": "レスポンスグループ | response_group | 項目 | |:-----------|:------------| | small | id, expenditure_no, management_no, name, payee, payee_contact, user, total, tax, tax_withholding, tax_withholding_kbn, tax_with…"
 					}
 				]
 			},
 			"POST": {
-				"summary": "発注登録"
+				"summary": "発注登録",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "name",
+							"type": "string",
+							"required": true,
+							"description": "発注名"
+						},
+						{
+							"name": "payee_id",
+							"type": "integer",
+							"required": true,
+							"description": "発注先ID ※[発注先登録API](#tag/payee/operation/postPayee)・[発注先リスト取得API](#tag/payee/operation/getPayees)のレスポンスにある`id`"
+						},
+						{
+							"name": "payee_branch_id",
+							"type": "integer",
+							"description": "発注先支社ID ※[発注先支社登録API](#tag/payee_branch/operation/postPayeeBranch)・[発注先支社リスト取得API](#tag/payee_branch/operation/getPayeeBranches)のレスポンスにある`id`"
+						},
+						{
+							"name": "payee_name_disp_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3],
+							"description": "発注先支社（書類上の表示） - 1：会社名のみ - 2：会社名＋支社名 - 3：支社名のみ ※発注先支社を指定する場合のみ"
+						},
+						{
+							"name": "payee_name_for_post_disp_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3],
+							"description": "発注先支社（郵送時の表示） - 1：会社名のみ - 2：会社名＋支社名 - 3：支社名のみ ※発注先支社を指定する場合のみ"
+						},
+						{
+							"name": "payee_contact_id",
+							"type": "integer",
+							"description": "発注先担当者ID ※[発注先担当者登録API](#tag/payee_contact/operation/postPayeeContact)・[発注先担当者リスト取得API](#tag/payee_contact/operation/getPayeeContacts)のレスポンスにある`id`"
+						},
+						{
+							"name": "company_branch_id",
+							"type": "integer",
+							"description": "自社支社ID ※このIDを取得するAPIはありません。画面上の「組織設定→支社管理」で対象の「編集」に行き、そのURLに含まれるIDを使用してください。例：`https://the-board.jp/company_branches/123456/edit` → 123456"
+						},
+						{
+							"name": "company_name_disp_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3],
+							"description": "自社支社（書類上の表示） - 1：会社名のみ - 2：会社名＋支社名 - 3：支社名のみ ※自社支社を指定する場合のみ"
+						},
+						{
+							"name": "company_name_for_post_disp_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3],
+							"description": "自社支社（郵送時の表示） - 1：会社名のみ - 2：会社名＋支社名 - 3：支社名のみ ※自社支社を指定する場合のみ"
+						},
+						{
+							"name": "user_id",
+							"type": "integer",
+							"required": true,
+							"description": "担当者ID ※[ユーザーリスト取得API](#tag/user/operation/getUsers)のレスポンスにある`id`"
+						},
+						{
+							"name": "project_id",
+							"type": "integer",
+							"description": "関連案件ID ※[案件登録API](#tag/project/operation/postProject)・[案件リスト取得API](#tag/project/operation/getProjects)のレスポンスにある`id`"
+						},
+						{
+							"name": "payment_term_id",
+							"type": "integer",
+							"description": "支払条件ID - 新規登録時に未指定の場合は「デフォルト支払条件」が使用されます - [支払条件リスト取得API](#tag/payment_term/operation/getPaymentTerms)のレスポンスにある`id`です"
+						},
+						{
+							"name": "expenditure_status",
+							"type": "integer",
+							"required": true,
+							"enum": [1, 2, 3, 4, 5, 8, 9],
+							"description": "発注ステータス - 1：見積中(高) - 2：見積中(中) - 3：見積中(低) - 8：見積中(除) - 4：発注確定 - 5：発注済 - 9：見送り"
+						},
+						{
+							"name": "payment_timing_kbn",
+							"type": "integer",
+							"required": true,
+							"enum": [1, 2, 3],
+							"description": "支払タイミング - 1：一括支払 - 2：定期支払 - 3：分割支払"
+						},
+						{
+							"name": "tax_withholding_kbn",
+							"type": "integer",
+							"required": true,
+							"enum": [1, 2, 3],
+							"description": "源泉徴収区分 - 1：なし - 2：源泉徴収（復興特別所得税あり） - 3：源泉徴収（復興特別所得税なし）"
+						},
+						{
+							"name": "in_house_memo",
+							"type": "string",
+							"description": "社内メモ"
+						},
+						{
+							"name": "management_no",
+							"type": "string",
+							"description": "管理番号"
+						},
+						{
+							"name": "expenditure_type_id",
+							"type": "integer",
+							"description": "発注区分1 ※[発注区分リスト取得API](#tag/expenditure_type/operation/getExpenditureTypes)のレスポンスにある`id`"
+						},
+						{
+							"name": "expenditure_type2_id",
+							"type": "integer",
+							"description": "発注区分2 ※[発注区分リスト取得API](#tag/expenditure_type/operation/getExpenditureTypes)のレスポンスにある`id`"
+						},
+						{
+							"name": "expenditure_type3_id",
+							"type": "integer",
+							"description": "発注区分3 ※[発注区分リスト取得API](#tag/expenditure_type/operation/getExpenditureTypes)のレスポンスにある`id`"
+						},
+						{
+							"name": "tags",
+							"type": "array",
+							"description": "タグ ※タグ名の配列",
+							"items": {
+								"type": "string"
+							}
+						},
+						{
+							"name": "group_id",
+							"type": "integer",
+							"description": "グループID ※[グループリスト取得API](#tag/group/operation/getGroups)のレスポンスにある`id`"
+						},
+						{
+							"name": "accounting_type_id",
+							"type": "integer",
+							"description": "会計区分1ID ※[会計区分リスト取得API](#tag/accounting_type/operation/getAccountingTypes)のレスポンスにある`id`"
+						},
+						{
+							"name": "accounting_type2_id",
+							"type": "integer",
+							"description": "会計区分2ID ※[会計区分リスト取得API](#tag/accounting_type/operation/getAccountingTypes)のレスポンスにある`id`"
+						},
+						{
+							"name": "accounting_type3_id",
+							"type": "integer",
+							"description": "会計区分3ID ※[会計区分リスト取得API](#tag/accounting_type/operation/getAccountingTypes)のレスポンスにある`id`"
+						},
+						{
+							"name": "company_bank_id",
+							"type": "integer",
+							"description": "集計用出金口座（振込口座ID） ※このIDを取得するAPIはありません。画面上の「組織設定→振込口座管理」で対象の「編集」に行き、そのURLに含まれるIDを使用してください。例：`https://the-board.jp/company_banks/123456/edit` → 123456"
+						},
+						{
+							"name": "delivery_status",
+							"type": "integer",
+							"enum": [1, 2, 3, 4],
+							"description": "進捗状況 - 1：未着手 - 2：着手中 - 3：納品済 - 4：検収済"
+						},
+						{
+							"name": "payment_method_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3, 4, 5, 6, 7],
+							"description": "支払方法 - 1：銀行振込 - 2：口座振替 - 3：クレジットカード - 4：現金支払 - 5：代金引換 - 6：コンビニ支払 - 7：郵便振替"
+						},
+						{
+							"name": "tax_rule_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3],
+							"description": "端数処理 - 1：四捨五入 - 2：切り捨て - 3：切り上げ ※デフォルトはアカウントの端数処理設定による"
+						},
+						{
+							"name": "wareki_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "和暦表示 - 0：西暦 - 1：和暦 ※「和暦表示」機能有効時のみ"
+						},
+						{
+							"name": "archive_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "アーカイブ状態 - 0：未アーカイブ - 1：アーカイブ済み"
+						},
+						{
+							"name": "reduced_tax_rate_kbn",
+							"type": "integer",
+							"enum": [1, 2],
+							"description": "軽減税率 - 1：対象外 - 2：対象 ※「軽減税率」機能有効時のみ"
+						},
+						{
+							"name": "document_setting_id",
+							"type": "integer",
+							"description": "書類詳細設定ID ※このIDを取得するAPIはありません。画面上の「設定→書類詳細設定」で対象の「編集」に行き、そのURLに含まれるIDを使用してください。例：`https://the-board.jp/document_settings/123456/edit` → 123456"
+						},
+						{
+							"name": "to",
+							"type": "string",
+							"description": "TO（メールアドレス） ※複数指定する場合はカンマ区切り"
+						},
+						{
+							"name": "cc",
+							"type": "string",
+							"description": "CC（メールアドレス） ※複数指定する場合はカンマ区切り"
+						},
+						{
+							"name": "currency",
+							"type": "string",
+							"enum": [
+								"JPY",
+								"USD",
+								"EUR",
+								"GBP",
+								"CNY",
+								"HKD",
+								"TWD",
+								"KRW",
+								"SGD",
+								"AUD",
+								"IDR",
+								"THB",
+								"CAD"
+							],
+							"description": "通貨 ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "lang_kbn",
+							"type": "integer",
+							"enum": [1, 2],
+							"description": "言語 - 1：日本語 - 2：英語 ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "exchange_rate",
+							"type": "number",
+							"description": "為替レート ※英語アドオン有効時のみ"
+						}
+					],
+					"required": [
+						"name",
+						"payee_id",
+						"user_id",
+						"expenditure_status",
+						"payment_timing_kbn",
+						"tax_withholding_kbn"
+					]
+				}
 			}
 		},
 		"/v1/expenditures/{id}": {
 			"PATCH": {
-				"summary": "発注更新"
+				"summary": "発注更新",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "name",
+							"type": "string",
+							"description": "発注名"
+						},
+						{
+							"name": "payee_id",
+							"type": "integer",
+							"description": "発注先ID ※[発注先登録API](#tag/payee/operation/postPayee)・[発注先リスト取得API](#tag/payee/operation/getPayees)のレスポンスにある`id`"
+						},
+						{
+							"name": "payee_branch_id",
+							"type": "integer",
+							"description": "発注先支社ID ※[発注先支社登録API](#tag/payee_branch/operation/postPayeeBranch)・[発注先支社リスト取得API](#tag/payee_branch/operation/getPayeeBranches)のレスポンスにある`id`"
+						},
+						{
+							"name": "payee_name_disp_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3],
+							"description": "発注先支社（書類上の表示） - 1：会社名のみ - 2：会社名＋支社名 - 3：支社名のみ ※発注先支社を指定する場合のみ"
+						},
+						{
+							"name": "payee_name_for_post_disp_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3],
+							"description": "発注先支社（郵送時の表示） - 1：会社名のみ - 2：会社名＋支社名 - 3：支社名のみ ※発注先支社を指定する場合のみ"
+						},
+						{
+							"name": "payee_contact_id",
+							"type": "integer",
+							"description": "発注先担当者ID ※[発注先担当者登録API](#tag/payee_contact/operation/postPayeeContact)・[発注先担当者リスト取得API](#tag/payee_contact/operation/getPayeeContacts)のレスポンスにある`id`"
+						},
+						{
+							"name": "company_branch_id",
+							"type": "integer",
+							"description": "自社支社ID ※このIDを取得するAPIはありません。画面上の「組織設定→支社管理」で対象の「編集」に行き、そのURLに含まれるIDを使用してください。例：`https://the-board.jp/company_branches/123456/edit` → 123456"
+						},
+						{
+							"name": "company_name_disp_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3],
+							"description": "自社支社（書類上の表示） - 1：会社名のみ - 2：会社名＋支社名 - 3：支社名のみ ※自社支社を指定する場合のみ"
+						},
+						{
+							"name": "company_name_for_post_disp_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3],
+							"description": "自社支社（郵送時の表示） - 1：会社名のみ - 2：会社名＋支社名 - 3：支社名のみ ※自社支社を指定する場合のみ"
+						},
+						{
+							"name": "user_id",
+							"type": "integer",
+							"description": "担当者ID ※[ユーザーリスト取得API](#tag/user/operation/getUsers)のレスポンスにある`id`"
+						},
+						{
+							"name": "project_id",
+							"type": "integer",
+							"description": "関連案件ID ※[案件登録API](#tag/project/operation/postProject)・[案件リスト取得API](#tag/project/operation/getProjects)のレスポンスにある`id`"
+						},
+						{
+							"name": "payment_term_id",
+							"type": "integer",
+							"description": "支払条件ID - 新規登録時に未指定の場合は「デフォルト支払条件」が使用されます - [支払条件リスト取得API](#tag/payment_term/operation/getPaymentTerms)のレスポンスにある`id`です"
+						},
+						{
+							"name": "expenditure_status",
+							"type": "integer",
+							"enum": [1, 2, 3, 4, 5, 8, 9],
+							"description": "発注ステータス - 1：見積中(高) - 2：見積中(中) - 3：見積中(低) - 8：見積中(除) - 4：発注確定 - 5：発注済 - 9：見送り"
+						},
+						{
+							"name": "payment_timing_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3],
+							"description": "支払タイミング - 1：一括支払 - 2：定期支払 - 3：分割支払"
+						},
+						{
+							"name": "tax_withholding_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3],
+							"description": "源泉徴収区分 - 1：なし - 2：源泉徴収（復興特別所得税あり） - 3：源泉徴収（復興特別所得税なし）"
+						},
+						{
+							"name": "in_house_memo",
+							"type": "string",
+							"description": "社内メモ"
+						},
+						{
+							"name": "management_no",
+							"type": "string",
+							"description": "管理番号"
+						},
+						{
+							"name": "expenditure_type_id",
+							"type": "integer",
+							"description": "発注区分1 ※[発注区分リスト取得API](#tag/expenditure_type/operation/getExpenditureTypes)のレスポンスにある`id`"
+						},
+						{
+							"name": "expenditure_type2_id",
+							"type": "integer",
+							"description": "発注区分2 ※[発注区分リスト取得API](#tag/expenditure_type/operation/getExpenditureTypes)のレスポンスにある`id`"
+						},
+						{
+							"name": "expenditure_type3_id",
+							"type": "integer",
+							"description": "発注区分3 ※[発注区分リスト取得API](#tag/expenditure_type/operation/getExpenditureTypes)のレスポンスにある`id`"
+						},
+						{
+							"name": "tags",
+							"type": "array",
+							"description": "タグ ※タグ名の配列",
+							"items": {
+								"type": "string"
+							}
+						},
+						{
+							"name": "group_id",
+							"type": "integer",
+							"description": "グループID ※[グループリスト取得API](#tag/group/operation/getGroups)のレスポンスにある`id`"
+						},
+						{
+							"name": "accounting_type_id",
+							"type": "integer",
+							"description": "会計区分1ID ※[会計区分リスト取得API](#tag/accounting_type/operation/getAccountingTypes)のレスポンスにある`id`"
+						},
+						{
+							"name": "accounting_type2_id",
+							"type": "integer",
+							"description": "会計区分2ID ※[会計区分リスト取得API](#tag/accounting_type/operation/getAccountingTypes)のレスポンスにある`id`"
+						},
+						{
+							"name": "accounting_type3_id",
+							"type": "integer",
+							"description": "会計区分3ID ※[会計区分リスト取得API](#tag/accounting_type/operation/getAccountingTypes)のレスポンスにある`id`"
+						},
+						{
+							"name": "company_bank_id",
+							"type": "integer",
+							"description": "集計用出金口座（振込口座ID） ※このIDを取得するAPIはありません。画面上の「組織設定→振込口座管理」で対象の「編集」に行き、そのURLに含まれるIDを使用してください。例：`https://the-board.jp/company_banks/123456/edit` → 123456"
+						},
+						{
+							"name": "delivery_status",
+							"type": "integer",
+							"enum": [1, 2, 3, 4],
+							"description": "進捗状況 - 1：未着手 - 2：着手中 - 3：納品済 - 4：検収済"
+						},
+						{
+							"name": "payment_method_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3, 4, 5, 6, 7],
+							"description": "支払方法 - 1：銀行振込 - 2：口座振替 - 3：クレジットカード - 4：現金支払 - 5：代金引換 - 6：コンビニ支払 - 7：郵便振替"
+						},
+						{
+							"name": "tax_rule_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3],
+							"description": "端数処理 - 1：四捨五入 - 2：切り捨て - 3：切り上げ ※デフォルトはアカウントの端数処理設定による"
+						},
+						{
+							"name": "wareki_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "和暦表示 - 0：西暦 - 1：和暦 ※「和暦表示」機能有効時のみ"
+						},
+						{
+							"name": "archive_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "アーカイブ状態 - 0：未アーカイブ - 1：アーカイブ済み"
+						},
+						{
+							"name": "reduced_tax_rate_kbn",
+							"type": "integer",
+							"enum": [1, 2],
+							"description": "軽減税率 - 1：対象外 - 2：対象 ※「軽減税率」機能有効時のみ"
+						},
+						{
+							"name": "document_setting_id",
+							"type": "integer",
+							"description": "書類詳細設定ID ※このIDを取得するAPIはありません。画面上の「設定→書類詳細設定」で対象の「編集」に行き、そのURLに含まれるIDを使用してください。例：`https://the-board.jp/document_settings/123456/edit` → 123456"
+						},
+						{
+							"name": "to",
+							"type": "string",
+							"description": "TO（メールアドレス） ※複数指定する場合はカンマ区切り"
+						},
+						{
+							"name": "cc",
+							"type": "string",
+							"description": "CC（メールアドレス） ※複数指定する場合はカンマ区切り"
+						},
+						{
+							"name": "currency",
+							"type": "string",
+							"enum": [
+								"JPY",
+								"USD",
+								"EUR",
+								"GBP",
+								"CNY",
+								"HKD",
+								"TWD",
+								"KRW",
+								"SGD",
+								"AUD",
+								"IDR",
+								"THB",
+								"CAD"
+							],
+							"description": "通貨 ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "lang_kbn",
+							"type": "integer",
+							"enum": [1, 2],
+							"description": "言語 - 1：日本語 - 2：英語 ※英語アドオン有効時のみ"
+						},
+						{
+							"name": "exchange_rate",
+							"type": "number",
+							"description": "為替レート ※英語アドオン有効時のみ"
+						}
+					]
+				}
 			},
 			"DELETE": {
 				"summary": "発注削除"
@@ -866,19 +4085,45 @@
 					{
 						"name": "response_group",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"enum": ["small", "medium", "large", "estimate", "order", "delivery", "invoice", "all"],
+						"description": "レスポンスグループ | response_group | 項目 | |:-----------|:------------| | small | id, expenditure_no, management_no, name, payee, payee_contact, user, total, tax, tax_withholding, tax_withholding_kbn, tax_with…"
 					}
 				]
 			}
 		},
 		"/v1/expenditures/expenditure_status/{id}": {
 			"PATCH": {
-				"summary": "発注ステータス変更"
+				"summary": "発注ステータス変更",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "expenditure_status",
+							"type": "integer",
+							"required": true,
+							"enum": [1, 2, 3, 4, 5, 8, 9],
+							"description": "発注ステータス - 1：見積中(高) - 2：見積中(中) - 3：見積中(低) - 8：見積中(除) - 4：発注確定 - 5：発注済 - 9：見送り"
+						}
+					],
+					"required": ["expenditure_status"]
+				}
 			}
 		},
 		"/v1/expenditures/lock_flg/{id}": {
 			"PATCH": {
-				"summary": "発注のロック"
+				"summary": "発注のロック",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "lock_flg",
+							"type": "integer",
+							"required": true,
+							"enum": [0, 1],
+							"description": "ロックフラグ - 0：未ロック - 1：ロック済み"
+						}
+					],
+					"required": ["lock_flg"]
+				}
 			}
 		},
 		"/v1/expenditure_payments": {
@@ -888,109 +4133,301 @@
 					{
 						"name": "invoice_date_gteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "請求日（指定日以降）"
 					},
 					{
 						"name": "invoice_date_lteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "請求日（指定日以前）"
 					},
 					{
 						"name": "payment_date_gteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "支払期限（指定日以降）"
 					},
 					{
 						"name": "payment_date_lteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "支払期限（指定日以前）"
 					},
 					{
 						"name": "expenditure_expenditure_status_in[]",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "発注ステータス - 1：見積中(高) - 2：見積中(中) - 3：見積中(低) - 8：見積中(除) - 4：発注確定 - 5：発注済 - 9：見送り ※複数の場合はカンマ区切り ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "payment_status_in[]",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "支払ステータス - 1：請求書未受領 - 2：請求書受領済 - 4：振込予約済 - 3：支払済 ※複数の場合はカンマ区切り ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "expenditure_expenditure_no_eq",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "発注No"
 					},
 					{
 						"name": "expenditure_management_no_eq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "管理番号"
 					},
 					{
 						"name": "expenditure_name_cont",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "発注名（部分一致） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "expenditure_payee_id_eq",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "発注先ID ※[発注先登録API](#tag/payee/operation/postPayee)・[発注先リスト取得API](#tag/payee/operation/getPayees)のレスポンスにある`id`"
 					},
 					{
 						"name": "expenditure_payee_name_cont",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "発注先名（部分一致） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "expenditure_payee_name_disp_cont",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "発注先略称名（部分一致） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "expenditure_tags[]",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "タグ（OR条件、複数の場合はカンマ区切り） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
+					},
+					{
+						"name": "expenditure_project_id_eq",
+						"required": false,
+						"type": "integer",
+						"description": "関連案件ID ※[案件登録API](#tag/project/operation/postProject)・[案件リスト取得API](#tag/project/operation/getProjects)のレスポンスにある`id`"
 					},
 					{
 						"name": "updated_at_gteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "更新日時（指定日時以降） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "updated_at_lteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "更新日時（指定日時以前） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "per_page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "1ページあたりの要素数（最大100まで）"
 					},
 					{
 						"name": "page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "現在のページ番号"
 					},
 					{
 						"name": "response_group",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"enum": [
+							"small",
+							"medium",
+							"large",
+							"estimate",
+							"order",
+							"delivery",
+							"invoice",
+							"receipt",
+							"project_cost",
+							"all"
+						],
+						"description": "レスポンスグループ | response_group | 項目 | |:-----------|:------------| | small | id, expenditure_no, management_no, name, payee, payee_contact, user, total, tax, tax_withholding, invoice_date, payment_date, e…"
 					}
 				]
 			}
 		},
 		"/v1/expenditure_payments/payment_status/{id}": {
 			"PATCH": {
-				"summary": "支払ステータス変更"
+				"summary": "支払ステータス変更",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "payment_status",
+							"type": "integer",
+							"required": true,
+							"enum": [1, 2, 3, 4],
+							"description": "支払ステータス - 1：請求書未受領 - 2：請求書受領済 - 4：振込予約済 - 3：支払済"
+						}
+					],
+					"required": ["payment_status"]
+				}
 			}
 		},
 		"/v1/expenditure_payments/lock_flg/{id}": {
 			"PATCH": {
-				"summary": "支払のロック"
+				"summary": "支払のロック",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "lock_flg",
+							"type": "integer",
+							"required": true,
+							"enum": [0, 1],
+							"description": "ロックフラグ - 0：未ロック - 1：ロック済み"
+						}
+					],
+					"required": ["lock_flg"]
+				}
 			}
 		},
 		"/v1/expenditure_documents/estimates/{id}": {
 			"PATCH": {
-				"summary": "見積依頼書更新"
+				"summary": "見積依頼書更新",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "estimate_request_date",
+							"type": "string",
+							"description": "依頼日"
+						},
+						{
+							"name": "desired_delivery_date_text",
+							"type": "string",
+							"description": "希望納期"
+						},
+						{
+							"name": "message",
+							"type": "string",
+							"description": "備考"
+						},
+						{
+							"name": "total",
+							"type": "number",
+							"description": "小計 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
+						},
+						{
+							"name": "tax",
+							"type": "number",
+							"description": "消費税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
+						},
+						{
+							"name": "tax_withholding",
+							"type": "number",
+							"description": "源泉所得税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
+						},
+						{
+							"name": "document_amount_disp_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3, 4],
+							"description": "金額表示 - 1：税込表示 - 2：合計欄を税抜表示＋明細下の小計・消費税行非表示 - 3：合計欄のみ税抜表示 - 4：合計表示なし ※デフォルトは「デフォルト設定」によって決まります"
+						},
+						{
+							"name": "delivery_place",
+							"type": "string",
+							"description": "納品場所"
+						},
+						{
+							"name": "details",
+							"type": "array",
+							"description": "明細行",
+							"items": {
+								"type": "object",
+								"properties": [
+									{
+										"name": "detail_date",
+										"type": "string",
+										"description": "明細日付"
+									},
+									{
+										"name": "description",
+										"type": "string",
+										"description": "摘要"
+									},
+									{
+										"name": "quantity",
+										"type": "number",
+										"description": "数量"
+									},
+									{
+										"name": "unit",
+										"type": "string",
+										"description": "単位"
+									},
+									{
+										"name": "unit_price",
+										"type": "number",
+										"description": "単価"
+									},
+									{
+										"name": "tax_rate",
+										"type": "number",
+										"enum": [10, 8, 5, 0],
+										"description": "税率"
+									},
+									{
+										"name": "tax_withholding_flg",
+										"type": "integer",
+										"enum": [0, 1],
+										"description": "源泉徴収対象 - 0：源泉徴収対象ではない - 1：源泉徴収対象"
+									},
+									{
+										"name": "tax_included_flg",
+										"type": "integer",
+										"enum": [0, 1],
+										"description": "内税フラグ - 0：外税 - 1：内税"
+									},
+									{
+										"name": "reduced_tax_rate_kbn",
+										"type": "integer",
+										"enum": [1, 2],
+										"description": "軽減税率区分 - 1：軽減税率対象外 - 2：軽減税率対象"
+									},
+									{
+										"name": "section_description",
+										"type": "string",
+										"description": "見出し行・小計行のテキスト ※`document_detail_kbn`が「2：見出し行」または「3：小計行」の場合のみ"
+									},
+									{
+										"name": "section_subtotal",
+										"type": "number",
+										"description": "見出し小計の金額 ※`document_detail_kbn`が「3：小計行」の場合のみ"
+									},
+									{
+										"name": "document_detail_kbn",
+										"type": "integer",
+										"enum": [1, 2, 3],
+										"description": "書類明細区分 - 1：通常行 - 2：見出し行 - 3：小計行"
+									},
+									{
+										"name": "deduction_applicable",
+										"type": "boolean",
+										"enum": [false, true],
+										"description": "控除対象 - false：控除対象外 - true：控除対象 ※「双方向インボイス」の場合のみ"
+									}
+								]
+							}
+						},
+						{
+							"name": "blank_date_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "依頼日空欄 - 0：表示 - 1：空欄にする"
+						}
+					]
+				}
 			},
 			"GET": {
 				"summary": "見積依頼書取得"
@@ -998,12 +4435,154 @@
 		},
 		"/v1/expenditure_documents/estimates/lock_flg/{id}": {
 			"PATCH": {
-				"summary": "見積依頼書ロック"
+				"summary": "見積依頼書ロック",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "lock_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "ロックフラグ - 0：未ロック - 1：ロック済み"
+						}
+					]
+				}
 			}
 		},
 		"/v1/expenditure_documents/orders/{id}": {
 			"PATCH": {
-				"summary": "発注書更新"
+				"summary": "発注書更新",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "order_date",
+							"type": "string",
+							"description": "発注日"
+						},
+						{
+							"name": "delivery_date",
+							"type": "string",
+							"description": "納期"
+						},
+						{
+							"name": "message",
+							"type": "string",
+							"description": "備考"
+						},
+						{
+							"name": "total",
+							"type": "number",
+							"description": "小計 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
+						},
+						{
+							"name": "tax",
+							"type": "number",
+							"description": "消費税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
+						},
+						{
+							"name": "tax_withholding",
+							"type": "number",
+							"description": "源泉所得税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
+						},
+						{
+							"name": "document_amount_disp_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3, 4],
+							"description": "金額表示 - 1：税込表示 - 2：合計欄を税抜表示＋明細下の小計・消費税行非表示 - 3：合計欄のみ税抜表示 - 4：合計表示なし ※デフォルトは「デフォルト設定」によって決まります"
+						},
+						{
+							"name": "delivery_place",
+							"type": "string",
+							"description": "納品場所"
+						},
+						{
+							"name": "details",
+							"type": "array",
+							"description": "明細行",
+							"items": {
+								"type": "object",
+								"properties": [
+									{
+										"name": "detail_date",
+										"type": "string",
+										"description": "明細日付"
+									},
+									{
+										"name": "description",
+										"type": "string",
+										"description": "摘要"
+									},
+									{
+										"name": "quantity",
+										"type": "number",
+										"description": "数量"
+									},
+									{
+										"name": "unit",
+										"type": "string",
+										"description": "単位"
+									},
+									{
+										"name": "unit_price",
+										"type": "number",
+										"description": "単価"
+									},
+									{
+										"name": "tax_rate",
+										"type": "number",
+										"enum": [10, 8, 5, 0],
+										"description": "税率"
+									},
+									{
+										"name": "tax_withholding_flg",
+										"type": "integer",
+										"enum": [0, 1],
+										"description": "源泉徴収対象 - 0：源泉徴収対象ではない - 1：源泉徴収対象"
+									},
+									{
+										"name": "tax_included_flg",
+										"type": "integer",
+										"enum": [0, 1],
+										"description": "内税フラグ - 0：外税 - 1：内税"
+									},
+									{
+										"name": "reduced_tax_rate_kbn",
+										"type": "integer",
+										"enum": [1, 2],
+										"description": "軽減税率区分 - 1：軽減税率対象外 - 2：軽減税率対象"
+									},
+									{
+										"name": "section_description",
+										"type": "string",
+										"description": "見出し行・小計行のテキスト ※`document_detail_kbn`が「2：見出し行」または「3：小計行」の場合のみ"
+									},
+									{
+										"name": "section_subtotal",
+										"type": "number",
+										"description": "見出し小計の金額 ※`document_detail_kbn`が「3：小計行」の場合のみ"
+									},
+									{
+										"name": "document_detail_kbn",
+										"type": "integer",
+										"enum": [1, 2, 3],
+										"description": "書類明細区分 - 1：通常行 - 2：見出し行 - 3：小計行"
+									},
+									{
+										"name": "deduction_applicable",
+										"type": "boolean",
+										"enum": [false, true],
+										"description": "控除対象 - false：控除対象外 - true：控除対象 ※「双方向インボイス」の場合のみ"
+									}
+								]
+							}
+						},
+						{
+							"name": "blank_date_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "発注日空欄 - 0：表示 - 1：空欄にする"
+						}
+					]
+				}
 			},
 			"GET": {
 				"summary": "発注書取得"
@@ -1011,12 +4590,154 @@
 		},
 		"/v1/expenditure_documents/orders/lock_flg/{id}": {
 			"PATCH": {
-				"summary": "発注書ロック"
+				"summary": "発注書ロック",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "lock_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "ロックフラグ - 0：未ロック - 1：ロック済み"
+						}
+					]
+				}
 			}
 		},
 		"/v1/expenditure_documents/deliveries/{id}": {
 			"PATCH": {
-				"summary": "検収書更新"
+				"summary": "検収書更新",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "delivery_received_date",
+							"type": "string",
+							"description": "検収日"
+						},
+						{
+							"name": "disp_delivery_receive_date",
+							"type": "string",
+							"description": "検収日（表示設定）"
+						},
+						{
+							"name": "message",
+							"type": "string",
+							"description": "備考"
+						},
+						{
+							"name": "total",
+							"type": "number",
+							"description": "小計 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
+						},
+						{
+							"name": "tax",
+							"type": "number",
+							"description": "消費税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
+						},
+						{
+							"name": "tax_withholding",
+							"type": "number",
+							"description": "源泉所得税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
+						},
+						{
+							"name": "document_amount_disp_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3, 4],
+							"description": "金額表示 - 1：税込表示 - 2：合計欄を税抜表示＋明細下の小計・消費税行非表示 - 3：合計欄のみ税抜表示 - 4：合計表示なし ※デフォルトは「デフォルト設定」によって決まります"
+						},
+						{
+							"name": "delivery_place",
+							"type": "string",
+							"description": "納品場所"
+						},
+						{
+							"name": "details",
+							"type": "array",
+							"description": "明細行",
+							"items": {
+								"type": "object",
+								"properties": [
+									{
+										"name": "detail_date",
+										"type": "string",
+										"description": "明細日付"
+									},
+									{
+										"name": "description",
+										"type": "string",
+										"description": "摘要"
+									},
+									{
+										"name": "quantity",
+										"type": "number",
+										"description": "数量"
+									},
+									{
+										"name": "unit",
+										"type": "string",
+										"description": "単位"
+									},
+									{
+										"name": "unit_price",
+										"type": "number",
+										"description": "単価"
+									},
+									{
+										"name": "tax_rate",
+										"type": "number",
+										"enum": [10, 8, 5, 0],
+										"description": "税率"
+									},
+									{
+										"name": "tax_withholding_flg",
+										"type": "integer",
+										"enum": [0, 1],
+										"description": "源泉徴収対象 - 0：源泉徴収対象ではない - 1：源泉徴収対象"
+									},
+									{
+										"name": "tax_included_flg",
+										"type": "integer",
+										"enum": [0, 1],
+										"description": "内税フラグ - 0：外税 - 1：内税"
+									},
+									{
+										"name": "reduced_tax_rate_kbn",
+										"type": "integer",
+										"enum": [1, 2],
+										"description": "軽減税率区分 - 1：軽減税率対象外 - 2：軽減税率対象"
+									},
+									{
+										"name": "section_description",
+										"type": "string",
+										"description": "見出し行・小計行のテキスト ※`document_detail_kbn`が「2：見出し行」または「3：小計行」の場合のみ"
+									},
+									{
+										"name": "section_subtotal",
+										"type": "number",
+										"description": "見出し小計の金額 ※`document_detail_kbn`が「3：小計行」の場合のみ"
+									},
+									{
+										"name": "document_detail_kbn",
+										"type": "integer",
+										"enum": [1, 2, 3],
+										"description": "書類明細区分 - 1：通常行 - 2：見出し行 - 3：小計行"
+									},
+									{
+										"name": "deduction_applicable",
+										"type": "boolean",
+										"enum": [false, true],
+										"description": "控除対象 - false：控除対象外 - true：控除対象 ※「双方向インボイス」の場合のみ"
+									}
+								]
+							}
+						},
+						{
+							"name": "blank_date_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "検収日空欄 - 0：表示 - 1：空欄にする"
+						}
+					]
+				}
 			},
 			"GET": {
 				"summary": "検収書取得"
@@ -1024,12 +4745,149 @@
 		},
 		"/v1/expenditure_documents/deliveries/lock_flg/{id}": {
 			"PATCH": {
-				"summary": "検収書ロック"
+				"summary": "検収書ロック",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "lock_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "ロックフラグ - 0：未ロック - 1：ロック済み"
+						}
+					]
+				}
 			}
 		},
 		"/v1/expenditure_documents/invoices/{id}": {
 			"PATCH": {
-				"summary": "支払通知書更新"
+				"summary": "支払通知書更新",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "paid_date",
+							"type": "string",
+							"description": "支払日"
+						},
+						{
+							"name": "message",
+							"type": "string",
+							"description": "備考"
+						},
+						{
+							"name": "total",
+							"type": "number",
+							"description": "小計 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
+						},
+						{
+							"name": "tax",
+							"type": "number",
+							"description": "消費税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
+						},
+						{
+							"name": "tax_withholding",
+							"type": "number",
+							"description": "源泉所得税 ※APIから登録時は画面上と異なり自動計算されないため未指定の場合は0になります"
+						},
+						{
+							"name": "document_amount_disp_kbn",
+							"type": "integer",
+							"enum": [1, 2, 3, 4],
+							"description": "金額表示 - 1：税込表示 - 2：合計欄を税抜表示＋明細下の小計・消費税行非表示 - 3：合計欄のみ税抜表示 - 4：合計表示なし ※デフォルトは「デフォルト設定」によって決まります"
+						},
+						{
+							"name": "delivery_place",
+							"type": "string",
+							"description": "納品場所"
+						},
+						{
+							"name": "details",
+							"type": "array",
+							"description": "明細行",
+							"items": {
+								"type": "object",
+								"properties": [
+									{
+										"name": "detail_date",
+										"type": "string",
+										"description": "明細日付"
+									},
+									{
+										"name": "description",
+										"type": "string",
+										"description": "摘要"
+									},
+									{
+										"name": "quantity",
+										"type": "number",
+										"description": "数量"
+									},
+									{
+										"name": "unit",
+										"type": "string",
+										"description": "単位"
+									},
+									{
+										"name": "unit_price",
+										"type": "number",
+										"description": "単価"
+									},
+									{
+										"name": "tax_rate",
+										"type": "number",
+										"enum": [10, 8, 5, 0],
+										"description": "税率"
+									},
+									{
+										"name": "tax_withholding_flg",
+										"type": "integer",
+										"enum": [0, 1],
+										"description": "源泉徴収対象 - 0：源泉徴収対象ではない - 1：源泉徴収対象"
+									},
+									{
+										"name": "tax_included_flg",
+										"type": "integer",
+										"enum": [0, 1],
+										"description": "内税フラグ - 0：外税 - 1：内税"
+									},
+									{
+										"name": "reduced_tax_rate_kbn",
+										"type": "integer",
+										"enum": [1, 2],
+										"description": "軽減税率区分 - 1：軽減税率対象外 - 2：軽減税率対象"
+									},
+									{
+										"name": "section_description",
+										"type": "string",
+										"description": "見出し行・小計行のテキスト ※`document_detail_kbn`が「2：見出し行」または「3：小計行」の場合のみ"
+									},
+									{
+										"name": "section_subtotal",
+										"type": "number",
+										"description": "見出し小計の金額 ※`document_detail_kbn`が「3：小計行」の場合のみ"
+									},
+									{
+										"name": "document_detail_kbn",
+										"type": "integer",
+										"enum": [1, 2, 3],
+										"description": "書類明細区分 - 1：通常行 - 2：見出し行 - 3：小計行"
+									},
+									{
+										"name": "deduction_applicable",
+										"type": "boolean",
+										"enum": [false, true],
+										"description": "控除対象 - false：控除対象外 - true：控除対象 ※「双方向インボイス」の場合のみ"
+									}
+								]
+							}
+						},
+						{
+							"name": "blank_date_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "支払日空欄 - 0：表示 - 1：空欄にする"
+						}
+					]
+				}
 			},
 			"GET": {
 				"summary": "支払通知書取得"
@@ -1037,7 +4895,17 @@
 		},
 		"/v1/expenditure_documents/invoices/lock_flg/{id}": {
 			"PATCH": {
-				"summary": "支払通知書ロック"
+				"summary": "支払通知書ロック",
+				"requestBody": {
+					"properties": [
+						{
+							"name": "lock_flg",
+							"type": "integer",
+							"enum": [0, 1],
+							"description": "ロックフラグ - 0：未ロック - 1：ロック済み"
+						}
+					]
+				}
 			}
 		},
 		"/v1/analyses": {
@@ -1047,62 +4915,75 @@
 					{
 						"name": "report_ym_gteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "計上年月（指定日以降）"
 					},
 					{
 						"name": "report_ym_lteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "計上年月（指定日以前）"
 					},
 					{
 						"name": "analysis_data_kbn_in[]",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "計上データ区分 - 1：案件 - 2：案件原価 - 3：発注 ※複数の場合はカンマ区切り ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "order_status_in[]",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "受注ステータス - 1：見積中(高) - 2：見積中(中) - 3：見積中(低) - 8：見積中(除) - 4：受注確定 - 5：受注済 - 9：失注 ※複数の場合はカンマ区切り ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "expenditure_status_in[]",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "発注ステータス - 1：見積中(高) - 2：見積中(中) - 3：見積中(低) - 8：見積中(除) - 4：発注確定 - 5：発注済 - 9：見送り ※複数の場合はカンマ区切り ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "include_auto_renewal_flg",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"enum": [0, 1],
+						"description": "自動契約更新を考慮 - 0：自動契約更新のシミュレーションデータを含まない - 1：自動契約更新のシミュレーションデータを含む ※未指定時は`0`指定時と同等の結果"
 					},
 					{
 						"name": "invoice_status_in[]",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "請求ステータス - 1：未請求 - 4：請求OK - 2：請求済 - 5：一部入金済 - 3：入金済 - 9：回収不能 ※複数の場合はカンマ区切り ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "payment_status_in[]",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "支払ステータス - 1：請求書未受領 - 2：請求書受領済 - 4：振込予約済 - 3：支払済 ※複数の場合はカンマ区切り ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "updated_at_gteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "更新日時（指定日時以降） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "updated_at_lteq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "更新日時（指定日時以前） ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "per_page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "1ページあたりの要素数（最大100まで）"
 					},
 					{
 						"name": "page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "現在のページ番号"
 					}
 				]
 			}
@@ -1114,17 +4995,20 @@
 					{
 						"name": "email_eq",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "メールアドレス ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "per_page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "1ページあたりの要素数（最大100まで）"
 					},
 					{
 						"name": "page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "現在のページ番号"
 					}
 				]
 			}
@@ -1136,22 +5020,27 @@
 					{
 						"name": "name_cont",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "グループ名 ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "include_archive_flg",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"enum": [0, 1],
+						"description": "アーカイブを含むか - 0：アーカイブ済みは除く - 1：アーカイブ済みも含む"
 					},
 					{
 						"name": "per_page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "1ページあたりの要素数（最大100まで）"
 					},
 					{
 						"name": "page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "現在のページ番号"
 					}
 				]
 			}
@@ -1163,22 +5052,27 @@
 					{
 						"name": "name_cont",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "支払条件名 ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "include_archive_flg",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"enum": [0, 1],
+						"description": "アーカイブを含むか - 0：アーカイブ済みは除く - 1：アーカイブ済みも含む"
 					},
 					{
 						"name": "per_page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "1ページあたりの要素数（最大100まで）"
 					},
 					{
 						"name": "page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "現在のページ番号"
 					}
 				]
 			}
@@ -1190,27 +5084,33 @@
 					{
 						"name": "project_type_kbn_eq",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "案件区分1〜3の種類 - 1：案件区分1 - 2：案件区分2 - 3：案件区分3 ※未指定時は`1`指定時と同等の結果"
 					},
 					{
 						"name": "name_cont",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "案件区分名 ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "include_archive_flg",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"enum": [0, 1],
+						"description": "アーカイブを含むか - 0：アーカイブ済みは除く - 1：アーカイブ済みも含む"
 					},
 					{
 						"name": "per_page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "1ページあたりの要素数（最大100まで）"
 					},
 					{
 						"name": "page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "現在のページ番号"
 					}
 				]
 			}
@@ -1222,27 +5122,33 @@
 					{
 						"name": "expenditure_type_kbn_eq",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "発注区分1〜3の種類 - 1：発注区分1 - 2：発注区分2 - 3：発注区分3 ※未指定時は`1`指定時と同等の結果"
 					},
 					{
 						"name": "name_cont",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "発注区分名 ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "include_archive_flg",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"enum": [0, 1],
+						"description": "アーカイブを含むか - 0：アーカイブ済みは除く - 1：アーカイブ済みも含む"
 					},
 					{
 						"name": "per_page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "1ページあたりの要素数（最大100まで）"
 					},
 					{
 						"name": "page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "現在のページ番号"
 					}
 				]
 			}
@@ -1254,27 +5160,33 @@
 					{
 						"name": "accounting_type_kbn_eq",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "会計区分1〜3の種類 - 1：会計区分1 - 2：会計区分2 - 3：会計区分3 ※未指定時は`1`指定時と同等の結果"
 					},
 					{
 						"name": "name_cont",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "会計区分名 ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "include_archive_flg",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"enum": [0, 1],
+						"description": "アーカイブを含むか - 0：アーカイブ済みは除く - 1：アーカイブ済みも含む"
 					},
 					{
 						"name": "per_page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "1ページあたりの要素数（最大100まで）"
 					},
 					{
 						"name": "page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "現在のページ番号"
 					}
 				]
 			}
@@ -1286,22 +5198,27 @@
 					{
 						"name": "name_cont",
 						"required": false,
-						"type": "string"
+						"type": "string",
+						"description": "カスタム書類送付方法名 ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。"
 					},
 					{
 						"name": "include_archive_flg",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"enum": [0, 1],
+						"description": "アーカイブを含むか - 0：アーカイブ済みは除く - 1：アーカイブ済みも含む"
 					},
 					{
 						"name": "per_page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "1ページあたりの要素数（最大100まで）"
 					},
 					{
 						"name": "page",
 						"required": false,
-						"type": "integer"
+						"type": "integer",
+						"description": "現在のページ番号"
 					}
 				]
 			}

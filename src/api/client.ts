@@ -83,7 +83,21 @@ export async function makeApiRequest(
 
 			if (params) {
 				for (const [key, value] of Object.entries(params)) {
-					url.searchParams.set(key, String(value));
+					// null / undefined は「未指定」とみなし送信しない(=null 等の誤値を防ぐ)。
+					if (value === null || value === undefined) {
+						continue;
+					}
+					// 配列値は同名キーを繰り返して付与する。board (Rails) は配列パラメータを
+					// `tags[]=A&tags[]=B` 形式で受けるため、呼び出し側が `tags[]` のように
+					// `[]` 付きキーを渡す前提(String(array) だと "A,B" に潰れてしまう)。
+					// 要素が非スカラの場合は handler 側の validateQuery が事前に弾く。
+					if (Array.isArray(value)) {
+						for (const v of value) {
+							url.searchParams.append(key, String(v));
+						}
+					} else {
+						url.searchParams.set(key, String(value));
+					}
 				}
 			}
 

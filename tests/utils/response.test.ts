@@ -90,9 +90,28 @@ describe("formatApiError", () => {
 		expect(formatApiError(err)).toContain("エラーが発生しました");
 	});
 
+	it("404 → board の実メッセージを併記する (B2-1)", () => {
+		const err = new TheBoardApiError("Project 123 not found", 404, {});
+		const msg = formatApiError(err);
+		expect(msg).toContain("見つかりませんでした");
+		expect(msg).toContain("Project 123 not found");
+	});
+
+	it("400 → board の実メッセージを併記する (B2-1)", () => {
+		const err = new TheBoardApiError("invoice_date is required", 400, {});
+		const msg = formatApiError(err);
+		expect(msg).toContain("リクエストが不正です");
+		expect(msg).toContain("invoice_date is required");
+	});
+
 	it("不明な Error → 予期しないエラーメッセージ", () => {
 		const err = new Error("something went wrong");
 		expect(formatApiError(err)).toContain("予期しないエラー");
+	});
+
+	it("不明な Error → err.message を併記して原因を示す (B2-3)", () => {
+		const err = new Error("fetch failed: ECONNREFUSED");
+		expect(formatApiError(err)).toContain("fetch failed: ECONNREFUSED");
 	});
 
 	it("Error以外 (string) → 予期しないエラーメッセージ", () => {

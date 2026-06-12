@@ -12,7 +12,7 @@
 
 ## 特徴
 
-- board API v1.6.0 の全 89 エンドポイントに 6 つの汎用 MCP ツールでアクセス
+- board API v1.8.0 の全 89 エンドポイントに 6 つの汎用 MCP ツールでアクセス
 - OpenAPI スキーマ駆動のパス検証
 - 3 段階の書き込み安全機構（`--read-only` デフォルト → `--enable-writes` → `--enable-destructive-writes`）
 - 組み込みレートリミット（3 req/sec、3,000 req/day）

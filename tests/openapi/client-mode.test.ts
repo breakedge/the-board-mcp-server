@@ -175,6 +175,12 @@ describe("handleDescribe", () => {
 		expect(result.isError).toBe(true);
 	});
 
+	it("存在する path でも未対応 method は isError", () => {
+		// /v1/clients は GET/POST のみ。DELETE は未定義。
+		const result = handleDescribe({ path: "/v1/clients", method: "DELETE" }, makeConfig(), schema);
+		expect(result.isError).toBe(true);
+	});
+
 	it("無効な toolset の path は isError", () => {
 		const result = handleDescribe(
 			{ path: "/v1/clients", method: "GET" },
@@ -287,6 +293,28 @@ describe("handleGet", () => {
 		);
 		expect(result.isError).toBe(true);
 		expect(result.content[0].text).toContain("オブジェクト");
+	});
+
+	it("配列内にオブジェクトを含むクエリは API に送らず isError (B0-4拡張)", async () => {
+		mswServer.use(http.get(`${TEST_BASE_URL}/v1/projects`, () => HttpResponse.json([])));
+		const config = makeConfig();
+		const result = await handleGet(
+			{ path: "/v1/projects", query: { "tags[]": [{ id: 1 }] } },
+			config,
+			schema,
+		);
+		expect(result.isError).toBe(true);
+	});
+
+	it("配列内に配列を含むクエリは API に送らず isError (B0-4拡張)", async () => {
+		mswServer.use(http.get(`${TEST_BASE_URL}/v1/projects`, () => HttpResponse.json([])));
+		const config = makeConfig();
+		const result = await handleGet(
+			{ path: "/v1/projects", query: { "tags[]": [[1, 2]] } },
+			config,
+			schema,
+		);
+		expect(result.isError).toBe(true);
 	});
 });
 

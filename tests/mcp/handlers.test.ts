@@ -55,6 +55,47 @@ describe("INSTRUCTIONS のAIエルゴノミクス必須事項 (B1-4/B1-5/B3-1/B3
 	it("文書合計 total/tax は自動集計されないことを警告する", () => {
 		expect(INSTRUCTIONS).toContain("total");
 	});
+
+	it("ユースケース早見表 (月次売上 = analyses) を含む", () => {
+		expect(INSTRUCTIONS).toContain("/v1/analyses");
+		expect(INSTRUCTIONS).toContain("report_ym_gteq");
+		expect(INSTRUCTIONS).toContain("analysis_data_kbn_in[]");
+	});
+	it("応答形式 (envelope / concise / fields / per_page 上限) を説明する", () => {
+		expect(INSTRUCTIONS).toContain('"data"');
+		expect(INSTRUCTIONS).toContain("fields");
+		expect(INSTRUCTIONS).toContain("per_page");
+		expect(INSTRUCTIONS).toContain("100");
+	});
+	it("意味論 (新しい順 / 税抜 / 注記行) と validate_write を案内する", () => {
+		expect(INSTRUCTIONS).toContain("新しい順");
+		expect(INSTRUCTIONS).toContain("税抜");
+		expect(INSTRUCTIONS).toContain("the_board_api_validate_write");
+	});
+	it("既存案件の設定を複製する導線 (payment_term_id 等) を案内する", () => {
+		expect(INSTRUCTIONS).toContain("payment_term_id");
+		expect(INSTRUCTIONS).toContain("client_name_disp_kbn");
+	});
+	it("list / single の 2 つの応答形を示す (E1)", () => {
+		expect(INSTRUCTIONS).toContain("list GET");
+		expect(INSTRUCTIONS).toContain("single GET");
+		expect(INSTRUCTIONS).toContain('{"data": {...}}');
+	});
+
+	it("切り詰め時の page_incomplete と単体応答の omitted_keys を案内する (E3)", () => {
+		expect(INSTRUCTIONS).toContain("page_incomplete");
+		expect(INSTRUCTIONS).toContain("omitted_keys");
+		expect(INSTRUCTIONS).toContain("same page");
+	});
+
+	it("新しい順の保証を /v1/projects に限定する (E2)", () => {
+		expect(INSTRUCTIONS).not.toContain("Lists are returned newest first");
+		expect(INSTRUCTIONS).toContain("no documented order");
+	});
+
+	it("2,550 トークン相当 (5,600 字) 以内に収める", () => {
+		expect(INSTRUCTIONS.length).toBeLessThanOrEqual(5600);
+	});
 });
 
 describe("MCP prompts (B3-2)", () => {
@@ -94,5 +135,12 @@ describe("ツールの条件付き登録 (Write 3段階セーフティ)", () => 
 		expect(names).toContain("the_board_api_post");
 		expect(names).toContain("the_board_api_patch");
 		expect(names).toContain("the_board_api_delete");
+	});
+});
+
+describe("the_board_api_validate_write", () => {
+	it("read-only でも登録される", async () => {
+		const server = await createMcpServer(getConfig([]));
+		expect(toolNames(server)).toContain("the_board_api_validate_write");
 	});
 });

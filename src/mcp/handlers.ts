@@ -12,6 +12,7 @@ import {
 	handleListPaths,
 	handlePatch,
 	handlePost,
+	handleValidateWrite,
 } from "../openapi/client-mode.js";
 import { loadSchema } from "../openapi/schema-loader.js";
 
@@ -22,60 +23,55 @@ const pkg = JSON.parse(readFileSync(join(__dirname, "../../package.json"), "utf-
 	version: string;
 };
 
-export const INSTRUCTIONS = `You are connected to board (the-board.jp) MCP server.
+export const INSTRUCTIONS = `You are connected to board (the-board.jp) MCP server. board is a Japanese SaaS for estimates, invoices and project (案件) management.
 
-## How to use
-1. Use the_board_api_list_paths to discover endpoints. Each entry includes its query "parameters" (filter names) when available.
-2. Use the_board_api_describe(path, method) to get an endpoint's full contract — query parameters with their enums, and request body fields (names, types, required, enums). Do this before any POST/PATCH so you can build a correct body without external docs.
-3. Use the_board_auth_status to check authentication and remaining rate-limit quota.
-4. Use the_board_api_get (and write tools when enabled) to interact with the API.
+## Tools and order of use
+1. the_board_api_list_paths — find endpoints (one line each; keyword accepts English/Japanese words and filter names, e.g. "sales", "請求"). detail=true adds enums.
+2. the_board_api_describe(path, method) — full contract: query parameters (enums, labels), request body fields, variants. part=response shows response fields.
+3. the_board_api_get — read. validate_write — dry-run a POST/PATCH body (read-only OK). Write tools (post/patch/delete) need the matching flag.
+4. the_board_auth_status — credentials and remaining daily quota (estimate).
 
-## Path format
-- All paths start with /v1/ (e.g. /v1/clients, /v1/projects/123, /v1/invoices).
+## Quick map: what you want → endpoint + filters
+- Monthly sales / 売上・計上ベースの集計: GET /v1/analyses with report_ym_gteq / report_ym_lteq (YYYY-MM) and analysis_data_kbn_in[]=["1"] (1 = 案件, 2 = 案件原価, 3 = 発注). Records carry report_date (YYYY-MM-DD), not report_ym — group by its first 7 chars; fields ["report_date","total","tax"]. total is per record — sum yourself.
+- Invoices by date / 請求書一覧: GET /v1/invoices with invoice_date_gteq/lteq (YYYY-MM-DD). invoice_status_in[] (1 未請求, 4 請求OK, 2 請求済, 5 一部入金済, 3 入金済, 9 回収不能). "一部入金済" counting as unpaid is a business call — ask the user.
+- Find a customer / 顧客: GET /v1/clients with name_cont. Contacts / 担当者: GET /v1/contacts with client_id_eq.
+- Projects of a customer / 案件: GET /v1/projects with client_id_eq, order_status_in[], name_cont. By number: project_no_eq (project_id does NOT work). order_status: 4 = 受注確定, 5 = 受注済 — if the user says 受注済 案件, confirm whether 4 should be included.
+- Copy settings from an existing project: GET /v1/projects/{id} (query {"response_group":"all"}) and reuse payment_term_id, payment_method_kbn, document_setting_id, invoice_timing_kbn, client_name_disp_kbn in the POST body.
+- Document contents (estimate, invoice, order …): GET /v1/projects/{id} with query {"response_group":"all"}; fields is a separate tool argument (not query) — fields:["estimate"] keeps it small (id from /v1/invoices is a billing id, NOT the document id).
+- Costs / 原価: /v1/project_costs. Purchases / 発注: /v1/expenditures. Masters: /v1/users, /v1/payment_terms, /v1/project_types.
 
-## Pagination and response_group
-- Pagination query params: per_page, page (1-based).
-- response_group controls how much each resource returns:
-  - small (default), medium, large: increasing field detail.
-  - all: includes related documents. REQUIRED to obtain document IDs (see below).
-- Unknown query params are rejected with the list of valid params. Prefer the names shown by list_paths.
-- List responses report pagination as a separate note (total count, current page, per_page). If you have not fetched every record, request the next page (page=N+1).
+## Response format
+- list GET: {"data": [...], "pagination": {total_count, page, per_page, returned_count, has_more, next_page}, "truncated": false, "notice"?: "..."}. single GET (by id): {"data": {...}} with optional unknown_fields / notice / omitted_keys.
+- concise (default): compact JSON, null keys omitted — a missing key means null. detailed keeps nulls, pretty-printed.
+- fields selects keys (dot paths, per record): ["id","name","total","tax"] or "estimate.details". Unknown keys go to unknown_fields.
+- per_page max is 100 (default 10). Large pages are cut at record boundaries: truncated=true, dropped_in_page and page_incomplete=true — then ignore has_more, lower per_page/fields and refetch the same page before next_page.
+- A single record over the limit loses its largest array/object keys; omitted_keys lists them — refetch with fields.
+- Zero results include "request" (filters applied) and validated=true — a real empty result, not a wrong parameter.
 
-## Filter naming conventions (important — wrong names are otherwise silently ignored)
-- Suffixes: _eq (exact), _cont (substring), _gteq / _lteq (range), _in[] (multi-select array).
-- Use project_no_eq to filter projects by number. project_id does NOT work.
-- The invoice list (/v1/invoices) filters projects via project_project_no_eq (nested entity prefix).
-- Array filters use the [] suffix, e.g. tags[], order_status_in[]. Pass them as arrays: { "tags[]": ["a","b"] }.
+## Data semantics
+- /v1/projects is newest first (新しい順, official); other lists have no documented order — sort yourself if it matters.
+- total is tax-exclusive (税抜); tax is separate (spec-verified for projects, observed elsewhere). Money values are decimal strings ("500000.0").
+- Document detail rows: document_detail_kbn 1 = normal line, 2 = section heading (in section_description), 3 = subtotal. A kbn=1 row without price/quantity is a note line — don't total it.
+- Filter suffixes: _eq (exact), _cont (substring), _gteq / _lteq (range), _in[] (array, e.g. {"invoice_status_in[]": ["2","5"]}). Unknown filter names/values are rejected with the valid list.
 
-## Document creation model (project-centric — documents are NOT created directly)
-You cannot POST an estimate/invoice directly. The flow is:
-1. POST /v1/projects to create a project. board auto-generates its documents (estimate, invoices) from the project's billing settings. invoice_timing_kbn selects the billing mode; depending on the mode, some fields must be set AT CREATION and cannot be changed by a later PATCH. Call describe('/v1/projects','POST') to see which fields apply to the mode you need.
-2. GET /v1/projects/{id}?response_group=all to read the generated document IDs: .estimate.id, .invoices[].id, .order.id.
-3. PATCH /v1/documents/estimates/{id} and PATCH /v1/documents/invoices/{id} to fill each document (details[], message, total, tax).
+## Creating documents (project-centric)
+Estimates/invoices cannot be POSTed directly:
+1. describe("/v1/projects","POST") → pick the billing variant (一括請求 / 定期請求 / 分割請求) then describe again with variant for its required fields. invoice_timing_kbn selects the mode; some fields are creation-only.
+2. validate_write("/v1/projects","POST", body, variant) until valid, then POST /v1/projects. board generates the documents (estimate, order, delivery, invoices depending on settings).
+3. GET /v1/projects/{id} with query {"response_group":"all"} and fields ["estimate","order","invoices","deliveries"] to read document ids.
+4. PATCH /v1/documents/estimates/{id} and /v1/documents/invoices/{id} with details[], total (税抜) and tax. total/tax are NOT auto-summed — send them or the document shows 0. details[] replace-vs-append unverified; re-read after write.
+5. Verify with GET response_group=all.
 
-Note: the id from /v1/invoices is a billing id, which is NOT the same as the document id used by /v1/documents/invoices/{id}. Always take document IDs from the project's response_group=all output.
-
-## Document fields
-- Detail rows use document_detail_kbn: 1 = normal line, 2 = section heading (text in section_description), 3 = subtotal line.
-- Document total (tax-exclusive) and tax are NOT auto-summed from details. You must compute and send total and tax explicitly, or the document will show 0.
-
-## Write operations
-- Read-only mode is enabled by default, so only GET tools are available.
-- Write tools are registered only when the server is started with the matching flag:
-  - the_board_api_post / the_board_api_patch require --enable-writes (or THE_BOARD_ENABLE_WRITES=true)
-  - the_board_api_delete requires --enable-destructive-writes (or THE_BOARD_ENABLE_DESTRUCTIVE_WRITES=true)
-- If a write tool is not in your tool list, ask the user to restart the server with the appropriate flag.
-- Writes are not auto-retried except on rate limits. If a write times out at the network level, do not blindly re-POST — first GET to check whether the resource was already created (avoids duplicate invoices/projects).
+## Write safety
+- Read-only by default. post/patch need --enable-writes (or THE_BOARD_ENABLE_WRITES=true); delete and status/lock changes need --enable-destructive-writes. Missing write tool: ask the user to restart with the flag (validate_write names which).
+- Writes are auto-retried only on rate limits; after a network timeout, GET first to check whether the resource was created before re-POSTing.
+- post/patch validate the body before sending; pass skip_validation=true only when the_board_api_validate_write reports an error you have confirmed is wrong (e.g. a stale bundled schema).
 
 ## Rate limits
-- 3 requests/second and 3,000 requests/day. Check the_board_auth_status for remaining daily quota.
+- 3 requests/second, 3,000/day. auth_status estimates the remaining daily quota (resets on restart).
 
 ## Reference
-- Full official OpenAPI spec (request/response schemas): https://developers.the-board.jp/doc/board_openapi.json
-  (in that spec servers.url is /v1, so paths omit the leading /v1).
-
-## Important
-- Financial data (invoices, estimates) requires careful handling. After writing, re-read with response_group=all and verify each document's total/tax are set as intended (board leaves them 0 when not sent).`;
+- Official OpenAPI spec: https://developers.the-board.jp/doc/board_openapi.json (its paths omit the leading /v1).`;
 
 export async function createMcpServer(config: Config): Promise<McpServer> {
 	const schema = await loadSchema();
@@ -108,10 +104,17 @@ export async function createMcpServer(config: Config): Promise<McpServer> {
 	// list_paths
 	server.tool(
 		"the_board_api_list_paths",
-		"Search available API endpoints. Use this first to discover paths.",
+		"Search available API endpoints (one line per endpoint: METHOD path summary [aliases]). keyword matches path, summary, English/Japanese aliases and query parameter names (space-separated words are OR). Set detail=true to get JSON with query parameters and enum values.",
 		{
 			method: z.string().optional().describe("HTTP method filter (GET, POST, PATCH, DELETE)"),
-			keyword: z.string().optional().describe("Search keyword for path or summary"),
+			keyword: z
+				.string()
+				.optional()
+				.describe("Search words, e.g. 'invoice', 'sales', '請求', 'project_no_eq'"),
+			detail: z
+				.boolean()
+				.optional()
+				.describe("true: return JSON with parameters (names, types, enum values)"),
 		},
 		{
 			title: "List available API endpoints",
@@ -124,10 +127,20 @@ export async function createMcpServer(config: Config): Promise<McpServer> {
 	// describe — endpoint の契約 (parameters + requestBody フィールド) を返す introspection
 	server.tool(
 		"the_board_api_describe",
-		"Describe one endpoint's contract: query parameters (with enums) and request body fields (names, types, required, enums). Use before POST/PATCH to build a correct body without external docs.",
+		"Describe one endpoint's contract: query parameters (with enum values and labels) and request body fields (names, types, required, enums). Endpoints whose body depends on a mode (e.g. POST /v1/projects by billing type) list variants; pass variant to get that branch's fields. part=response returns the response fields (name, type, meaning). Use before POST/PATCH to build a correct body without external docs.",
 		{
 			path: z.string().describe("API path (e.g., /v1/projects, /v1/documents/estimates/123)"),
 			method: z.string().describe("HTTP method (GET, POST, PATCH, DELETE)"),
+			variant: z
+				.string()
+				.optional()
+				.describe("Variant title from a previous describe call (e.g. 一括請求)"),
+			part: z
+				.enum(["request", "response", "all"])
+				.optional()
+				.describe(
+					"request (default): parameters and request body. response: response fields. all: both.",
+				),
 		},
 		{
 			title: "Describe a board API endpoint",
@@ -140,13 +153,35 @@ export async function createMcpServer(config: Config): Promise<McpServer> {
 	// get
 	server.tool(
 		"the_board_api_get",
-		"Send GET request to the board API. Retrieves resources (single or list).",
+		'Send GET request to the board API. Returns JSON {data, pagination, truncated}. Default format is concise (compact JSON, null keys omitted). Use fields to return only the keys you need (e.g. ["id","name","total"]); large pages are cut at record boundaries with truncated=true.',
 		{
 			path: z.string().describe("API path (e.g., /v1/clients, /v1/projects/123)"),
 			query: coercibleRecord.optional().describe("Query parameters"),
+			format: z
+				.enum(["concise", "detailed"])
+				.optional()
+				.describe(
+					"concise (default): compact JSON, null keys omitted (a missing key means null). detailed: pretty JSON with nulls kept.",
+				),
+			fields: z
+				.union([z.array(z.string()), z.string()])
+				.optional()
+				.describe(
+					"Keys to return, dot paths allowed (e.g. id,name,client.name,estimate.details). Applied to each record; unknown keys are listed in unknown_fields.",
+				),
 		},
 		{ title: "Get resource from the board API", readOnlyHint: true },
-		(args) => handleGet(args as { path: string; query?: Record<string, unknown> }, config, schema),
+		(args) =>
+			handleGet(
+				args as {
+					path: string;
+					query?: Record<string, unknown>;
+					format?: string;
+					fields?: unknown;
+				},
+				config,
+				schema,
+			),
 	);
 
 	// post / patch は書き込みが有効な場合のみ登録 (read-only 時は LLM から不可視)
@@ -157,9 +192,31 @@ export async function createMcpServer(config: Config): Promise<McpServer> {
 			{
 				path: z.string().describe("API path (e.g., /v1/clients)"),
 				body: coercibleRecord.describe("Request body"),
+				variant: z
+					.string()
+					.optional()
+					.describe(
+						"Variant title (e.g. 一括請求) so that mode-specific required fields are checked before sending",
+					),
+				skip_validation: z
+					.boolean()
+					.optional()
+					.describe(
+						"true: skip the pre-send schema validation (use only when the bundled schema is stale and validate_write reports a false error)",
+					),
 			},
 			{ title: "Create resource in board", destructiveHint: false },
-			(args) => handlePost(args as { path: string; body: Record<string, unknown> }, config, schema),
+			(args) =>
+				handlePost(
+					args as {
+						path: string;
+						body: Record<string, unknown>;
+						variant?: string;
+						skip_validation?: boolean;
+					},
+					config,
+					schema,
+				),
 		);
 
 		server.tool(
@@ -168,6 +225,18 @@ export async function createMcpServer(config: Config): Promise<McpServer> {
 			{
 				path: z.string().describe("API path (e.g., /v1/clients/123)"),
 				body: coercibleRecord.describe("Request body"),
+				variant: z
+					.string()
+					.optional()
+					.describe(
+						"Variant title (e.g. 一括請求) so that mode-specific required fields are checked before sending",
+					),
+				skip_validation: z
+					.boolean()
+					.optional()
+					.describe(
+						"true: skip the pre-send schema validation (use only when the bundled schema is stale and validate_write reports a false error)",
+					),
 			},
 			{
 				title: "Update resource in board",
@@ -177,7 +246,16 @@ export async function createMcpServer(config: Config): Promise<McpServer> {
 				idempotentHint: true,
 			},
 			(args) =>
-				handlePatch(args as { path: string; body: Record<string, unknown> }, config, schema),
+				handlePatch(
+					args as {
+						path: string;
+						body: Record<string, unknown>;
+						variant?: string;
+						skip_validation?: boolean;
+					},
+					config,
+					schema,
+				),
 		);
 	}
 
@@ -197,6 +275,28 @@ export async function createMcpServer(config: Config): Promise<McpServer> {
 			(args) => handleDelete(args, config, schema),
 		);
 	}
+
+	// validate_write — 送信せずに body を検証する dry-run (read-only でも常時登録)
+	server.tool(
+		"the_board_api_validate_write",
+		"Dry-run validation of a POST/PATCH body against the bundled schema (required fields, enum values, types, variant-specific requirements). Never calls the API; works in read-only mode. Use it before the_board_api_post / the_board_api_patch, or to check a body when write tools are not enabled.",
+		{
+			path: z.string().describe("API path (e.g., /v1/projects, /v1/documents/estimates/123)"),
+			method: z.enum(["POST", "PATCH"]).describe("HTTP method the body is for"),
+			body: coercibleRecord.describe("Request body to validate"),
+			variant: z
+				.string()
+				.optional()
+				.describe("Variant title from the_board_api_describe (e.g. 一括請求)"),
+		},
+		{ title: "Validate a write body without sending it", readOnlyHint: true, openWorldHint: false },
+		(args) =>
+			handleValidateWrite(
+				args as { path: string; method: string; body: Record<string, unknown>; variant?: string },
+				config,
+				schema,
+			),
+	);
 
 	// auth_status
 	server.tool(
@@ -232,9 +332,9 @@ export async function createMcpServer(config: Config): Promise<McpServer> {
 						text: `board で顧客 client_id=${client_id} の案件「${project_name}」を作成し、自動生成される書類(見積・請求書)を埋めてください。
 
 board は書類を直接 POST できない案件中心モデルです。次の手順で進めてください:
-1. the_board_api_describe("/v1/projects", "POST") でボディ項目を確認する。invoice_timing_kbn(請求方式)など、請求方式によって作成時に指定が要る項目(作成後に変更できないものを含む)を把握する。
-2. POST /v1/projects で案件を作成する。請求方式に応じた項目を指定すると、board が見積・請求書を自動生成する。
-3. GET /v1/projects/{id}?response_group=all で生成された書類ID(.estimate.id / .invoices[].id / .order.id)を取得する。
+1. the_board_api_describe("/v1/projects", "POST") で共通項目と variant(一括請求 / 定期請求 / 分割請求)を確認し、選んだ variant を指定してもう一度 describe して固有の必須項目を把握する。
+2. the_board_api_validate_write("/v1/projects", "POST", body, variant) で valid になるまで body を直してから POST /v1/projects で案件を作成する。board が見積・請求書などを自動生成する。
+3. GET /v1/projects/{id} に query {"response_group": "all"} と fields ["estimate","order","invoices","deliveries"] を指定し、生成された書類ID(.estimate.id / .invoices[].id / .order.id)を取得する。
 4. the_board_api_describe で各書類の PATCH エンドポイントの項目を確認し、PATCH /v1/documents/estimates/{id} や PATCH /v1/documents/invoices/{id} に details[](document_detail_kbn=1 の通常行)と total(税抜)・tax を明示送信する。total/tax は自動集計されない。
 5. 最後に GET /v1/projects/{id}?response_group=all で各書類の内容(明細・金額)が意図どおりか検証する。
 

@@ -35,6 +35,8 @@ interface MinimalParameter {
 	required: boolean;
 	type: string;
 	enum?: (string | number)[];
+	enumLabels?: Record<string, string>;
+	enumOpen?: boolean;
 	description?: string;
 }
 interface MinimalField {
@@ -43,6 +45,8 @@ interface MinimalField {
 	format?: string;
 	required?: boolean;
 	enum?: (string | number)[];
+	enumLabels?: Record<string, string>;
+	enumOpen?: boolean;
 	description?: string;
 	properties?: MinimalField[];
 	items?: { type?: string; properties?: MinimalField[] };
@@ -51,12 +55,27 @@ interface MinimalRequestBody {
 	required?: string[];
 	properties: MinimalField[];
 }
+interface MinimalVariant {
+	title: string;
+	required?: string[];
+	properties: MinimalField[];
+}
+interface MinimalResponseField {
+	name: string;
+	type?: string;
+	description?: string;
+	enumLabels?: Record<string, string>;
+	properties?: MinimalResponseField[];
+}
 interface MinimalOperation {
 	summary: string;
 	parameters?: MinimalParameter[];
 	requestBody?: MinimalRequestBody;
+	variants?: MinimalVariant[];
+	responseFields?: MinimalResponseField[];
 }
 interface MinimalSchema {
+	schemaVersion: number;
 	version: string;
 	paths: Record<string, Record<string, MinimalOperation>>;
 }
@@ -88,11 +107,56 @@ function resolveRef(node: Json, seen: Set<string>): Json {
 	return current;
 }
 
-function cleanDescription(desc: unknown): string | undefined {
-	if (typeof desc !== "string") return undefined;
-	const collapsed = desc.replace(/\s+/g, " ").trim();
-	if (!collapsed) return undefined;
-	return collapsed.length > DESC_MAX ? `${collapsed.slice(0, DESC_MAX)}…` : collapsed;
+interface ParsedDescription {
+	description?: string;
+	enum?: (string | number)[];
+	enumLabels?: Record<string, string>;
+	/** enum が「既知の値の列挙」でしかなく、カスタム ID 等も許される (説明文が「…のID」)。 */
+	enumOpen?: boolean;
+}
+
+// 公式 spec の説明文に含まれる、MCP 経由では無意味・有害な注記
+const URL_ENCODE_NOTE =
+	/※例にはURLエンコード前の値が記載されていますが、?送信する際はURLエンコードしてください。?/g;
+const COMMA_NOTE = /※複数の場合はカンマ区切り/g;
+// 「- 1：未請求 - 4：請求OK …」形式の列挙 (値は数値または英字、ラベルは次の箇条書きか「※」か末尾まで)。
+// 終端に「任意の箇条書きの開始 (空白 - 空白)」を含めるのは、公式説明が
+// 「- 5：メール(添付)+郵送 - または[カスタム…]のID」のように番号なしの項目で続くため (B3)。
+const ENUM_ITEM =
+	/-\s*([0-9]+|[A-Za-z_]+)：\s*([^-※]+?)(?=\s*-\s*(?:[0-9]+|[A-Za-z_]+)：|\s*-\s|\s*※|\s*$)/g;
+// 「＊10・8・5・0のいずれか」形式 (v1.9.0 で enum が説明文に退化した税率)
+const DOTTED_ENUM = /＊((?:\d+・)+\d+)のいずれか/;
+
+/**
+ * 説明文を整形し、列挙があれば enum / enumLabels に構造化する。
+ * - URL エンコード注記を除去、「カンマ区切り」を配列指定の注記に置換
+ * - 「- 値：ラベル」が 2 個以上あれば enum 化して説明文から除く
+ * - 「＊10・8・5・0のいずれか」は enum を復元 (説明文は残す)
+ * - 列挙に加えて「…のID」も許す説明 (カスタム ID) は enumOpen を立てる
+ * - 空白を畳んで DESC_MAX で切り詰め
+ */
+export function parseDescription(desc: unknown): ParsedDescription {
+	if (typeof desc !== "string") return {};
+	let text = desc.replace(/\s+/g, " ").trim();
+	if (!text) return {};
+	text = text.replace(URL_ENCODE_NOTE, "").replace(COMMA_NOTE, "※複数指定は配列で渡す");
+	const result: ParsedDescription = {};
+	const items = [...text.matchAll(ENUM_ITEM)];
+	if (items.length >= 2) {
+		result.enum = items.map((m) => (/^[0-9]+$/.test(m[1]) ? Number(m[1]) : m[1]));
+		result.enumLabels = Object.fromEntries(items.map((m) => [m[1], m[2].trim()]));
+		text = text.replace(ENUM_ITEM, "");
+	} else {
+		const dotted = text.match(DOTTED_ENUM);
+		if (dotted) result.enum = dotted[1].split("・").map(Number);
+	}
+	// 列挙のほかに「[カスタム…]のID」も受け付ける説明は、enum を閉じた集合として扱えない (B3)
+	if (result.enum && /のID/.test(desc)) result.enumOpen = true;
+	text = text.replace(/\s+/g, " ").trim();
+	if (text) {
+		result.description = text.length > DESC_MAX ? `${text.slice(0, DESC_MAX)}…` : text;
+	}
+	return result;
 }
 
 const MAX_FLATTEN_DEPTH = 50;
@@ -170,12 +234,19 @@ export function toFields(schema: Json, seen: Set<string>, depth: number): Minima
 		// format (date / date-time / int32 等) は describe で AI が値の形を掴むのに有用
 		if (typeof prop.format === "string") field.format = prop.format;
 		if (requiredSet.has(name)) field.required = true;
-		if (Array.isArray(prop.enum)) field.enum = prop.enum;
-		const desc = cleanDescription(prop.description);
-		if (desc) field.description = desc;
-		// type 文字列を省く spec もあるため、items/properties の有無で配列/オブジェクトを判定する
+		const parsed = parseDescription(prop.description);
+		if (Array.isArray(prop.enum)) {
+			field.enum = prop.enum;
+		} else if (parsed.enum) {
+			field.enum = parsed.enum;
+		}
+		if (parsed.enumLabels) field.enumLabels = parsed.enumLabels;
+		if (parsed.enumOpen && field.enum) field.enumOpen = true;
+		if (parsed.description) field.description = parsed.description;
+		// 公式 spec の矛盾 (type=string に items が付く invoice_date) は items を無視する
+		const hasItems = prop.items && field.type !== "string";
 		if (depth < MAX_DEPTH) {
-			if (prop.items) {
+			if (hasItems) {
 				const itemFlat = flatten(prop.items, seen);
 				const item: { type?: string; properties?: MinimalField[] } = {};
 				if (itemFlat.type) item.type = itemFlat.type;
@@ -192,7 +263,7 @@ export function toFields(schema: Json, seen: Set<string>, depth: number): Minima
 	return fields;
 }
 
-function extractParameters(op: Json): MinimalParameter[] | undefined {
+export function extractParameters(op: Json): MinimalParameter[] | undefined {
 	const params = Array.isArray(op.parameters) ? op.parameters : [];
 	const result: MinimalParameter[] = [];
 	for (const raw of params) {
@@ -203,26 +274,138 @@ function extractParameters(op: Json): MinimalParameter[] | undefined {
 			required: !!p.required,
 			type: p.schema?.type ?? "string",
 		};
-		if (Array.isArray(p.schema?.enum)) param.enum = p.schema.enum;
-		const desc = cleanDescription(p.description);
-		if (desc) param.description = desc;
+		const parsed = parseDescription(p.description);
+		if (Array.isArray(p.schema?.enum)) {
+			param.enum = p.schema.enum;
+		} else if (parsed.enum) {
+			param.enum = parsed.enum;
+		}
+		if (parsed.enumLabels) param.enumLabels = parsed.enumLabels;
+		if (parsed.enumOpen && param.enum) param.enumOpen = true;
+		if (parsed.description) param.description = parsed.description;
 		result.push(param);
 	}
 	return result.length > 0 ? result : undefined;
 }
 
-export function extractRequestBody(op: Json): MinimalRequestBody | undefined {
-	const schema = op.requestBody?.content?.["application/json"]?.schema;
-	if (!schema) return undefined;
-	const properties = toFields(schema, new Set(), 0);
-	if (properties.length === 0) return undefined;
+/** ノード自身か、その allOf 部品のどれかが持つ title を返す (公式 spec は title を allOf の内側に置く)。 */
+function nodeTitle(node: Json, seen: Set<string>, depth = 0): string | undefined {
+	if (depth > MAX_FLATTEN_DEPTH) return undefined;
+	const path = new Set(seen);
+	const resolved = resolveRef(node, path);
+	if (!resolved || typeof resolved !== "object") return undefined;
+	if (typeof resolved.title === "string" && resolved.title.trim()) return resolved.title.trim();
+	if (Array.isArray(resolved.allOf)) {
+		for (const part of resolved.allOf) {
+			const t = nodeTitle(part, path, depth + 1);
+			if (t) return t;
+		}
+	}
+	return undefined;
+}
+
+const COMMON_TITLE = "共通";
+
+/**
+ * anyOf/oneOf の全分岐が title を持つとき、「共通」分岐と variant 分岐に分ける。
+ * 1 つでも title の無い分岐があれば null (flatten の union にフォールバック)。
+ */
+export function splitVariants(
+	schema: Json,
+): { common: Json | null; variants: { title: string; schema: Json }[] } | null {
+	const resolved = resolveRef(schema, new Set());
+	const branches = resolved?.anyOf ?? resolved?.oneOf;
+	if (!Array.isArray(branches) || branches.length < 2) return null;
+	const titled = branches.map((b: Json) => ({ title: nodeTitle(b, new Set()), schema: b }));
+	if (titled.some((t) => !t.title)) return null;
+	const common = titled.find((t) => t.title === COMMON_TITLE)?.schema ?? null;
+	const variants = titled
+		.filter((t) => t.title !== COMMON_TITLE)
+		.map((t) => ({ title: t.title as string, schema: t.schema }));
+	return { common, variants };
+}
+
+function requiredOf(schema: Json, properties: MinimalField[]): string[] {
 	const flat = flatten(schema, new Set());
-	const required = Array.isArray(flat.required)
+	return Array.isArray(flat.required)
 		? flat.required.filter((r: string) => properties.some((p) => p.name === r))
 		: [];
+}
+
+function bodySchemaOf(op: Json): Json {
+	return op.requestBody?.content?.["application/json"]?.schema;
+}
+
+export function extractVariants(op: Json): MinimalVariant[] | undefined {
+	const schema = bodySchemaOf(op);
+	if (!schema) return undefined;
+	const split = splitVariants(schema);
+	if (!split || split.variants.length === 0) return undefined;
+	const result: MinimalVariant[] = [];
+	for (const v of split.variants) {
+		const properties = toFields(v.schema, new Set(), 0);
+		const variant: MinimalVariant = { title: v.title, properties };
+		const required = requiredOf(v.schema, properties);
+		if (required.length > 0) variant.required = required;
+		result.push(variant);
+	}
+	return result;
+}
+
+export function extractRequestBody(op: Json): MinimalRequestBody | undefined {
+	const schema = bodySchemaOf(op);
+	if (!schema) return undefined;
+	// title 付き分岐は共通部分のみをここに載せ、variant 固有部分は extractVariants に任せる
+	const split = splitVariants(schema);
+	const source = split ? split.common : schema;
+	if (!source) return undefined;
+	const properties = toFields(source, new Set(), 0);
+	if (properties.length === 0) return undefined;
+	const required = requiredOf(source, properties);
 	const body: MinimalRequestBody = { properties };
 	if (required.length > 0) body.required = required;
 	return body;
+}
+
+const RESPONSE_DESC_MAX = 60;
+const RESPONSE_MAX_DEPTH = 1;
+
+function toResponseFields(flat: Json, depth: number): MinimalResponseField[] {
+	const props = flat?.properties as Record<string, Json> | undefined;
+	if (!props) return [];
+	const out: MinimalResponseField[] = [];
+	for (const [name, raw] of Object.entries(props)) {
+		const prop = flatten(raw, new Set());
+		const field: MinimalResponseField = { name };
+		if (prop.type) field.type = prop.type;
+		else if (prop.items) field.type = "array";
+		else if (prop.properties) field.type = "object";
+		const parsed = parseDescription(prop.description);
+		if (parsed.description) {
+			field.description =
+				parsed.description.length > RESPONSE_DESC_MAX
+					? `${parsed.description.slice(0, RESPONSE_DESC_MAX)}…`
+					: parsed.description;
+		}
+		if (parsed.enumLabels) field.enumLabels = parsed.enumLabels;
+		if (depth < RESPONSE_MAX_DEPTH) {
+			const nestedSource = prop.items ? flatten(prop.items, new Set()) : prop;
+			const nested = toResponseFields(nestedSource, depth + 1);
+			if (nested.length > 0) field.properties = nested;
+		}
+		out.push(field);
+	}
+	return out;
+}
+
+/** 200 応答 (application/json) のフィールドを名前・型・説明で抽出する。配列応答は items を対象にする。 */
+export function extractResponseFields(op: Json): MinimalResponseField[] | undefined {
+	const schema = op.responses?.["200"]?.content?.["application/json"]?.schema;
+	if (!schema) return undefined;
+	let flat = flatten(schema, new Set());
+	if (flat.type === "array" && flat.items) flat = flatten(flat.items, new Set());
+	const fields = toResponseFields(flat, 0);
+	return fields.length > 0 ? fields : undefined;
 }
 
 async function loadSpec(inputPath?: string): Promise<Json> {
@@ -237,6 +420,7 @@ async function main() {
 	const paths = spec.paths ?? {};
 
 	const minimal: MinimalSchema = {
+		schemaVersion: 2,
 		version: spec.info?.version ?? "unknown",
 		paths: {},
 	};
@@ -252,6 +436,10 @@ async function main() {
 			if (parameters) entry.parameters = parameters;
 			const requestBody = extractRequestBody(op);
 			if (requestBody) entry.requestBody = requestBody;
+			const variants = extractVariants(op);
+			if (variants) entry.variants = variants;
+			const responseFields = extractResponseFields(op);
+			if (responseFields) entry.responseFields = responseFields;
 			minimal.paths[normalizedPath][method.toUpperCase()] = entry;
 		}
 	}

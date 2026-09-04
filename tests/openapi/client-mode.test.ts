@@ -10,6 +10,7 @@ import {
 	handleListPaths,
 	handlePatch,
 	handlePost,
+	handleValidateWrite,
 } from "../../src/openapi/client-mode.js";
 import { loadSchema } from "../../src/openapi/schema-loader.js";
 import type { MinimalSchema } from "../../src/openapi/types.js";
@@ -61,7 +62,7 @@ afterAll(() => {
 // ---------------------------------------------------------------------------
 describe("handleListPaths", () => {
 	it("引数なしで全エンドポイントを返す", () => {
-		const result = handleListPaths({}, makeConfig(), schema);
+		const result = handleListPaths({ detail: true }, makeConfig(), schema);
 		expect(result.content[0].type).toBe("text");
 		const text = result.content[0].text as string;
 		const parsed = JSON.parse(text);
@@ -73,33 +74,50 @@ describe("handleListPaths", () => {
 	});
 
 	it("method='GET' で GET のみフィルタ", () => {
-		const result = handleListPaths({ method: "GET" }, makeConfig(), schema);
+		const result = handleListPaths({ method: "GET", detail: true }, makeConfig(), schema);
 		const parsed = JSON.parse(result.content[0].text as string);
 		expect(parsed.every((e: { method: string }) => e.method === "GET")).toBe(true);
 	});
 
-	it("keyword='client' でパス/summaryに 'client' を含むもの", () => {
-		const result = handleListPaths({ keyword: "client" }, makeConfig(), schema);
+	it("keyword='client' でパス/summary/別名/パラメータ名に 'client' を含むもの", () => {
+		// keyword は path/summary/aliases/parameter 名を横断して検索するため (Task 8 の仕様)、
+		// client_id_eq 等のパラメータ名一致もヒットしうる。
+		const result = handleListPaths({ keyword: "client", detail: true }, makeConfig(), schema);
 		const parsed = JSON.parse(result.content[0].text as string);
 		expect(parsed.length).toBeGreaterThan(0);
 		expect(
 			parsed.every(
-				(e: { path: string; summary: string }) =>
+				(e: {
+					path: string;
+					summary: string;
+					aliases: string[];
+					parameters?: { name: string }[];
+				}) =>
 					e.path.toLowerCase().includes("client") ||
 					e.summary.toLowerCase().includes("client") ||
-					e.summary.includes("顧客"),
+					e.summary.includes("顧客") ||
+					e.aliases.some((a) => a.toLowerCase().includes("client")) ||
+					(e.parameters ?? []).some((p) => p.name.toLowerCase().includes("client")),
 			),
 		).toBe(true);
 	});
 
 	it("method + keyword の組み合わせ", () => {
-		const result = handleListPaths({ method: "POST", keyword: "client" }, makeConfig(), schema);
+		const result = handleListPaths(
+			{ method: "POST", keyword: "client", detail: true },
+			makeConfig(),
+			schema,
+		);
 		const parsed = JSON.parse(result.content[0].text as string);
 		expect(parsed.every((e: { method: string }) => e.method === "POST")).toBe(true);
 	});
 
 	it("toolsets で有効ドメインのみに絞る (--toolsets projects)", () => {
-		const result = handleListPaths({}, makeConfig({ toolsets: ["projects"] }), schema);
+		const result = handleListPaths(
+			{ detail: true },
+			makeConfig({ toolsets: ["projects"] }),
+			schema,
+		);
 		const parsed = JSON.parse(result.content[0].text as string);
 		expect(parsed.length).toBeGreaterThan(0);
 		// projects ドメイン (/v1/projects*, /v1/project_costs*) のパスのみ
@@ -121,7 +139,11 @@ describe("handleListPaths", () => {
 	});
 
 	it("parameters を持つエンドポイントは出力に parameters を含む (B1-3)", () => {
-		const result = handleListPaths({ method: "GET", keyword: "projects" }, makeConfig(), schema);
+		const result = handleListPaths(
+			{ method: "GET", keyword: "projects", detail: true },
+			makeConfig(),
+			schema,
+		);
 		const parsed = JSON.parse(result.content[0].text as string);
 		const projects = parsed.find(
 			(e: { path: string; method: string }) => e.path === "/v1/projects" && e.method === "GET",
@@ -132,7 +154,11 @@ describe("handleListPaths", () => {
 	});
 
 	it("parameters を持たないエンドポイントには parameters を付けない (B1-3)", () => {
-		const result = handleListPaths({ method: "POST", keyword: "client" }, makeConfig(), schema);
+		const result = handleListPaths(
+			{ method: "POST", keyword: "client", detail: true },
+			makeConfig(),
+			schema,
+		);
 		const parsed = JSON.parse(result.content[0].text as string);
 		const post = parsed.find((e: { path: string }) => e.path === "/v1/clients");
 		expect(post).toBeDefined();
@@ -141,7 +167,11 @@ describe("handleListPaths", () => {
 
 	it("list_paths のパラメータは軽量で enum/description を含めない (B1-3 lean)", () => {
 		// 詳細(enum/説明)は describe で取得する。discovery 出力は軽量に保つ。
-		const result = handleListPaths({ method: "GET", keyword: "projects" }, makeConfig(), schema);
+		const result = handleListPaths(
+			{ method: "GET", keyword: "projects", detail: true },
+			makeConfig(),
+			schema,
+		);
 		const parsed = JSON.parse(result.content[0].text as string);
 		const projects = parsed.find(
 			(e: { path: string; method: string }) => e.path === "/v1/projects" && e.method === "GET",
@@ -150,6 +180,51 @@ describe("handleListPaths", () => {
 		expect(rg.type).toBe("string");
 		expect(rg.enum).toBeUndefined();
 		expect(rg.description).toBeUndefined();
+	});
+
+	it("既定は 1 行 1 endpoint のテキストで、別名を角括弧で付ける", () => {
+		const result = handleListPaths({}, makeConfig(), schema);
+		const text = result.content[0].text as string;
+		expect(text.startsWith("{") || text.startsWith("[")).toBe(false);
+		const lines = text.split("\n");
+		expect(lines.length).toBeGreaterThan(80);
+		expect(lines.find((l) => l.startsWith("GET /v1/analyses "))).toMatch(/\[.*sales.*\]/);
+	});
+
+	it("英語の別名で検索できる", () => {
+		const text = handleListPaths({ keyword: "sales" }, makeConfig(), schema).content[0]
+			.text as string;
+		expect(text).toContain("/v1/analyses");
+		expect(text).not.toContain("/v1/clients");
+	});
+
+	it("パラメータ名でも検索できる", () => {
+		const text = handleListPaths({ keyword: "project_no_eq" }, makeConfig(), schema).content[0]
+			.text as string;
+		expect(text).toContain("GET /v1/projects ");
+	});
+
+	it("空白区切りの複数語は OR", () => {
+		const text = handleListPaths({ keyword: "sales contact" }, makeConfig(), schema).content[0]
+			.text as string;
+		expect(text).toContain("/v1/analyses");
+		expect(text).toContain("/v1/contacts");
+	});
+
+	it("該当なしのときは案内文", () => {
+		const text = handleListPaths({ keyword: "zzzz" }, makeConfig(), schema).content[0]
+			.text as string;
+		expect(text).toContain("該当する endpoint はありません");
+	});
+
+	it("detail=true は enum を短縮表記で含む JSON", () => {
+		const parsed = JSON.parse(
+			handleListPaths({ keyword: "invoices", method: "GET", detail: true }, makeConfig(), schema)
+				.content[0].text as string,
+		);
+		const inv = parsed.find((e: { path: string }) => e.path === "/v1/invoices");
+		const status = inv.parameters.find((p: { name: string }) => p.name === "invoice_status_in[]");
+		expect(status.values).toContain("1:未請求");
 	});
 });
 
@@ -201,6 +276,140 @@ describe("handleDescribe", () => {
 		);
 		expect(result.isError).toBe(true);
 	});
+
+	it("variant 未指定なら共通フィールドと variant の一覧 (title / required / fields) を返す", () => {
+		const parsed = JSON.parse(
+			handleDescribe({ path: "/v1/projects", method: "POST" }, makeConfig(), schema).content[0]
+				.text as string,
+		);
+		expect(parsed.requestBody.properties.map((p: { name: string }) => p.name)).toContain("name");
+		expect(parsed.variants.map((v: { title: string }) => v.title)).toEqual([
+			"一括請求",
+			"定期請求",
+			"分割請求",
+		]);
+		expect(parsed.variants[0].fields).toContain("invoice_date");
+		expect(parsed.variants[0]).not.toHaveProperty("properties");
+		expect(parsed.notice).toContain("variant");
+		expect(parsed).not.toHaveProperty("responseFields");
+	});
+
+	it("variant 指定なら当該分岐のフィールド定義を返し variants 一覧は出さない", () => {
+		const parsed = JSON.parse(
+			handleDescribe(
+				{ path: "/v1/projects", method: "POST", variant: "一括請求" },
+				makeConfig(),
+				schema,
+			).content[0].text as string,
+		);
+		expect(parsed.variant.title).toBe("一括請求");
+		expect(parsed.variant.properties.map((p: { name: string }) => p.name)).toContain(
+			"invoice_date",
+		);
+		expect(parsed).not.toHaveProperty("variants");
+	});
+
+	it("存在しない variant は候補付きでエラー", () => {
+		const result = handleDescribe(
+			{ path: "/v1/projects", method: "POST", variant: "月次" },
+			makeConfig(),
+			schema,
+		);
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toContain("一括請求");
+	});
+
+	it("variant を持たない endpoint に variant を渡すとエラー", () => {
+		const result = handleDescribe(
+			{ path: "/v1/clients", method: "POST", variant: "存在しない" },
+			makeConfig(),
+			schema,
+		);
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toContain("variant はありません");
+	});
+
+	it("part=response と存在しない variant の組み合わせもエラーになる (variant は無視されない)", () => {
+		const result = handleDescribe(
+			{ path: "/v1/projects", method: "POST", variant: "月次", part: "response" },
+			makeConfig(),
+			schema,
+		);
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toContain("一括請求");
+	});
+
+	it("part=response は responseFields だけを返す", () => {
+		const parsed = JSON.parse(
+			handleDescribe(
+				{ path: "/v1/projects", method: "GET", part: "response" },
+				makeConfig(),
+				schema,
+			).content[0].text as string,
+		);
+		expect(parsed).not.toHaveProperty("parameters");
+		const total = parsed.responseFields.find((f: { name: string }) => f.name === "total");
+		expect(total.description).toContain("税抜");
+	});
+
+	it("part=all は両方を返す", () => {
+		const parsed = JSON.parse(
+			handleDescribe({ path: "/v1/invoices", method: "GET", part: "all" }, makeConfig(), schema)
+				.content[0].text as string,
+		);
+		expect(parsed.parameters).toBeDefined();
+		expect(parsed.responseFields).toBeDefined();
+	});
+
+	it("enum を持つパラメータは enumLabels 付きで返す", () => {
+		const parsed = JSON.parse(
+			handleDescribe({ path: "/v1/invoices", method: "GET" }, makeConfig(), schema).content[0]
+				.text as string,
+		);
+		const status = parsed.parameters.find(
+			(p: { name: string }) => p.name === "invoice_status_in[]",
+		);
+		expect(status.enumLabels["1"]).toBe("未請求");
+		expect(status.description).not.toContain("URLエンコード");
+	});
+	it("上限を超えたら responseFields のネストを落として notice を付ける", () => {
+		vi.stubEnv("THE_BOARD_MAX_RESPONSE_CHARS", "3000");
+		const parsed = JSON.parse(
+			handleDescribe(
+				{ path: "/v1/projects", method: "GET", part: "response" },
+				makeConfig(),
+				schema,
+			).content[0].text as string,
+		);
+		expect(
+			parsed.responseFields.some((f: { properties?: unknown }) => f.properties !== undefined),
+		).toBe(false);
+		expect(parsed.notice).toContain("ネスト");
+	});
+
+	it("上限内なら responseFields のネストをそのまま返す (notice なし)", () => {
+		const parsed = JSON.parse(
+			handleDescribe(
+				{ path: "/v1/invoices", method: "GET", part: "response" },
+				makeConfig(),
+				schema,
+			).content[0].text as string,
+		);
+		expect(
+			parsed.responseFields.some((f: { properties?: unknown }) => f.properties !== undefined),
+		).toBe(true);
+		expect(parsed).not.toHaveProperty("notice");
+	});
+
+	it("variant 指定時は variant を requestBody より前に出す", () => {
+		const text = handleDescribe(
+			{ path: "/v1/projects", method: "POST", variant: "一括請求" },
+			makeConfig(),
+			schema,
+		).content[0].text as string;
+		expect(text.indexOf('"variant"')).toBeGreaterThan(-1);
+		expect(text.indexOf('"variant"')).toBeLessThan(text.indexOf('"requestBody"'));
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -219,7 +428,7 @@ describe("handleGet", () => {
 		expect(result.content[0].text).toContain('"id"');
 	});
 
-	it("リスト GET はページネーションヒントを別 content で返す (B2-5)", async () => {
+	it("リスト GET は envelope の pagination にページネーション情報を含む (B2-5)", async () => {
 		mswServer.use(
 			http.get(`${TEST_BASE_URL}/v1/clients`, () =>
 				HttpResponse.json([{ id: 1 }], {
@@ -229,10 +438,10 @@ describe("handleGet", () => {
 		);
 		const result = await handleGet({ path: "/v1/clients" }, makeConfig(), schema);
 		expect(result.isError).toBeUndefined();
-		const text = result.content.map((c) => c.text).join("\n");
-		expect(text).toContain('"id"'); // 本体は維持
-		expect(text).toContain("57"); // 総件数
-		expect(text).toContain("page");
+		const parsed = JSON.parse(result.content[0].text as string);
+		expect(parsed.data).toEqual([{ id: 1 }]); // 本体は維持
+		expect(parsed.pagination.total_count).toBe(57);
+		expect(parsed.pagination.page).toBe(1);
 	});
 
 	it("query オブジェクト渡し", async () => {
@@ -245,6 +454,62 @@ describe("handleGet", () => {
 		);
 		const config = makeConfig();
 		await handleGet({ path: "/v1/projects", query: { page: 1 } }, config, schema);
+	});
+
+	it("query に紛れ込んだ fields はツール引数として吸収し、query からは取り除く", async () => {
+		mswServer.use(
+			http.get(`${TEST_BASE_URL}/v1/projects`, ({ request }) => {
+				const url = new URL(request.url);
+				expect(url.searchParams.has("fields")).toBe(false);
+				return HttpResponse.json([{ id: 1, name: "a" }]);
+			}),
+		);
+		const result = await handleGet(
+			{ path: "/v1/projects", query: { per_page: 1, fields: "id" } },
+			makeConfig(),
+			schema,
+		);
+		expect(result.isError).toBeUndefined();
+		const parsed = JSON.parse(result.content[0].text as string);
+		expect(parsed.data).toEqual([{ id: 1 }]);
+	});
+
+	it("fields はツール引数と query の双方にあってもツール引数を優先し query から除く (C1)", async () => {
+		mswServer.use(
+			http.get(`${TEST_BASE_URL}/v1/projects`, ({ request }) => {
+				const url = new URL(request.url);
+				expect(url.searchParams.has("fields")).toBe(false);
+				return HttpResponse.json([{ id: 1, name: "a" }]);
+			}),
+		);
+		const result = await handleGet(
+			{ path: "/v1/projects", query: { per_page: 1, fields: "name" }, fields: "id" },
+			makeConfig(),
+			schema,
+		);
+		expect(result.isError).toBeUndefined();
+		const parsed = JSON.parse(result.content[0].text as string);
+		expect(parsed.data).toEqual([{ id: 1 }]);
+	});
+
+	it("query から吸収した format が不正なら API を呼ばずに拒否する (C5)", async () => {
+		const result = await handleGet(
+			{ path: "/v1/projects", query: { format: "detaield" } },
+			makeConfig(),
+			schema,
+		);
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toContain("concise");
+	});
+
+	it("query から吸収した fields が string / string[] でなければ拒否する (C5)", async () => {
+		const result = await handleGet(
+			{ path: "/v1/projects", query: { fields: {} } },
+			makeConfig(),
+			schema,
+		);
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toContain("fields");
 	});
 
 	it("無効パス → エラーレスポンス", async () => {
@@ -356,6 +621,161 @@ describe("handleGet", () => {
 		);
 		expect(result.isError).toBe(true);
 	});
+
+	it("enum 外の query 値は API を呼ばずに拒否する", async () => {
+		const result = await handleGet(
+			{ path: "/v1/invoices", query: { "invoice_status_in[]": ["7"] } },
+			makeConfig(),
+			schema,
+		);
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toContain("未請求");
+	});
+
+	it("per_page > 100 は API を呼ばずに拒否する", async () => {
+		const result = await handleGet(
+			{ path: "/v1/projects", query: { per_page: 1000 } },
+			makeConfig(),
+			schema,
+		);
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toContain("100");
+	});
+
+	it("既定 (concise) は compact JSON で null キーを省き、0 / false / 空配列は残す", async () => {
+		mswServer.use(
+			http.get(`${TEST_BASE_URL}/v1/clients`, () =>
+				HttpResponse.json([{ id: 1, fax: null, count: 0, flag: false, tags: [] }], {
+					headers: { "X-Total-Count": "1", "X-Page": "1", "X-Per-Page": "10" },
+				}),
+			),
+		);
+		const result = await handleGet({ path: "/v1/clients" }, makeConfig(), schema);
+		const text = result.content[0].text as string;
+		expect(text).not.toContain("\n");
+		expect(JSON.parse(text)).toEqual({
+			data: [{ id: 1, count: 0, flag: false, tags: [] }],
+			pagination: { total_count: 1, page: 1, per_page: 10, returned_count: 1, has_more: false },
+			truncated: false,
+		});
+	});
+
+	it("format=detailed は pretty JSON で null を残す", async () => {
+		mswServer.use(
+			http.get(`${TEST_BASE_URL}/v1/clients/1`, () => HttpResponse.json({ id: 1, fax: null })),
+		);
+		const result = await handleGet(
+			{ path: "/v1/clients/1", format: "detailed" },
+			makeConfig(),
+			schema,
+		);
+		const text = result.content[0].text as string;
+		expect(text).toContain("\n");
+		expect(JSON.parse(text)).toEqual({ data: { id: 1, fax: null } });
+	});
+
+	it("fields で絞り込み、未知のキーは unknown_fields に載せる", async () => {
+		mswServer.use(
+			http.get(`${TEST_BASE_URL}/v1/projects`, () =>
+				HttpResponse.json([{ id: 1, name: "a", client: { id: 2, name: "c" }, total: "1.0" }], {
+					headers: { "X-Total-Count": "1" },
+				}),
+			),
+		);
+		const result = await handleGet(
+			{ path: "/v1/projects", fields: "id,client.name,nope" },
+			makeConfig(),
+			schema,
+		);
+		const parsed = JSON.parse(result.content[0].text as string);
+		expect(parsed.data).toEqual([{ id: 1, client: { name: "c" } }]);
+		expect(parsed.unknown_fields).toEqual(["nope"]);
+	});
+
+	it("上限超過時はレコード単位で切り詰め truncated=true", async () => {
+		vi.stubEnv("THE_BOARD_MAX_RESPONSE_CHARS", "400");
+		mswServer.use(
+			http.get(`${TEST_BASE_URL}/v1/projects`, () =>
+				HttpResponse.json(
+					Array.from({ length: 10 }, (_, i) => ({ id: i, name: "x".repeat(60) })),
+					{ headers: { "X-Total-Count": "10", "X-Page": "1", "X-Per-Page": "10" } },
+				),
+			),
+		);
+		const result = await handleGet({ path: "/v1/projects" }, makeConfig(), schema);
+		const parsed = JSON.parse(result.content[0].text as string);
+		expect(parsed.truncated).toBe(true);
+		expect(parsed.data.length).toBeLessThan(10);
+		expect(parsed.data.length + parsed.dropped_in_page).toBe(10);
+	});
+
+	it("0 件のとき request を echo する", async () => {
+		mswServer.use(
+			http.get(`${TEST_BASE_URL}/v1/projects`, () =>
+				HttpResponse.json([], {
+					headers: { "X-Total-Count": "0", "X-Page": "1", "X-Per-Page": "10" },
+				}),
+			),
+		);
+		const result = await handleGet(
+			{ path: "/v1/projects", query: { name_cont: "zzz" } },
+			makeConfig(),
+			schema,
+		);
+		const parsed = JSON.parse(result.content[0].text as string);
+		expect(parsed.data).toEqual([]);
+		expect(parsed.request).toEqual({ path: "/v1/projects", query: { name_cont: "zzz" } });
+		expect(parsed.validated).toBe(true);
+	});
+
+	it("0 件応答の request echo に資格情報を残さない (A1)", async () => {
+		vi.stubEnv("THE_BOARD_API_TOKEN", "tok-secret-123");
+		mswServer.use(
+			http.get(`${TEST_BASE_URL}/v1/projects`, () =>
+				HttpResponse.json([], {
+					headers: { "X-Total-Count": "0", "X-Page": "1", "X-Per-Page": "10" },
+				}),
+			),
+		);
+		const result = await handleGet(
+			{ path: "/v1/projects", query: { name_cont: "tok-secret-123" } },
+			makeConfig(),
+			schema,
+		);
+		const text = result.content[0].text as string;
+		expect(text).not.toContain("tok-secret-123");
+		expect(text).toContain("[REDACTED_TOKEN]");
+	});
+
+	it("query 値の検証エラーに資格情報を残さない (A1)", async () => {
+		vi.stubEnv("THE_BOARD_API_TOKEN", "tok-secret-123");
+		const result = await handleGet(
+			{ path: "/v1/projects", query: { per_page: "tok-secret-123" } },
+			makeConfig(),
+			schema,
+		);
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).not.toContain("tok-secret-123");
+	});
+
+	it("0 件のとき fields を指定しても unknown_fields を載せない", async () => {
+		mswServer.use(
+			http.get(`${TEST_BASE_URL}/v1/projects`, () =>
+				HttpResponse.json([], {
+					headers: { "X-Total-Count": "0", "X-Page": "1", "X-Per-Page": "10" },
+				}),
+			),
+		);
+		const result = await handleGet(
+			{ path: "/v1/projects", fields: "id,name" },
+			makeConfig(),
+			schema,
+		);
+		const parsed = JSON.parse(result.content[0].text as string);
+		expect(parsed.data).toEqual([]);
+		expect(parsed.validated).toBe(true);
+		expect(parsed).not.toHaveProperty("unknown_fields");
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -370,7 +790,7 @@ describe("handlePost", () => {
 		);
 		const config = makeConfig({ readOnly: false, enableWrites: true });
 		const result = await handlePost(
-			{ path: "/v1/clients", body: { name: "Test" } },
+			{ path: "/v1/clients", body: { name: "Test", name_disp: "Test" } },
 			config,
 			schema,
 		);
@@ -417,6 +837,56 @@ describe("handlePost", () => {
 		const config = makeConfig({ readOnly: false, enableWrites: true });
 		const result = await handlePost({ path: "/v1/nonexistent", body: {} }, config, schema);
 		expect(result.isError).toBe(true);
+	});
+
+	it("送信前検証で不正なら API を呼ばずに拒否する", async () => {
+		const result = await handlePost(
+			{ path: "/v1/clients", body: {} },
+			makeConfig({ readOnly: false, enableWrites: true }),
+			schema,
+		);
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toContain("API は呼び出していません");
+	});
+
+	it("スキーマに無いキーは warning を添えて送信する", async () => {
+		mswServer.use(
+			http.post(`${TEST_BASE_URL}/v1/clients`, () => HttpResponse.json({ id: 1 }, { status: 201 })),
+		);
+		const result = await handlePost(
+			{ path: "/v1/clients", body: { name: "a", name_disp: "a", extra_key: 1 } },
+			makeConfig({ readOnly: false, enableWrites: true }),
+			schema,
+		);
+		expect(result.isError).toBeFalsy();
+		expect(
+			result.content.some((c) => c.type === "text" && (c.text as string).includes("extra_key")),
+		).toBe(true);
+	});
+
+	it("skip_validation=true なら検証を省略してそのまま送信する", async () => {
+		mswServer.use(
+			http.post(`${TEST_BASE_URL}/v1/clients`, () => HttpResponse.json({ id: 1 }, { status: 201 })),
+		);
+		const result = await handlePost(
+			{ path: "/v1/clients", body: { name: "x" }, skip_validation: true },
+			makeConfig({ readOnly: false, enableWrites: true }),
+			schema,
+		);
+		expect(result.isError).toBeFalsy();
+		expect(
+			result.content.some((c) => c.type === "text" && (c.text as string).includes("注意:")),
+		).toBe(false);
+	});
+
+	it("skip_validation なしの同じ body は送信前に拒否される", async () => {
+		const result = await handlePost(
+			{ path: "/v1/clients", body: { name: "x" } },
+			makeConfig({ readOnly: false, enableWrites: true }),
+			schema,
+		);
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toContain("API は呼び出していません");
 	});
 });
 
@@ -476,6 +946,22 @@ describe("handlePatch", () => {
 		expect(text).toContain("自動集計");
 	});
 
+	it('明細あり・total が "0.0" の文書 PATCH も警告を返す (C1)', async () => {
+		mswServer.use(
+			http.patch(`${TEST_BASE_URL}/v1/documents/estimates/1`, () => HttpResponse.json({ id: 1 })),
+		);
+		const config = makeConfig({ readOnly: false, enableWrites: true });
+		for (const total of ["0.0", "0", 0]) {
+			const result = await handlePatch(
+				{ path: "/v1/documents/estimates/1", body: { details: [{ price: 1000 }], total } },
+				config,
+				schema,
+			);
+			const text = result.content.map((c) => c.text).join("\n");
+			expect(text, `total=${JSON.stringify(total)}`).toContain("自動集計");
+		}
+	});
+
 	it("明細あり・total 指定済みの文書 PATCH は警告を出さない (B0-3)", async () => {
 		mswServer.use(
 			http.patch(`${TEST_BASE_URL}/v1/documents/estimates/1`, () => HttpResponse.json({ id: 1 })),
@@ -515,8 +1001,103 @@ describe("handlePatch", () => {
 			enableWrites: true,
 			enableDestructiveWrites: true,
 		});
-		const result = await handlePatch({ path: "/v1/projects/lock_flg/1", body: {} }, config, schema);
+		const result = await handlePatch(
+			{ path: "/v1/projects/lock_flg/1", body: { lock_flg: 1 } },
+			config,
+			schema,
+		);
 		expect(result.isError).toBeUndefined();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// handleValidateWrite (B0-2)
+// ---------------------------------------------------------------------------
+describe("handleValidateWrite", () => {
+	it("検証エラーのメッセージに資格情報を残さない (A1)", () => {
+		vi.stubEnv("THE_BOARD_API_TOKEN", "tok-secret-123");
+		const result = handleValidateWrite(
+			{
+				path: "/v1/clients",
+				method: "POST",
+				body: { name: "a", name_disp: "a", payment_term_id: "tok-secret-123" },
+			},
+			makeConfig(),
+			schema,
+		);
+		const text = result.content[0].text as string;
+		expect(text).toContain("payment_term_id");
+		expect(text).not.toContain("tok-secret-123");
+		expect(text).toContain("[REDACTED_TOKEN]");
+	});
+
+	it("read-only でも動き、必須欠落を API を呼ばずに検出する", () => {
+		const result = handleValidateWrite(
+			{ path: "/v1/projects", method: "POST", body: { name: "x" }, variant: "一括請求" },
+			makeConfig(),
+			schema,
+		);
+		const parsed = JSON.parse(result.content[0].text as string);
+		expect(parsed.valid).toBe(false);
+		expect(parsed.errors.some((e: { code: string }) => e.code === "required")).toBe(true);
+		expect(parsed.write_enabled).toBe(false);
+		expect(parsed.requires_flag).toBe("--enable-writes");
+	});
+
+	it("破壊的パスは --enable-destructive-writes を案内する", () => {
+		const parsed = JSON.parse(
+			handleValidateWrite(
+				{ path: "/v1/projects/lock_flg/1", method: "PATCH", body: { lock_flg: 1 } },
+				makeConfig({ readOnly: false, enableWrites: true }),
+				schema,
+			).content[0].text as string,
+		);
+		expect(parsed.requires_flag).toBe("--enable-destructive-writes");
+	});
+
+	it("書き込み有効で妥当な body なら valid=true, requires_flag=null", () => {
+		const parsed = JSON.parse(
+			handleValidateWrite(
+				{
+					path: "/v1/clients",
+					method: "POST",
+					body: { name: "株式会社テスト", name_disp: "テスト" },
+				},
+				makeConfig({ readOnly: false, enableWrites: true }),
+				schema,
+			).content[0].text as string,
+		);
+		expect(parsed.valid).toBe(true);
+		expect(parsed.requires_flag).toBeNull();
+	});
+
+	it("GET は拒否、未知パスはエラー", () => {
+		expect(
+			handleValidateWrite({ path: "/v1/clients", method: "GET", body: {} }, makeConfig(), schema)
+				.isError,
+		).toBe(true);
+		expect(
+			handleValidateWrite({ path: "/v1/nope", method: "POST", body: {} }, makeConfig(), schema)
+				.isError,
+		).toBe(true);
+	});
+	it("明細あり・total 未指定は valid のまま total の警告を同梱する (B2)", () => {
+		const parsed = JSON.parse(
+			handleValidateWrite(
+				{
+					path: "/v1/documents/estimates/1",
+					method: "PATCH",
+					body: { details: [{ description: "a", document_detail_kbn: 1 }] },
+				},
+				makeConfig(),
+				schema,
+			).content[0].text as string,
+		);
+		expect(parsed.valid).toBe(true);
+		const totalWarning = parsed.warnings.find((w: { path: string }) => w.path === "total");
+		expect(totalWarning).toBeDefined();
+		expect(totalWarning.code).toBe("required");
+		expect(totalWarning.message).toContain("自動集計");
 	});
 });
 
@@ -588,6 +1169,11 @@ describe("handleAuthStatus", () => {
 		expect(typeof parsed.dailyRequestsRemaining).toBe("number");
 		expect(parsed).toHaveProperty("dailyRequestLimit");
 		expect(parsed.dailyRequestLimit).toBe(3000);
+	});
+
+	it("daily 残量が推定値である注記を含む", async () => {
+		const parsed = JSON.parse((await handleAuthStatus({}, makeConfig())).content[0].text as string);
+		expect(parsed.dailyRequestsRemainingNote).toContain("推定");
 	});
 
 	it("既定では資格情報の実検証を行わない (credentialsValid 無し)", async () => {

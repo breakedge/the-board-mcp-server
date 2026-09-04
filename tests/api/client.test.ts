@@ -1,8 +1,8 @@
-import { HttpResponse, http } from "msw";
+import { delay, HttpResponse, http } from "msw";
 import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { makeApiRequest, redactSecrets } from "../../src/api/client.js";
-import { TheBoardApiError } from "../../src/api/types.js";
+import { getRateLimitStatus, makeApiRequest, redactSecrets } from "../../src/api/client.js";
+import { TheBoardApiError, TheBoardTimeoutError } from "../../src/api/types.js";
 
 const TEST_BASE_URL = "https://api.the-board.jp";
 const TEST_API_KEY = "test-api-key";
@@ -313,6 +313,54 @@ describe("makeApiRequest — エラーレスポンス — TheBoardApiError", () 
 			expect(err).toBeInstanceOf(TheBoardApiError);
 			expect((err as TheBoardApiError).status).toBe(422);
 		}
+	});
+});
+
+describe("makeApiRequest — timeout / retry / 伏字化", () => {
+	it("429 リトライごとに daily カウンタを消費する", async () => {
+		let calls = 0;
+		server.use(
+			http.get(`${TEST_BASE_URL}/v1/users`, () => {
+				calls++;
+				return calls === 1
+					? HttpResponse.json({ message: "Too Many Requests" }, { status: 429 })
+					: HttpResponse.json([]);
+			}),
+		);
+		const before = getRateLimitStatus().dailyRequestsRemaining;
+		await makeApiRequest("GET", "/v1/users");
+		expect(calls).toBe(2);
+		expect(before - getRateLimitStatus().dailyRequestsRemaining).toBe(2);
+	});
+
+	it("timeout を超えたら分かるメッセージで失敗する", async () => {
+		vi.stubEnv("THE_BOARD_REQUEST_TIMEOUT_MS", "50");
+		server.use(
+			http.get(`${TEST_BASE_URL}/v1/users`, async () => {
+				await delay(300);
+				return HttpResponse.json([]);
+			}),
+		);
+		await expect(makeApiRequest("GET", "/v1/users")).rejects.toThrow(/応答しませんでした/);
+		await expect(makeApiRequest("GET", "/v1/users")).rejects.toThrow(TheBoardTimeoutError);
+	});
+
+	it("成功応答の本文に含まれるトークンも伏字化する", async () => {
+		server.use(
+			http.get(`${TEST_BASE_URL}/v1/users`, () =>
+				HttpResponse.json({
+					note: `Bearer ${TEST_API_TOKEN}`,
+					memo: "Bearer bonds",
+					amount: 1000,
+				}),
+			),
+		);
+		const { data } = await makeApiRequest("GET", "/v1/users");
+		expect(data).toEqual({
+			note: "Bearer [REDACTED_TOKEN]",
+			memo: "Bearer bonds",
+			amount: 1000,
+		});
 	});
 });
 

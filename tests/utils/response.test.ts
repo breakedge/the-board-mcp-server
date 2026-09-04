@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { TheBoardApiError } from "../../src/api/types.js";
+import { TheBoardApiError, TheBoardTimeoutError } from "../../src/api/types.js";
 import {
 	createErrorResponse,
 	createTextResponse,
@@ -17,6 +17,14 @@ describe("createTextResponse", () => {
 			content: [{ type: "text", text: "ok" }],
 		});
 	});
+
+	it("MCP 出力の最終境界で資格情報を伏字化する (A1)", () => {
+		vi.stubEnv("THE_BOARD_API_TOKEN", "tok-secret-123");
+		const text = createTextResponse('{"query":{"name_cont":"tok-secret-123"}}').content[0]
+			.text as string;
+		expect(text).not.toContain("tok-secret-123");
+		expect(text).toContain("[REDACTED_TOKEN]");
+	});
 });
 
 describe("createErrorResponse", () => {
@@ -26,6 +34,13 @@ describe("createErrorResponse", () => {
 			content: [{ type: "text", text: "err" }],
 			isError: true,
 		});
+	});
+
+	it("MCP 出力の最終境界で資格情報を伏字化する (A1)", () => {
+		vi.stubEnv("THE_BOARD_API_TOKEN", "tok-secret-123");
+		const result = createErrorResponse("値: tok-secret-123");
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toBe("値: [REDACTED_TOKEN]");
 	});
 });
 
@@ -77,6 +92,29 @@ describe("formatApiError", () => {
 		});
 		expect(() => formatApiError(err)).not.toThrow();
 		expect(formatApiError(err)).toContain("入力値が正しくありません");
+	});
+
+	it("422 の errors が配列なら field: description (code) で整形する", () => {
+		const err = new TheBoardApiError(
+			"パラメータが正しくありません。",
+			422,
+			{
+				errors: [
+					{
+						field: "per_page",
+						code: "less_than_or_equal_to",
+						description: "per_pageは100以下の値にしてください。",
+					},
+				],
+			},
+			"GET",
+			"/v1/projects",
+		);
+		const msg = formatApiError(err);
+		expect(msg).toContain(
+			"per_page: per_pageは100以下の値にしてください。 (less_than_or_equal_to)",
+		);
+		expect(msg).not.toContain("0:");
 	});
 
 	it("429 → レート制限メッセージ", () => {
@@ -131,6 +169,18 @@ describe("formatApiError", () => {
 		const msg = formatApiError(err);
 		expect(msg).toContain("見つかりませんでした");
 		expect(msg).toContain("GET /v1/documents/invoices/123");
+	});
+
+	it("timeout は「予期しないエラー」にせずそのまま伝える (D1)", () => {
+		const msg = formatApiError(
+			new TheBoardTimeoutError(
+				"board API が 30 秒以内に応答しませんでした [GET /v1/users]",
+				"GET",
+				"/v1/users",
+			),
+		);
+		expect(msg).not.toContain("予期しない");
+		expect(msg).toBe("board API が 30 秒以内に応答しませんでした [GET /v1/users]");
 	});
 
 	it("Error以外 (string) → 予期しないエラーメッセージ", () => {

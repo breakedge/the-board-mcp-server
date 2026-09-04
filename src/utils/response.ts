@@ -1,16 +1,20 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { redactSecrets } from "../api/client.js";
-import { TheBoardApiError } from "../api/types.js";
+import { TheBoardApiError, TheBoardTimeoutError } from "../api/types.js";
 
+/**
+ * MCP クライアントへ返す text content を組み立てる最終境界 (A1)。
+ * 引数 echo・検証エラー・検証警告は生の引数を含むため、ここで一括して伏字化する。
+ */
 export function createTextResponse(text: string): CallToolResult {
 	return {
-		content: [{ type: "text", text }],
+		content: [{ type: "text", text: redactSecrets(text) }],
 	};
 }
 
 export function createErrorResponse(message: string): CallToolResult {
 	return {
-		content: [{ type: "text", text: message }],
+		content: [{ type: "text", text: redactSecrets(message) }],
 		isError: true,
 	};
 }
@@ -18,6 +22,21 @@ export function createErrorResponse(message: string): CallToolResult {
 function extractValidationDetails(body: unknown): string {
 	if (body && typeof body === "object") {
 		const b = body as Record<string, unknown>;
+		// board の 422 は errors を配列 [{field, code, description}] で返すことが多い
+		if (Array.isArray(b.errors)) {
+			const details = b.errors
+				.map((e) => {
+					if (e && typeof e === "object") {
+						const o = e as Record<string, unknown>;
+						const field = String(o.field ?? "?");
+						const text = String(o.description ?? o.message ?? JSON.stringify(o));
+						return o.code ? `${field}: ${text} (${String(o.code)})` : `${field}: ${text}`;
+					}
+					return String(e);
+				})
+				.join("; ");
+			return details ? ` (${details})` : "";
+		}
 		if (b.errors && typeof b.errors === "object") {
 			const errors = b.errors as Record<string, unknown>;
 			// board API は errors の値を配列 / 文字列 / オブジェクトいずれでも返しうるため
@@ -47,6 +66,10 @@ function apiDetail(message: string): string {
 }
 
 export function formatApiError(error: unknown): string {
+	// timeout は想定内の失敗。message が秒数と呼び出し先を含むためそのまま返す (D1)。
+	if (error instanceof TheBoardTimeoutError) {
+		return error.message;
+	}
 	if (error instanceof TheBoardApiError) {
 		const detail = apiDetail(error.message);
 		// どの呼び出しが失敗したかを示し、AI が id/種別の誤りを自己修正できるようにする (B2-2)。

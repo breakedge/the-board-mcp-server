@@ -1,4 +1,4 @@
-import { TheBoardApiError } from "./types.js";
+import { TheBoardApiError, TheBoardLocalLimitError } from "./types.js";
 
 /**
  * スライディングウィンドウ方式で1秒間のリクエスト数を制限する
@@ -64,7 +64,7 @@ export class DailyCounter {
 		this.resetIfNewDay();
 
 		if (this.count >= this.maxPerDay) {
-			throw new TheBoardApiError("Daily request limit exceeded", 429, null);
+			throw new TheBoardLocalLimitError("Daily request limit exceeded");
 		}
 		this.count++;
 	}
@@ -146,6 +146,10 @@ export async function withRetry<T>(fn: () => Promise<T>, maxRetries: number): Pr
 		}
 
 		const { err } = result;
+		// ローカル日次上限は待っても当日中は回復しないため、backoff せず即座に返す (D1)
+		if (err instanceof TheBoardLocalLimitError) {
+			throw err;
+		}
 		if (err instanceof TheBoardApiError && err.status === 429) {
 			lastError = err;
 			if (attempt < maxRetries) {

@@ -5,7 +5,7 @@ import {
 	PerSecondLimiter,
 	withRetry,
 } from "../../src/api/rate-limiter.js";
-import { TheBoardApiError } from "../../src/api/types.js";
+import { TheBoardApiError, TheBoardLocalLimitError } from "../../src/api/types.js";
 
 describe("PerSecondLimiter", () => {
 	beforeEach(() => {
@@ -210,5 +210,27 @@ describe("withRetry", () => {
 
 		await expect(withRetry(fn, 3)).rejects.toThrow(TheBoardApiError);
 		expect(fn).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe("withRetry — ローカル日次上限 (D1)", () => {
+	it("待っても回復しないローカル上限は backoff せず即座に throw すること", async () => {
+		// 実タイマーで計測する。リモート 429 と同じ扱いだと 1+2+4 秒待たされる。
+		const counter = new DailyCounter(0);
+		const fn = vi.fn(async () => {
+			counter.increment();
+			return "ok";
+		});
+
+		const started = Date.now();
+		let caught: unknown;
+		await withRetry(fn, 3).catch((err) => {
+			caught = err;
+		});
+
+		expect(caught).toBeInstanceOf(TheBoardLocalLimitError);
+		expect((caught as TheBoardApiError).status).toBe(429);
+		expect(fn).toHaveBeenCalledTimes(1);
+		expect(Date.now() - started).toBeLessThan(100);
 	});
 });

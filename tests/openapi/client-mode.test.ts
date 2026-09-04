@@ -739,6 +739,31 @@ describe("handlePost", () => {
 			result.content.some((c) => c.type === "text" && (c.text as string).includes("extra_key")),
 		).toBe(true);
 	});
+
+	it("skip_validation=true なら検証を省略してそのまま送信する", async () => {
+		mswServer.use(
+			http.post(`${TEST_BASE_URL}/v1/clients`, () => HttpResponse.json({ id: 1 }, { status: 201 })),
+		);
+		const result = await handlePost(
+			{ path: "/v1/clients", body: { name: "x" }, skip_validation: true },
+			makeConfig({ readOnly: false, enableWrites: true }),
+			schema,
+		);
+		expect(result.isError).toBeFalsy();
+		expect(
+			result.content.some((c) => c.type === "text" && (c.text as string).includes("注意:")),
+		).toBe(false);
+	});
+
+	it("skip_validation なしの同じ body は送信前に拒否される", async () => {
+		const result = await handlePost(
+			{ path: "/v1/clients", body: { name: "x" } },
+			makeConfig({ readOnly: false, enableWrites: true }),
+			schema,
+		);
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toContain("API は呼び出していません");
+	});
 });
 
 // ---------------------------------------------------------------------------

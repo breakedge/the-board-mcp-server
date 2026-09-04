@@ -351,7 +351,12 @@ export async function handleGet(
 }
 
 export async function handlePost(
-	args: { path: string; body: Record<string, unknown>; variant?: string },
+	args: {
+		path: string;
+		body: Record<string, unknown>;
+		variant?: string;
+		skip_validation?: boolean;
+	},
 	config: Config,
 	schema: MinimalSchema,
 ): Promise<CallToolResult> {
@@ -376,8 +381,10 @@ export async function handlePost(
 		return createErrorResponse(`パスが見つかりません: ${sanitized}`);
 	}
 
+	// skip_validation は同梱スキーマが古く false positive を出す時の明示的な避難路 (B0-2)。
+	// 指定時は検証を一切行わず、body をそのまま送る。
 	let warnings: BodyIssue[] = [];
-	const found = getOperation("POST", sanitized, schema);
+	const found = args.skip_validation ? null : getOperation("POST", sanitized, schema);
 	if (found?.operation.requestBody) {
 		const validation = validateBody(found.operation, args.body, args.variant);
 		if (!validation.valid) {
@@ -397,7 +404,12 @@ export async function handlePost(
 }
 
 export async function handlePatch(
-	args: { path: string; body: Record<string, unknown>; variant?: string },
+	args: {
+		path: string;
+		body: Record<string, unknown>;
+		variant?: string;
+		skip_validation?: boolean;
+	},
 	config: Config,
 	schema: MinimalSchema,
 ): Promise<CallToolResult> {
@@ -427,8 +439,10 @@ export async function handlePatch(
 		return createErrorResponse(`パスが見つかりません: ${sanitized}`);
 	}
 
+	// skip_validation は同梱スキーマが古く false positive を出す時の明示的な避難路 (B0-2)。
+	// 指定時は検証を一切行わず、body をそのまま送る。
 	let warnings: BodyIssue[] = [];
-	const found = getOperation("PATCH", sanitized, schema);
+	const found = args.skip_validation ? null : getOperation("PATCH", sanitized, schema);
 	if (found?.operation.requestBody) {
 		const validation = validateBody(found.operation, args.body, args.variant);
 		if (!validation.valid) {

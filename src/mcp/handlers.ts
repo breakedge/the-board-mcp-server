@@ -203,11 +203,22 @@ export async function createMcpServer(config: Config): Promise<McpServer> {
 					.describe(
 						"Variant title (e.g. 一括請求) so that mode-specific required fields are checked before sending",
 					),
+				skip_validation: z
+					.boolean()
+					.optional()
+					.describe(
+						"true: skip the pre-send schema validation (use only when the bundled schema is stale and validate_write reports a false error)",
+					),
 			},
 			{ title: "Create resource in board", destructiveHint: false },
 			(args) =>
 				handlePost(
-					args as { path: string; body: Record<string, unknown>; variant?: string },
+					args as {
+						path: string;
+						body: Record<string, unknown>;
+						variant?: string;
+						skip_validation?: boolean;
+					},
 					config,
 					schema,
 				),
@@ -225,6 +236,12 @@ export async function createMcpServer(config: Config): Promise<McpServer> {
 					.describe(
 						"Variant title (e.g. 一括請求) so that mode-specific required fields are checked before sending",
 					),
+				skip_validation: z
+					.boolean()
+					.optional()
+					.describe(
+						"true: skip the pre-send schema validation (use only when the bundled schema is stale and validate_write reports a false error)",
+					),
 			},
 			{
 				title: "Update resource in board",
@@ -235,7 +252,12 @@ export async function createMcpServer(config: Config): Promise<McpServer> {
 			},
 			(args) =>
 				handlePatch(
-					args as { path: string; body: Record<string, unknown>; variant?: string },
+					args as {
+						path: string;
+						body: Record<string, unknown>;
+						variant?: string;
+						skip_validation?: boolean;
+					},
 					config,
 					schema,
 				),

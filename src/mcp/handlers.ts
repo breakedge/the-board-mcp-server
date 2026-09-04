@@ -12,6 +12,7 @@ import {
 	handleListPaths,
 	handlePatch,
 	handlePost,
+	handleValidateWrite,
 } from "../openapi/client-mode.js";
 import { loadSchema } from "../openapi/schema-loader.js";
 
@@ -196,9 +197,20 @@ export async function createMcpServer(config: Config): Promise<McpServer> {
 			{
 				path: z.string().describe("API path (e.g., /v1/clients)"),
 				body: coercibleRecord.describe("Request body"),
+				variant: z
+					.string()
+					.optional()
+					.describe(
+						"Variant title (e.g. 一括請求) so that mode-specific required fields are checked before sending",
+					),
 			},
 			{ title: "Create resource in board", destructiveHint: false },
-			(args) => handlePost(args as { path: string; body: Record<string, unknown> }, config, schema),
+			(args) =>
+				handlePost(
+					args as { path: string; body: Record<string, unknown>; variant?: string },
+					config,
+					schema,
+				),
 		);
 
 		server.tool(
@@ -207,6 +219,12 @@ export async function createMcpServer(config: Config): Promise<McpServer> {
 			{
 				path: z.string().describe("API path (e.g., /v1/clients/123)"),
 				body: coercibleRecord.describe("Request body"),
+				variant: z
+					.string()
+					.optional()
+					.describe(
+						"Variant title (e.g. 一括請求) so that mode-specific required fields are checked before sending",
+					),
 			},
 			{
 				title: "Update resource in board",
@@ -216,7 +234,11 @@ export async function createMcpServer(config: Config): Promise<McpServer> {
 				idempotentHint: true,
 			},
 			(args) =>
-				handlePatch(args as { path: string; body: Record<string, unknown> }, config, schema),
+				handlePatch(
+					args as { path: string; body: Record<string, unknown>; variant?: string },
+					config,
+					schema,
+				),
 		);
 	}
 
@@ -236,6 +258,28 @@ export async function createMcpServer(config: Config): Promise<McpServer> {
 			(args) => handleDelete(args, config, schema),
 		);
 	}
+
+	// validate_write — 送信せずに body を検証する dry-run (read-only でも常時登録)
+	server.tool(
+		"the_board_api_validate_write",
+		"Dry-run validation of a POST/PATCH body against the bundled schema (required fields, enum values, types, variant-specific requirements). Never calls the API; works in read-only mode. Use it before the_board_api_post / the_board_api_patch, or to check a body when write tools are not enabled.",
+		{
+			path: z.string().describe("API path (e.g., /v1/projects, /v1/documents/estimates/123)"),
+			method: z.enum(["POST", "PATCH"]).describe("HTTP method the body is for"),
+			body: coercibleRecord.describe("Request body to validate"),
+			variant: z
+				.string()
+				.optional()
+				.describe("Variant title from the_board_api_describe (e.g. 一括請求)"),
+		},
+		{ title: "Validate a write body without sending it", readOnlyHint: true, openWorldHint: false },
+		(args) =>
+			handleValidateWrite(
+				args as { path: string; method: string; body: Record<string, unknown>; variant?: string },
+				config,
+				schema,
+			),
+	);
 
 	// auth_status
 	server.tool(

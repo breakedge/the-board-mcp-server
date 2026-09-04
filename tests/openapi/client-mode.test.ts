@@ -10,6 +10,7 @@ import {
 	handleListPaths,
 	handlePatch,
 	handlePost,
+	handleValidateWrite,
 } from "../../src/openapi/client-mode.js";
 import { loadSchema } from "../../src/openapi/schema-loader.js";
 import type { MinimalSchema } from "../../src/openapi/types.js";
@@ -665,7 +666,7 @@ describe("handlePost", () => {
 		);
 		const config = makeConfig({ readOnly: false, enableWrites: true });
 		const result = await handlePost(
-			{ path: "/v1/clients", body: { name: "Test" } },
+			{ path: "/v1/clients", body: { name: "Test", name_disp: "Test" } },
 			config,
 			schema,
 		);
@@ -712,6 +713,31 @@ describe("handlePost", () => {
 		const config = makeConfig({ readOnly: false, enableWrites: true });
 		const result = await handlePost({ path: "/v1/nonexistent", body: {} }, config, schema);
 		expect(result.isError).toBe(true);
+	});
+
+	it("送信前検証で不正なら API を呼ばずに拒否する", async () => {
+		const result = await handlePost(
+			{ path: "/v1/clients", body: {} },
+			makeConfig({ readOnly: false, enableWrites: true }),
+			schema,
+		);
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toContain("API は呼び出していません");
+	});
+
+	it("スキーマに無いキーは warning を添えて送信する", async () => {
+		mswServer.use(
+			http.post(`${TEST_BASE_URL}/v1/clients`, () => HttpResponse.json({ id: 1 }, { status: 201 })),
+		);
+		const result = await handlePost(
+			{ path: "/v1/clients", body: { name: "a", name_disp: "a", extra_key: 1 } },
+			makeConfig({ readOnly: false, enableWrites: true }),
+			schema,
+		);
+		expect(result.isError).toBeFalsy();
+		expect(
+			result.content.some((c) => c.type === "text" && (c.text as string).includes("extra_key")),
+		).toBe(true);
 	});
 });
 
@@ -810,8 +836,68 @@ describe("handlePatch", () => {
 			enableWrites: true,
 			enableDestructiveWrites: true,
 		});
-		const result = await handlePatch({ path: "/v1/projects/lock_flg/1", body: {} }, config, schema);
+		const result = await handlePatch(
+			{ path: "/v1/projects/lock_flg/1", body: { lock_flg: 1 } },
+			config,
+			schema,
+		);
 		expect(result.isError).toBeUndefined();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// handleValidateWrite (B0-2)
+// ---------------------------------------------------------------------------
+describe("handleValidateWrite", () => {
+	it("read-only でも動き、必須欠落を API を呼ばずに検出する", () => {
+		const result = handleValidateWrite(
+			{ path: "/v1/projects", method: "POST", body: { name: "x" }, variant: "一括請求" },
+			makeConfig(),
+			schema,
+		);
+		const parsed = JSON.parse(result.content[0].text as string);
+		expect(parsed.valid).toBe(false);
+		expect(parsed.errors.some((e: { code: string }) => e.code === "required")).toBe(true);
+		expect(parsed.write_enabled).toBe(false);
+		expect(parsed.requires_flag).toBe("--enable-writes");
+	});
+
+	it("破壊的パスは --enable-destructive-writes を案内する", () => {
+		const parsed = JSON.parse(
+			handleValidateWrite(
+				{ path: "/v1/projects/lock_flg/1", method: "PATCH", body: { lock_flg: 1 } },
+				makeConfig({ readOnly: false, enableWrites: true }),
+				schema,
+			).content[0].text as string,
+		);
+		expect(parsed.requires_flag).toBe("--enable-destructive-writes");
+	});
+
+	it("書き込み有効で妥当な body なら valid=true, requires_flag=null", () => {
+		const parsed = JSON.parse(
+			handleValidateWrite(
+				{
+					path: "/v1/clients",
+					method: "POST",
+					body: { name: "株式会社テスト", name_disp: "テスト" },
+				},
+				makeConfig({ readOnly: false, enableWrites: true }),
+				schema,
+			).content[0].text as string,
+		);
+		expect(parsed.valid).toBe(true);
+		expect(parsed.requires_flag).toBeNull();
+	});
+
+	it("GET は拒否、未知パスはエラー", () => {
+		expect(
+			handleValidateWrite({ path: "/v1/clients", method: "GET", body: {} }, makeConfig(), schema)
+				.isError,
+		).toBe(true);
+		expect(
+			handleValidateWrite({ path: "/v1/nope", method: "POST", body: {} }, makeConfig(), schema)
+				.isError,
+		).toBe(true);
 	});
 });
 

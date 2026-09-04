@@ -12,6 +12,7 @@ import {
 	type ResponseFormat,
 } from "../utils/shape.js";
 import { aliasesForPath } from "./aliases.js";
+import { type BodyIssue, formatBodyIssues, validateBody } from "./body-validate.js";
 import { validateQueryValues } from "./query-validate.js";
 import { getKnownQueryParams, getOperation, sanitizePath, validatePath } from "./schema-loader.js";
 import { isPathEnabled } from "./toolsets.js";
@@ -83,15 +84,19 @@ function documentTotalWarning(body: Record<string, unknown>): string | null {
 }
 
 /** 書き込み結果を、必要なら警告を別 content block として先頭に付けて返す。 */
-function writeResponse(result: unknown, body: Record<string, unknown>): CallToolResult {
+function writeResponse(
+	result: unknown,
+	body: Record<string, unknown>,
+	warnings: BodyIssue[] = [],
+): CallToolResult {
 	const text = formatWriteResult(result);
-	const warning = documentTotalWarning(body);
-	if (warning) {
+	const notes: string[] = [];
+	const totalWarning = documentTotalWarning(body);
+	if (totalWarning) notes.push(totalWarning);
+	if (warnings.length > 0) notes.push(`注意: ${formatBodyIssues(warnings)}`);
+	if (notes.length > 0) {
 		return {
-			content: [
-				{ type: "text", text: warning },
-				{ type: "text", text },
-			],
+			content: [...notes.map((n) => ({ type: "text" as const, text: n })), { type: "text", text }],
 		};
 	}
 	return createTextResponse(text);
@@ -346,7 +351,7 @@ export async function handleGet(
 }
 
 export async function handlePost(
-	args: { path: string; body: Record<string, unknown> },
+	args: { path: string; body: Record<string, unknown>; variant?: string },
 	config: Config,
 	schema: MinimalSchema,
 ): Promise<CallToolResult> {
@@ -371,16 +376,28 @@ export async function handlePost(
 		return createErrorResponse(`パスが見つかりません: ${sanitized}`);
 	}
 
+	let warnings: BodyIssue[] = [];
+	const found = getOperation("POST", sanitized, schema);
+	if (found?.operation.requestBody) {
+		const validation = validateBody(found.operation, args.body, args.variant);
+		if (!validation.valid) {
+			return createErrorResponse(
+				`送信前検証で不正を検出したため API は呼び出していません: ${formatBodyIssues(validation.errors)}`,
+			);
+		}
+		warnings = validation.warnings;
+	}
+
 	try {
 		const { data } = await makeApiRequest("POST", sanitized, undefined, args.body);
-		return writeResponse(data, args.body);
+		return writeResponse(data, args.body, warnings);
 	} catch (err) {
 		return createErrorResponse(formatApiError(err));
 	}
 }
 
 export async function handlePatch(
-	args: { path: string; body: Record<string, unknown> },
+	args: { path: string; body: Record<string, unknown>; variant?: string },
 	config: Config,
 	schema: MinimalSchema,
 ): Promise<CallToolResult> {
@@ -410,9 +427,21 @@ export async function handlePatch(
 		return createErrorResponse(`パスが見つかりません: ${sanitized}`);
 	}
 
+	let warnings: BodyIssue[] = [];
+	const found = getOperation("PATCH", sanitized, schema);
+	if (found?.operation.requestBody) {
+		const validation = validateBody(found.operation, args.body, args.variant);
+		if (!validation.valid) {
+			return createErrorResponse(
+				`送信前検証で不正を検出したため API は呼び出していません: ${formatBodyIssues(validation.errors)}`,
+			);
+		}
+		warnings = validation.warnings;
+	}
+
 	try {
 		const { data } = await makeApiRequest("PATCH", sanitized, undefined, args.body);
-		return writeResponse(data, args.body);
+		return writeResponse(data, args.body, warnings);
 	} catch (err) {
 		return createErrorResponse(formatApiError(err));
 	}
@@ -450,6 +479,74 @@ export async function handleDelete(
 	} catch (err) {
 		return createErrorResponse(formatApiError(err));
 	}
+}
+
+/**
+ * body を送信せずに同梱スキーマで検証する dry-run (B0-2)。read-only でも使えるようにして、
+ * 書き込みフラグが無い環境でも AI が送信前にボディの妥当性と必要フラグを確認できるようにする。
+ */
+export function handleValidateWrite(
+	args: { path: string; method: string; body: Record<string, unknown>; variant?: string },
+	config: Config,
+	schema: MinimalSchema,
+): CallToolResult {
+	let sanitized: string;
+	try {
+		sanitized = sanitizePath(args.path);
+	} catch (err) {
+		return createErrorResponse(err instanceof Error ? err.message : "Invalid path");
+	}
+
+	if (!isPathEnabled(sanitized, config.toolsets)) {
+		return createErrorResponse(
+			`このパスの toolset は無効です。--toolsets で有効化してください: ${sanitized}`,
+		);
+	}
+
+	const method = args.method.toUpperCase();
+	if (method !== "POST" && method !== "PATCH") {
+		return createErrorResponse("method は POST か PATCH を指定してください。");
+	}
+	if (!validatePath(method, sanitized, schema)) {
+		return createErrorResponse(`パスが見つかりません: ${sanitized}`);
+	}
+
+	const found = getOperation(method, sanitized, schema);
+	const validation = found?.operation.requestBody
+		? validateBody(found.operation, args.body, args.variant)
+		: {
+				valid: true,
+				errors: [],
+				warnings: [
+					{
+						path: "(body)",
+						code: "unknown" as const,
+						message: "同梱スキーマに requestBody の定義が無いため検証できません",
+					},
+				],
+			};
+
+	const isDestructive =
+		method === "PATCH" && DESTRUCTIVE_PATH_PATTERNS.some((pattern) => sanitized.includes(pattern));
+	let requiresFlag: string | null = null;
+	if (!config.enableWrites) requiresFlag = "--enable-writes";
+	if (isDestructive && !config.enableDestructiveWrites)
+		requiresFlag = "--enable-destructive-writes";
+
+	return createTextResponse(
+		JSON.stringify(
+			{
+				valid: validation.valid,
+				errors: validation.errors,
+				warnings: validation.warnings,
+				variant: args.variant ?? null,
+				write_enabled: config.enableWrites,
+				requires_flag: requiresFlag,
+			},
+			null,
+			2,
+		),
+	);
 }
 
 // validate 用の probe エンドポイント。有効な toolset 内の軽量 GET を選び、

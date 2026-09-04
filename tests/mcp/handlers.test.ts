@@ -96,3 +96,10 @@ describe("ツールの条件付き登録 (Write 3段階セーフティ)", () => 
 		expect(names).toContain("the_board_api_delete");
 	});
 });
+
+describe("the_board_api_validate_write", () => {
+	it("read-only でも登録される", async () => {
+		const server = await createMcpServer(getConfig([]));
+		expect(toolNames(server)).toContain("the_board_api_validate_write");
+	});
+});

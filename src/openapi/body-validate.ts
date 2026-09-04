@@ -38,6 +38,23 @@ function typeMatches(type: string | undefined, value: unknown): boolean {
 	}
 }
 
+/**
+ * enum 値との同値判定。board は GET が返す decimal 文字列 (例 "10.0") を PATCH body に
+ * そのまま渡す運用が多いため、双方が数値に変換できれば数値として比較する ("10.0" === 10)。
+ * どちらかが数値化できなければ従来どおり String 比較する。
+ */
+export function enumMatches(enumValues: (string | number)[], value: unknown): boolean {
+	const valueNumeric =
+		typeof value === "string" || typeof value === "number" ? Number(value) : Number.NaN;
+	return enumValues.some((e) => {
+		const enumNumeric = Number(e);
+		if (Number.isFinite(enumNumeric) && Number.isFinite(valueNumeric)) {
+			return enumNumeric === valueNumeric;
+		}
+		return String(e) === String(value);
+	});
+}
+
 function enumText(field: MinimalField): string {
 	return (field.enum ?? [])
 		.map((v) => {
@@ -84,7 +101,7 @@ function checkField(
 			return;
 		}
 	}
-	if (field.enum && field.enum.length > 0 && !field.enum.some((e) => String(e) === String(value))) {
+	if (field.enum && field.enum.length > 0 && !enumMatches(field.enum, value)) {
 		// enumOpen は「既知の値の列挙」でしかない enum (カスタム ID も受け付ける)。拒否せず注意喚起に留める (B3)。
 		if (field.enumOpen) {
 			warnings.push({

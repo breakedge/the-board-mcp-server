@@ -198,6 +198,16 @@ describe("validateBody", () => {
 		expect(bad.errors[0].message).toContain("1:一括");
 	});
 
+	it("enum は decimal 文字列も数値同値で比較する ('10.0' は 10 と一致) (0.3.1)", () => {
+		const ok = validateBody(estimatePatch, { tax_rate: "10.0" });
+		expect(ok.valid).toBe(true);
+		expect(ok.errors).toEqual([]);
+
+		const bad = validateBody(estimatePatch, { tax_rate: "7.0" });
+		expect(bad.valid).toBe(false);
+		expect(bad.errors[0]).toMatchObject({ path: "tax_rate", code: "enum" });
+	});
+
 	it("型不一致を検出し、number / integer は数値文字列を許容する", () => {
 		// string への数値は B1 で警告扱いになったため、ここは数値以外の型不一致で確認する
 		expect(

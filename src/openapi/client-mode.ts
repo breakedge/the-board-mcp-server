@@ -302,46 +302,65 @@ export async function handleGet(
 		return createErrorResponse(formatPathNotFound("GET", sanitized, schema));
 	}
 
-	if (args.query) {
-		const queryError = validateQuery("GET", sanitized, args.query, schema);
+	// LLM が fields / format をツール引数でなく query に書いてしまうことがある。対応する
+	// ツール引数が未指定なら query から吸収して取り除く (query に残すと validateQuery が
+	// 「不明なクエリパラメータ」で拒否するため、validateQuery より前に行う)。
+	let query = args.query;
+	let rawFields: unknown = args.fields;
+	let rawFormat = args.format;
+	if (query && ("fields" in query || "format" in query)) {
+		const rest = { ...query };
+		if (rawFields === undefined && "fields" in rest) {
+			rawFields = rest.fields;
+			delete rest.fields;
+		}
+		if (rawFormat === undefined && "format" in rest) {
+			rawFormat = rest.format as string | undefined;
+			delete rest.format;
+		}
+		query = rest;
+	}
+
+	if (query) {
+		const queryError = validateQuery("GET", sanitized, query, schema);
 		if (queryError) {
 			return createErrorResponse(queryError);
 		}
 	}
 
-	if (args.query) {
+	if (query) {
 		const found = getOperation("GET", sanitized, schema);
 		if (found?.operation.parameters) {
-			const valueError = validateQueryValues(args.query, found.operation.parameters);
+			const valueError = validateQueryValues(query, found.operation.parameters);
 			if (valueError) {
 				return createErrorResponse(valueError);
 			}
 		}
 	}
 
-	const format: ResponseFormat = args.format === "detailed" ? "detailed" : "concise";
-	const fields = parseFields(args.fields);
+	const responseFormat: ResponseFormat = rawFormat === "detailed" ? "detailed" : "concise";
+	const fields = parseFields(rawFields);
 	const maxChars = maxResponseChars();
 
 	try {
-		const { data, pagination } = await makeApiRequest("GET", sanitized, args.query);
+		const { data, pagination } = await makeApiRequest("GET", sanitized, query);
 		const projected = fields ? applyFields(data, fields) : { value: data, unknownFields: [] };
 		if (Array.isArray(projected.value)) {
 			return createTextResponse(
 				buildListEnvelope({
 					data: projected.value,
 					pagination,
-					format,
+					format: responseFormat,
 					maxChars,
 					unknownFields: projected.unknownFields,
-					request: { path: sanitized, query: args.query },
+					request: { path: sanitized, query },
 				}),
 			);
 		}
 		return createTextResponse(
 			buildSingleEnvelope({
 				data: projected.value,
-				format,
+				format: responseFormat,
 				maxChars,
 				unknownFields: projected.unknownFields,
 			}),

@@ -418,6 +418,24 @@ describe("handleGet", () => {
 		await handleGet({ path: "/v1/projects", query: { page: 1 } }, config, schema);
 	});
 
+	it("query に紛れ込んだ fields はツール引数として吸収し、query からは取り除く", async () => {
+		mswServer.use(
+			http.get(`${TEST_BASE_URL}/v1/projects`, ({ request }) => {
+				const url = new URL(request.url);
+				expect(url.searchParams.has("fields")).toBe(false);
+				return HttpResponse.json([{ id: 1, name: "a" }]);
+			}),
+		);
+		const result = await handleGet(
+			{ path: "/v1/projects", query: { per_page: 1, fields: "id" } },
+			makeConfig(),
+			schema,
+		);
+		expect(result.isError).toBeUndefined();
+		const parsed = JSON.parse(result.content[0].text as string);
+		expect(parsed.data).toEqual([{ id: 1 }]);
+	});
+
 	it("無効パス → エラーレスポンス", async () => {
 		const config = makeConfig();
 		const result = await handleGet({ path: "/v1/nonexistent" }, config, schema);

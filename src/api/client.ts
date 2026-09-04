@@ -8,6 +8,9 @@ import { type ApiErrorResponse, TheBoardApiError, TheBoardTimeoutError } from ".
 
 // 誤設定 (極端に短い apiKey / apiToken) で "format" のような実データ中の部分文字列を
 // 巻き込んで壊さないための最短長ガード。これ未満は素の replaceAll を行わない。
+// トレードオフ: この長さ未満の資格情報は素の文字列としては伏字化されない (誤爆防止を優先)。
+// ただし Authorization ヘッダ経由の漏洩は `Bearer ${apiToken}` の置換と
+// `Authorization: Bearer \S+` の正規表現置換が長さに関わらず引き続き効く。
 const MIN_CREDENTIAL_LENGTH = 8;
 
 /** 指定された key/token をメッセージから伏字化する共通処理 (空文字は no-op)。 */
@@ -159,6 +162,10 @@ export async function makeApiRequest(
 					// 見ない(本番で実測確認済み)。カンマ区切りの単一値 (`key[]=1,2`) が正しい形式。
 					// 要素が非スカラの場合は handler 側の validateQuery が事前に弾く。
 					if (Array.isArray(value)) {
+						// 空配列は「未指定」扱い(送ると key[]= の空値になり board 側の挙動が不定になる)。
+						if (value.length === 0) {
+							continue;
+						}
 						url.searchParams.set(key, value.map((v) => String(v)).join(","));
 					} else {
 						url.searchParams.set(key, String(value));

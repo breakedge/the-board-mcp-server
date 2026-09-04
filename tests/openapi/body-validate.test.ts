@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatBodyIssues, validateBody } from "../../src/openapi/body-validate.js";
+import { enumMatches, formatBodyIssues, validateBody } from "../../src/openapi/body-validate.js";
 import type { MinimalOperation } from "../../src/openapi/types.js";
 
 const projectsPost: MinimalOperation = {
@@ -350,5 +350,26 @@ describe("validateBody", () => {
 		const r = validateBody(projectsPost, {}, "一括請求");
 		expect(formatBodyIssues(r.errors)).toContain("name は必須です");
 		expect(formatBodyIssues(r.errors).split("; ").length).toBe(4);
+	});
+});
+
+describe("enumMatches", () => {
+	const numericEnum = [10, 8, 5, 0];
+
+	it("厳密な decimal 形式の数値文字列は数値同値で一致する", () => {
+		expect(enumMatches(numericEnum, "10.0")).toBe(true);
+		expect(enumMatches(numericEnum, 10)).toBe(true);
+	});
+
+	it("空文字・空白・16進・指数表記は数値扱いせず不一致になる", () => {
+		expect(enumMatches(numericEnum, "")).toBe(false);
+		expect(enumMatches(numericEnum, "  ")).toBe(false);
+		expect(enumMatches(numericEnum, "0xA")).toBe(false);
+		expect(enumMatches(numericEnum, "1e1")).toBe(false);
+	});
+
+	it("非数値 enum は従来どおり String 比較する", () => {
+		expect(enumMatches(["small", "medium"], "small")).toBe(true);
+		expect(enumMatches(["small", "medium"], "huge")).toBe(false);
 	});
 });

@@ -39,17 +39,26 @@ function typeMatches(type: string | undefined, value: unknown): boolean {
 }
 
 /**
+ * 数値として比較してよい値か判定する。number は有限数値のみ、string は厳密な decimal 形式
+ * (`NUMERIC_STRING`, 例 "10" "10.0" "-1.5") のみを対象とする。"" / " " / "0xA" / "1e1" のような
+ * Number() だけなら通ってしまう非 decimal 表記を弾くためのガード(未 trim)。
+ */
+function isNumericLike(v: unknown): boolean {
+	if (typeof v === "number") return Number.isFinite(v);
+	if (typeof v === "string") return NUMERIC_STRING.test(v);
+	return false;
+}
+
+/**
  * enum 値との同値判定。board は GET が返す decimal 文字列 (例 "10.0") を PATCH body に
- * そのまま渡す運用が多いため、双方が数値に変換できれば数値として比較する ("10.0" === 10)。
- * どちらかが数値化できなければ従来どおり String 比較する。
+ * そのまま渡す運用が多いため、双方が厳密な decimal 形式 (isNumericLike) なら数値として比較する
+ * ("10.0" === 10)。どちらかが該当しなければ従来どおり String 比較する。
  */
 export function enumMatches(enumValues: (string | number)[], value: unknown): boolean {
-	const valueNumeric =
-		typeof value === "string" || typeof value === "number" ? Number(value) : Number.NaN;
+	const valueIsNumeric = isNumericLike(value);
 	return enumValues.some((e) => {
-		const enumNumeric = Number(e);
-		if (Number.isFinite(enumNumeric) && Number.isFinite(valueNumeric)) {
-			return enumNumeric === valueNumeric;
+		if (valueIsNumeric && isNumericLike(e)) {
+			return Number(e) === Number(value);
 		}
 		return String(e) === String(value);
 	});

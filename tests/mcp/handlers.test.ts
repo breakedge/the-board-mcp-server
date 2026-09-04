@@ -55,6 +55,26 @@ describe("INSTRUCTIONS のAIエルゴノミクス必須事項 (B1-4/B1-5/B3-1/B3
 	it("文書合計 total/tax は自動集計されないことを警告する", () => {
 		expect(INSTRUCTIONS).toContain("total");
 	});
+
+	it("ユースケース早見表 (月次売上 = analyses) を含む", () => {
+		expect(INSTRUCTIONS).toContain("/v1/analyses");
+		expect(INSTRUCTIONS).toContain("report_ym_gteq");
+		expect(INSTRUCTIONS).toContain("analysis_data_kbn_in[]");
+	});
+	it("応答形式 (envelope / concise / fields / per_page 上限) を説明する", () => {
+		expect(INSTRUCTIONS).toContain('"data"');
+		expect(INSTRUCTIONS).toContain("fields");
+		expect(INSTRUCTIONS).toContain("per_page");
+		expect(INSTRUCTIONS).toContain("100");
+	});
+	it("意味論 (新しい順 / 税抜 / 注記行) と validate_write を案内する", () => {
+		expect(INSTRUCTIONS).toContain("新しい順");
+		expect(INSTRUCTIONS).toContain("税抜");
+		expect(INSTRUCTIONS).toContain("the_board_api_validate_write");
+	});
+	it("2,400 トークン相当 (5,300 字) 以内に収める", () => {
+		expect(INSTRUCTIONS.length).toBeLessThanOrEqual(5300);
+	});
 });
 
 describe("MCP prompts (B3-2)", () => {

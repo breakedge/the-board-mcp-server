@@ -23,60 +23,53 @@ const pkg = JSON.parse(readFileSync(join(__dirname, "../../package.json"), "utf-
 	version: string;
 };
 
-export const INSTRUCTIONS = `You are connected to board (the-board.jp) MCP server.
+export const INSTRUCTIONS = `You are connected to board (the-board.jp) MCP server. board is a Japanese SaaS for estimates, invoices and project (案件) management.
 
-## How to use
-1. Use the_board_api_list_paths to discover endpoints. Each entry includes its query "parameters" (filter names) when available.
-2. Use the_board_api_describe(path, method) to get an endpoint's full contract — query parameters with their enums, and request body fields (names, types, required, enums). Do this before any POST/PATCH so you can build a correct body without external docs.
-3. Use the_board_auth_status to check authentication and remaining rate-limit quota.
-4. Use the_board_api_get (and write tools when enabled) to interact with the API.
+## Tools and order of use
+1. the_board_api_list_paths — find endpoints (one line each; keyword accepts English/Japanese words and filter names, e.g. "sales", "請求", "project_no_eq"). detail=true adds parameters with enums.
+2. the_board_api_describe(path, method) — full contract: query parameters with enum values and labels, request body fields, variants (mode-specific fields). part=response shows response fields.
+3. the_board_api_get — read. the_board_api_validate_write — dry-run a POST/PATCH body (works in read-only mode). Write tools (post/patch/delete) need the matching start flag.
+4. the_board_auth_status — credentials and remaining daily quota (estimate).
 
-## Path format
-- All paths start with /v1/ (e.g. /v1/clients, /v1/projects/123, /v1/invoices).
+## Quick map: what you want → endpoint + filters
+- Monthly sales / 売上・計上ベースの集計: GET /v1/analyses with report_ym_gteq / report_ym_lteq (YYYY-MM) and analysis_data_kbn_in[]=["1"] (1 = 案件, 2 = 案件原価, 3 = 発注). total is per record — sum yourself.
+- Invoices by date / 請求書一覧: GET /v1/invoices with invoice_date_gteq/lteq (YYYY-MM-DD). Payment state: invoice_status_in[] (1 未請求, 4 請求OK, 2 請求済, 5 一部入金済, 3 入金済, 9 回収不能). "一部入金済" counting as unpaid is a business call — ask the user.
+- Find a customer / 顧客: GET /v1/clients with name_cont. Contacts / 担当者: GET /v1/contacts with client_id_eq.
+- Projects of a customer / 案件: GET /v1/projects with client_id_eq, order_status_in[], name_cont. By number: project_no_eq (project_id does NOT work).
+- Document contents (estimate, invoice, order …): GET /v1/projects/{id}?response_group=all, then read .estimate / .order / .invoices[] / .deliveries[]. Use fields=estimate to keep it small (id from /v1/invoices is a billing id, NOT the document id).
+- Costs / 原価: /v1/project_costs. Purchases / 仕入・発注: /v1/expenditures. Masters: /v1/users, /v1/payment_terms, /v1/project_types.
 
-## Pagination and response_group
-- Pagination query params: per_page, page (1-based).
-- response_group controls how much each resource returns:
-  - small (default), medium, large: increasing field detail.
-  - all: includes related documents. REQUIRED to obtain document IDs (see below).
-- Unknown query params are rejected with the list of valid params. Prefer the names shown by list_paths.
-- List responses report pagination as a separate note (total count, current page, per_page). If you have not fetched every record, request the next page (page=N+1).
+## Response format
+- GET returns JSON: {"data": [...] | {...}, "pagination": {total_count, page, per_page, returned_count, has_more, next_page}, "truncated": false}.
+- Default format is concise: compact JSON with null keys omitted (a missing key means null). format=detailed keeps nulls with pretty printing.
+- fields selects keys (dot paths, applied per record): fields=["id","name","total","tax"] or "estimate.details". Use it for aggregation and large lists. Unknown keys are listed in unknown_fields.
+- per_page max is 100 (default 10). Large pages are cut at record boundaries: truncated=true with dropped_in_page — then lower per_page or narrow fields and fetch the same page again. Continue with next_page while has_more.
+- Zero results include "request" (filters actually applied) and validated=true — a real empty result, not a wrong parameter.
 
-## Filter naming conventions (important — wrong names are otherwise silently ignored)
-- Suffixes: _eq (exact), _cont (substring), _gteq / _lteq (range), _in[] (multi-select array).
-- Use project_no_eq to filter projects by number. project_id does NOT work.
-- The invoice list (/v1/invoices) filters projects via project_project_no_eq (nested entity prefix).
-- Array filters use the [] suffix, e.g. tags[], order_status_in[]. Pass them as arrays: { "tags[]": ["a","b"] }.
+## Data semantics
+- Lists are returned newest first (新しい順; official spec for /v1/projects).
+- total is tax-exclusive (税抜); tax is separate. Verified in the spec for projects; observed for invoices and analyses. Money values are decimal strings ("500000.0").
+- Document detail rows: document_detail_kbn 1 = normal line, 2 = section heading (text in section_description), 3 = subtotal. A kbn=1 row without price/quantity (key absent in concise) is a note line — do not add it to totals.
+- Filter suffixes: _eq (exact), _cont (substring), _gteq / _lteq (range), _in[] (array, pass as JSON array e.g. {"invoice_status_in[]": ["2","5"]}). Unknown filter names/values are rejected before the request, with the valid list.
 
-## Document creation model (project-centric — documents are NOT created directly)
-You cannot POST an estimate/invoice directly. The flow is:
-1. POST /v1/projects to create a project. board auto-generates its documents (estimate, invoices) from the project's billing settings. invoice_timing_kbn selects the billing mode; depending on the mode, some fields must be set AT CREATION and cannot be changed by a later PATCH. Call describe('/v1/projects','POST') to see which fields apply to the mode you need.
-2. GET /v1/projects/{id}?response_group=all to read the generated document IDs: .estimate.id, .invoices[].id, .order.id.
-3. PATCH /v1/documents/estimates/{id} and PATCH /v1/documents/invoices/{id} to fill each document (details[], message, total, tax).
+## Creating documents (project-centric)
+Estimates/invoices cannot be POSTed directly:
+1. describe("/v1/projects","POST") → pick the billing variant (一括請求 / 定期請求 / 分割請求) and describe again with variant to see its required fields. invoice_timing_kbn selects the mode and some fields can only be set at creation.
+2. validate_write("/v1/projects","POST", body, variant) until valid, then POST /v1/projects. board generates the documents (estimate, order, delivery, invoices depending on settings).
+3. GET /v1/projects/{id}?response_group=all&fields=estimate,order,invoices,deliveries to read document ids.
+4. PATCH /v1/documents/estimates/{id} and /v1/documents/invoices/{id} with details[], total (税抜) and tax. total/tax are NOT auto-summed — send them or the document shows 0. details[] replace-vs-append is unverified; re-read after writing.
+5. Verify with GET response_group=all.
 
-Note: the id from /v1/invoices is a billing id, which is NOT the same as the document id used by /v1/documents/invoices/{id}. Always take document IDs from the project's response_group=all output.
-
-## Document fields
-- Detail rows use document_detail_kbn: 1 = normal line, 2 = section heading (text in section_description), 3 = subtotal line.
-- Document total (tax-exclusive) and tax are NOT auto-summed from details. You must compute and send total and tax explicitly, or the document will show 0.
-
-## Write operations
-- Read-only mode is enabled by default, so only GET tools are available.
-- Write tools are registered only when the server is started with the matching flag:
-  - the_board_api_post / the_board_api_patch require --enable-writes (or THE_BOARD_ENABLE_WRITES=true)
-  - the_board_api_delete requires --enable-destructive-writes (or THE_BOARD_ENABLE_DESTRUCTIVE_WRITES=true)
-- If a write tool is not in your tool list, ask the user to restart the server with the appropriate flag.
-- Writes are not auto-retried except on rate limits. If a write times out at the network level, do not blindly re-POST — first GET to check whether the resource was already created (avoids duplicate invoices/projects).
+## Write safety
+- Read-only by default. post/patch need --enable-writes (or THE_BOARD_ENABLE_WRITES=true); delete and status/lock changes need --enable-destructive-writes. If a write tool is missing, ask the user to restart with the flag (validate_write names which one).
+- Writes are not auto-retried except on rate limits; after a network timeout, GET first to check whether the resource was created before re-POSTing.
+- post/patch validate the body before sending; pass skip_validation=true only when the_board_api_validate_write reports an error you have confirmed is wrong (e.g. a stale bundled schema).
 
 ## Rate limits
-- 3 requests/second and 3,000 requests/day. Check the_board_auth_status for remaining daily quota.
+- 3 requests/second, 3,000/day. auth_status shows an in-process estimate of the remaining daily quota (resets on restart).
 
 ## Reference
-- Full official OpenAPI spec (request/response schemas): https://developers.the-board.jp/doc/board_openapi.json
-  (in that spec servers.url is /v1, so paths omit the leading /v1).
-
-## Important
-- Financial data (invoices, estimates) requires careful handling. After writing, re-read with response_group=all and verify each document's total/tax are set as intended (board leaves them 0 when not sent).`;
+- Official OpenAPI spec: https://developers.the-board.jp/doc/board_openapi.json (its paths omit the leading /v1).`;
 
 export async function createMcpServer(config: Config): Promise<McpServer> {
 	const schema = await loadSchema();
@@ -337,8 +330,8 @@ export async function createMcpServer(config: Config): Promise<McpServer> {
 						text: `board で顧客 client_id=${client_id} の案件「${project_name}」を作成し、自動生成される書類(見積・請求書)を埋めてください。
 
 board は書類を直接 POST できない案件中心モデルです。次の手順で進めてください:
-1. the_board_api_describe("/v1/projects", "POST") でボディ項目を確認する。invoice_timing_kbn(請求方式)など、請求方式によって作成時に指定が要る項目(作成後に変更できないものを含む)を把握する。
-2. POST /v1/projects で案件を作成する。請求方式に応じた項目を指定すると、board が見積・請求書を自動生成する。
+1. the_board_api_describe("/v1/projects", "POST") で共通項目と variant(一括請求 / 定期請求 / 分割請求)を確認し、選んだ variant を指定してもう一度 describe して固有の必須項目を把握する。
+2. the_board_api_validate_write("/v1/projects", "POST", body, variant) で valid になるまで body を直してから POST /v1/projects で案件を作成する。board が見積・請求書などを自動生成する。
 3. GET /v1/projects/{id}?response_group=all で生成された書類ID(.estimate.id / .invoices[].id / .order.id)を取得する。
 4. the_board_api_describe で各書類の PATCH エンドポイントの項目を確認し、PATCH /v1/documents/estimates/{id} や PATCH /v1/documents/invoices/{id} に details[](document_detail_kbn=1 の通常行)と total(税抜)・tax を明示送信する。total/tax は自動集計されない。
 5. 最後に GET /v1/projects/{id}?response_group=all で各書類の内容(明細・金額)が意図どおりか検証する。

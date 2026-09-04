@@ -12,6 +12,7 @@ import {
 	type ResponseFormat,
 } from "../utils/shape.js";
 import { aliasesForPath } from "./aliases.js";
+import { validateQueryValues } from "./query-validate.js";
 import { getKnownQueryParams, getOperation, sanitizePath, validatePath } from "./schema-loader.js";
 import { isPathEnabled } from "./toolsets.js";
 import type { MinimalParameter, MinimalSchema } from "./types.js";
@@ -299,6 +300,16 @@ export async function handleGet(
 		const queryError = validateQuery("GET", sanitized, args.query, schema);
 		if (queryError) {
 			return createErrorResponse(queryError);
+		}
+	}
+
+	if (args.query) {
+		const found = getOperation("GET", sanitized, schema);
+		if (found?.operation.parameters) {
+			const valueError = validateQueryValues(args.query, found.operation.parameters);
+			if (valueError) {
+				return createErrorResponse(valueError);
+			}
 		}
 	}
 

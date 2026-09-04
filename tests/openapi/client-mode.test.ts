@@ -527,6 +527,26 @@ describe("handleGet", () => {
 		expect(result.isError).toBe(true);
 	});
 
+	it("enum 外の query 値は API を呼ばずに拒否する", async () => {
+		const result = await handleGet(
+			{ path: "/v1/invoices", query: { "invoice_status_in[]": ["7"] } },
+			makeConfig(),
+			schema,
+		);
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toContain("未請求");
+	});
+
+	it("per_page > 100 は API を呼ばずに拒否する", async () => {
+		const result = await handleGet(
+			{ path: "/v1/projects", query: { per_page: 1000 } },
+			makeConfig(),
+			schema,
+		);
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toContain("100");
+	});
+
 	it("既定 (concise) は compact JSON で null キーを省き、0 / false / 空配列は残す", async () => {
 		mswServer.use(
 			http.get(`${TEST_BASE_URL}/v1/clients`, () =>

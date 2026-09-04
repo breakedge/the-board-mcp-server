@@ -113,9 +113,16 @@ export interface PaginationInfo {
 	next_page?: number;
 }
 
-export function toPaginationInfo(p: Pagination, returnedCount: number): PaginationInfo {
-	// X-Per-Page ヘッダが無いケースでも has_more を判定できるよう、実際に返した件数を仮の per_page とする
-	const perPage = p.perPage ?? returnedCount;
+/**
+ * X-Per-Page が無いときの has_more 判定用に per_page を補う。切り詰めがあると
+ * 実返却数は 1 page 分より少なくなるため、fallback には切り詰め前の件数を渡す (C2)。
+ */
+export function toPaginationInfo(
+	p: Pagination,
+	returnedCount: number,
+	fallbackPerPage: number = returnedCount,
+): PaginationInfo {
+	const perPage = p.perPage ?? fallbackPerPage;
 	const hasMore = p.page !== undefined && p.page * perPage < p.totalCount;
 	const info: PaginationInfo = {
 		total_count: p.totalCount,
@@ -152,7 +159,9 @@ export function buildListEnvelope(input: ListEnvelopeInput): string {
 		// concise は data の null キーのみ省く (request の echo 値には適用しない)
 		const dataOut = input.format === "concise" ? kept.map(omitNulls) : kept;
 		const env: Record<string, unknown> = { data: dataOut };
-		if (input.pagination) env.pagination = toPaginationInfo(input.pagination, kept.length);
+		if (input.pagination) {
+			env.pagination = toPaginationInfo(input.pagination, kept.length, input.data.length);
+		}
 		env.truncated = dropped > 0;
 		if (input.unknownFields && input.unknownFields.length > 0) {
 			env.unknown_fields = input.unknownFields;
@@ -163,8 +172,11 @@ export function buildListEnvelope(input: ListEnvelopeInput): string {
 		}
 		if (dropped > 0) {
 			env.dropped_in_page = dropped;
+			// has_more は API の page 送りの意味のまま残すため、page 自体が欠けていることを別キーで示す。
+			// これが無いと truncated + has_more を見た利用者が page を進め、落ちたレコードを飛ばす (C3)。
+			env.page_incomplete = true;
 			if (env.pagination) delete (env.pagination as PaginationInfo).next_page;
-			env.notice = `応答が上限 ${input.maxChars} 字を超えたため、この page の末尾 ${dropped} 件を省略しました。per_page を小さくするか fields で絞って同じ page を再取得してください。`;
+			env.notice = `応答が上限 ${input.maxChars} 字を超えたため、この page の末尾 ${dropped} 件を省略しました。この page は不完全です。fields か小さい per_page で同じ page を再取得してから next_page に進んでください。`;
 		}
 		return env;
 	};
@@ -194,7 +206,11 @@ export interface SingleEnvelopeInput {
 	unknownFields?: string[];
 }
 
-/** 単体応答の envelope。切り詰めはせず、超過時は notice だけ付ける。 */
+/**
+ * 単体応答の envelope。上限を超えたら、data のトップレベルにある配列/オブジェクト値を
+ * JSON 長の大きい順に落として上限内へ収める (C4)。スカラは残すので id / name 等は必ず返る。
+ * 落とせるものを全て落としても超過するときは、data を丸ごと返して notice だけ付ける。
+ */
 export function buildSingleEnvelope(input: SingleEnvelopeInput): string {
 	const dataOut = input.format === "concise" ? omitNulls(input.data) : input.data;
 	const env: Record<string, unknown> = { data: dataOut };
@@ -202,9 +218,30 @@ export function buildSingleEnvelope(input: SingleEnvelopeInput): string {
 		env.unknown_fields = input.unknownFields;
 	}
 	let text = serialize(env, input.format);
-	if (text.length > input.maxChars) {
-		env.notice = SINGLE_TOO_LARGE(input.maxChars);
-		text = serialize(env, input.format);
+	if (text.length <= input.maxChars) return text;
+
+	if (dataOut !== null && typeof dataOut === "object" && !Array.isArray(dataOut)) {
+		const source = dataOut as Record<string, unknown>;
+		const candidates = Object.entries(source)
+			.filter(([, v]) => v !== null && typeof v === "object")
+			.map(([key, v]) => ({ key, chars: JSON.stringify(v)?.length ?? 0 }))
+			.sort((a, b) => b.chars - a.chars);
+		const omitted: { key: string; chars: number }[] = [];
+		for (const candidate of candidates) {
+			omitted.push(candidate);
+			const omittedKeys = new Set(omitted.map((o) => o.key));
+			env.data = Object.fromEntries(
+				Object.entries(source).filter(([key]) => !omittedKeys.has(key)),
+			);
+			env.omitted_keys = omitted;
+			env.notice = `大きな項目 ${omitted.map((o) => o.key).join(", ")} を省略しました。必要なら fields で指定して取得してください。`;
+			text = serialize(env, input.format);
+			if (text.length <= input.maxChars) return text;
+		}
+		// 全て落としても収まらないなら、部分的な data を返すより全文 + 案内のほうが有用
+		env.data = dataOut;
+		delete env.omitted_keys;
 	}
-	return text;
+	env.notice = SINGLE_TOO_LARGE(input.maxChars);
+	return serialize(env, input.format);
 }

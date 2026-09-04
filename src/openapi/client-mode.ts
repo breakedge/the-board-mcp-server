@@ -78,7 +78,10 @@ function documentTotalWarning(body: Record<string, unknown>): string | null {
 		return null;
 	}
 	const total = body.total;
-	if (total === undefined || total === null || total === 0 || total === "0") {
+	// board は金額を decimal 文字列で返すため total は "0.0" のこともある。
+	// リテラル比較では素通りするので、数値に変換できる値は 0 かどうかで判定する (C1)。
+	const asNumber = total === undefined || total === null ? 0 : Number(total);
+	if (total === undefined || total === null || (Number.isFinite(asNumber) && asNumber === 0)) {
 		return `警告: 明細 ${details.length} 行を送信しましたが total が未指定または 0 です。board は明細から合計を自動集計しないため、明示送信しない限り文書の total/tax は 0 のままになります。total(税抜)と tax を指定してください。`;
 	}
 	return null;
@@ -355,6 +358,26 @@ export async function handleGet(
 			delete rest.format;
 		}
 		query = rest;
+	}
+
+	// 吸収した値も top-level 引数 (zod で enum / string|string[] に制限) と同じ検証を通す。
+	// 素通しすると "detaield" が黙って concise に、fields: {} が黙って無視される (C5)。
+	if (rawFormat !== undefined && rawFormat !== "concise" && rawFormat !== "detailed") {
+		return createErrorResponse(
+			`format は concise か detailed を指定してください (受け取った値: ${JSON.stringify(rawFormat)})`,
+		);
+	}
+	if (
+		rawFields !== undefined &&
+		rawFields !== null &&
+		!(
+			typeof rawFields === "string" ||
+			(Array.isArray(rawFields) && rawFields.every((f) => typeof f === "string"))
+		)
+	) {
+		return createErrorResponse(
+			`fields は文字列かキー名の配列で指定してください (受け取った値: ${JSON.stringify(rawFields)})`,
+		);
 	}
 
 	if (query) {

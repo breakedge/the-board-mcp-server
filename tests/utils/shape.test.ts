@@ -152,6 +152,37 @@ describe("buildListEnvelope", () => {
 		expect(parsed.notice).toContain("fields");
 	});
 
+	it("X-Per-Page 不在 + 切り詰め時の has_more は切り詰め前の件数で判定する (C2)", () => {
+		const data = Array.from({ length: 10 }, (_, i) => ({ id: i, text: "x".repeat(100) }));
+		const parsed = JSON.parse(
+			buildListEnvelope({
+				data,
+				pagination: { totalCount: 10, page: 1 },
+				format: "concise",
+				maxChars: 700,
+			}),
+		);
+		expect(parsed.truncated).toBe(true);
+		expect(parsed.data.length).toBeLessThan(10);
+		expect(parsed.pagination.returned_count).toBe(parsed.data.length);
+		expect(parsed.pagination.has_more).toBe(false);
+	});
+
+	it("切り詰め時は page_incomplete を立て、同じ page の再取得を案内する (C3)", () => {
+		const data = Array.from({ length: 10 }, (_, i) => ({ id: i, text: "x".repeat(100) }));
+		const parsed = JSON.parse(
+			buildListEnvelope({ data, pagination, format: "concise", maxChars: 700 }),
+		);
+		expect(parsed.page_incomplete).toBe(true);
+		expect(parsed.notice).toContain("不完全");
+		expect(parsed.notice).toContain("同じ page");
+
+		const full = JSON.parse(
+			buildListEnvelope({ data: [{ id: 1 }], pagination, format: "concise", maxChars: 20000 }),
+		);
+		expect(full).not.toHaveProperty("page_incomplete");
+	});
+
 	it("0 件のときは request を echo し validated=true", () => {
 		const parsed = JSON.parse(
 			buildListEnvelope({
@@ -215,6 +246,42 @@ describe("buildSingleEnvelope", () => {
 			buildSingleEnvelope({ data: { id: 1, memo: null }, format: "concise", maxChars: 20000 }),
 		);
 		expect(parsed.data).toEqual({ id: 1 });
+	});
+
+	it("上限超過時は大きい配列/オブジェクトのキーを省略して omitted_keys に載せる (C4)", () => {
+		const parsed = JSON.parse(
+			buildSingleEnvelope({
+				data: {
+					id: 1,
+					name: "a",
+					estimate: { id: 5, memo: "e".repeat(400) },
+					invoices: [{ id: 7, memo: "i".repeat(600) }],
+				},
+				format: "concise",
+				maxChars: 200,
+			}),
+		);
+		expect(parsed.data).toEqual({ id: 1, name: "a" });
+		expect(parsed.omitted_keys.map((o: { key: string }) => o.key).sort()).toEqual([
+			"estimate",
+			"invoices",
+		]);
+		expect(parsed.omitted_keys[0].chars).toBeGreaterThan(0);
+		expect(parsed.notice).toContain("estimate");
+		expect(parsed.notice).toContain("fields");
+	});
+
+	it("大きいキーを 1 つ落として収まるならスカラも他のキーも残す (C4)", () => {
+		const parsed = JSON.parse(
+			buildSingleEnvelope({
+				data: { id: 1, name: "a", estimate: { id: 5 }, invoices: [{ memo: "i".repeat(600) }] },
+				format: "concise",
+				maxChars: 200,
+			}),
+		);
+		expect(parsed.data.id).toBe(1);
+		expect(parsed.data.estimate).toEqual({ id: 5 });
+		expect(parsed.omitted_keys.map((o: { key: string }) => o.key)).toEqual(["invoices"]);
 	});
 });
 

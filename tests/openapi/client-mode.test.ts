@@ -492,6 +492,26 @@ describe("handleGet", () => {
 		expect(parsed.data).toEqual([{ id: 1 }]);
 	});
 
+	it("query から吸収した format が不正なら API を呼ばずに拒否する (C5)", async () => {
+		const result = await handleGet(
+			{ path: "/v1/projects", query: { format: "detaield" } },
+			makeConfig(),
+			schema,
+		);
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toContain("concise");
+	});
+
+	it("query から吸収した fields が string / string[] でなければ拒否する (C5)", async () => {
+		const result = await handleGet(
+			{ path: "/v1/projects", query: { fields: {} } },
+			makeConfig(),
+			schema,
+		);
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toContain("fields");
+	});
+
 	it("無効パス → エラーレスポンス", async () => {
 		const config = makeConfig();
 		const result = await handleGet({ path: "/v1/nonexistent" }, config, schema);
@@ -924,6 +944,22 @@ describe("handlePatch", () => {
 		const text = result.content.map((c) => c.text).join("\n");
 		expect(text).toContain("total");
 		expect(text).toContain("自動集計");
+	});
+
+	it('明細あり・total が "0.0" の文書 PATCH も警告を返す (C1)', async () => {
+		mswServer.use(
+			http.patch(`${TEST_BASE_URL}/v1/documents/estimates/1`, () => HttpResponse.json({ id: 1 })),
+		);
+		const config = makeConfig({ readOnly: false, enableWrites: true });
+		for (const total of ["0.0", "0", 0]) {
+			const result = await handlePatch(
+				{ path: "/v1/documents/estimates/1", body: { details: [{ price: 1000 }], total } },
+				config,
+				schema,
+			);
+			const text = result.content.map((c) => c.text).join("\n");
+			expect(text, `total=${JSON.stringify(total)}`).toContain("自動集計");
+		}
 	});
 
 	it("明細あり・total 指定済みの文書 PATCH は警告を出さない (B0-3)", async () => {

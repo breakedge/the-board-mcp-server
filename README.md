@@ -12,7 +12,7 @@
 
 ## 特徴
 
-- board API v1.8.0 の全 89 エンドポイントに 7 つの汎用 MCP ツールでアクセス
+- board API v1.9.0 の全 89 エンドポイントに 8 つの汎用 MCP ツールでアクセス
 - OpenAPI スキーマ駆動のパス検証
 - 3 段階の書き込み安全機構（`--read-only` デフォルト → `--enable-writes` → `--enable-destructive-writes`）
 - 組み込みレートリミット（3 req/sec、3,000 req/day）
@@ -107,9 +107,9 @@ Docker を使う MCP クライアント設定:
 
 | やりたいこと | 呼び出し |
 |---|---|
-| 2026 年 1〜8 月の月別売上（計上ベース、案件のみ） | `get /v1/analyses` に `report_ym_gteq=2026-01`, `report_ym_lteq=2026-08`, `analysis_data_kbn_in[]=["1"]`, `fields=report_ym,total,tax` |
-| 8 月請求の未入金一覧 | `get /v1/invoices` に `invoice_date_gteq/lteq`, `invoice_status_in[]=["2","5"]`, `fields=id,name,client.name,total,tax,payment_limit_date` |
-| 案件番号 1356 の見積明細 | `get /v1/projects?project_no_eq=1356&response_group=all&fields=id,estimate` |
+| 2026 年 1〜8 月の月別売上（計上ベース、案件のみ） | `get path=/v1/analyses query={report_ym_gteq:"2026-01", report_ym_lteq:"2026-08", "analysis_data_kbn_in[]":["1"]} fields=["report_date","total","tax"]` |
+| 8 月請求の未入金一覧 | `get path=/v1/invoices query={invoice_date_gteq:"2026-08-01", invoice_date_lteq:"2026-08-31", "invoice_status_in[]":["2","5"]} fields=["id","name","client.name","total","tax","payment_limit_date"]` |
+| 案件番号 1356 の見積明細 | `get path=/v1/projects query={project_no_eq:1356, response_group:"all"} fields=["id","estimate"]` |
 | 案件作成前の body 確認 | `describe /v1/projects POST` → `variant` 付きで再度 describe → `validate_write` |
 
 ## 設定

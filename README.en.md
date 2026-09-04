@@ -12,7 +12,7 @@ An unofficial [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) s
 
 ## Features
 
-- Access all 89 endpoints of the board API v1.8.0 via 7 generic MCP tools
+- Access all 89 endpoints of the board API v1.9.0 via 8 generic MCP tools
 - OpenAPI schema-driven path validation
 - 3-tier write safety (`--read-only` default → `--enable-writes` → `--enable-destructive-writes`)
 - Built-in rate limiting (3 req/sec, 3,000 req/day)
@@ -107,9 +107,9 @@ MCP client configuration with Docker:
 
 | What you want | Call |
 |---|---|
-| Monthly sales for Jan-Aug 2026 (accrual basis, projects only) | `get /v1/analyses` with `report_ym_gteq=2026-01`, `report_ym_lteq=2026-08`, `analysis_data_kbn_in[]=["1"]`, `fields=report_ym,total,tax` |
-| Unpaid invoices billed in August | `get /v1/invoices` with `invoice_date_gteq/lteq`, `invoice_status_in[]=["2","5"]`, `fields=id,name,client.name,total,tax,payment_limit_date` |
-| Estimate line items for project no. 1356 | `get /v1/projects?project_no_eq=1356&response_group=all&fields=id,estimate` |
+| Monthly sales for Jan-Aug 2026 (accrual basis, projects only) | `get path=/v1/analyses query={report_ym_gteq:"2026-01", report_ym_lteq:"2026-08", "analysis_data_kbn_in[]":["1"]} fields=["report_date","total","tax"]` |
+| Unpaid invoices billed in August | `get path=/v1/invoices query={invoice_date_gteq:"2026-08-01", invoice_date_lteq:"2026-08-31", "invoice_status_in[]":["2","5"]} fields=["id","name","client.name","total","tax","payment_limit_date"]` |
+| Estimate line items for project no. 1356 | `get path=/v1/projects query={project_no_eq:1356, response_group:"all"} fields=["id","estimate"]` |
 | Check a body before creating a project | `describe /v1/projects POST` → describe again with `variant` → `validate_write` |
 
 ## Configuration

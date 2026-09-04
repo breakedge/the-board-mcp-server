@@ -79,7 +79,7 @@ Docker を使う MCP クライアント設定:
 
 | ツール | 説明 |
 |--------|------|
-| `the_board_api_get` | GET リクエスト — `{data, pagination, truncated}` の JSON を返す。`format`（concise 既定 / detailed）と `fields`（返すキーの指定）で応答サイズを制御 |
+| `the_board_api_get` | GET リクエスト — 一覧は `{data, pagination, truncated}`、単体は `{data}` の JSON を返す。`format`（concise 既定 / detailed）と `fields`（返すキーの指定）で応答サイズを制御 |
 | `the_board_api_validate_write` | POST / PATCH の body をスキーマで乾式検証（必須・enum・型・variant）。API は呼ばず、読み取り専用モードでも使える |
 | `the_board_api_post` | POST リクエスト — リソースの作成 |
 | `the_board_api_patch` | PATCH リクエスト — リソースの更新、ステータス変更、ロック/解除 |
@@ -92,15 +92,26 @@ Docker を使う MCP クライアント設定:
 
 ## 応答形式（0.3.0 以降）
 
-`the_board_api_get` は常に次の JSON を返します。
+`the_board_api_get` の応答には一覧と単体の 2 つの形があります。
+
+一覧 (`/v1/projects` など):
 
 ```json
 {"data":[{"id":1,"name":"案件A","total":"500000.0"}],"pagination":{"total_count":302,"page":1,"per_page":10,"returned_count":10,"has_more":true,"next_page":2},"truncated":false}
 ```
 
+単体 (`/v1/projects/123` など。`pagination` と `truncated` は付きません):
+
+```json
+{"data":{"id":123,"name":"案件A","total":"500000.0"}}
+```
+
+単体の応答には必要に応じて `unknown_fields` / `notice` / `omitted_keys` が付きます。
+
 - 既定の `format: "concise"` は空白なしの JSON で、値が null のキーを省きます（キーが無い = null）。空配列・0・false・空文字は残ります。`format: "detailed"` は従来どおりの整形 JSON で null を保持します。
 - `fields` で返すキーを絞れます（ドット区切り、各レコードに適用）: `"fields": ["id","name","total","tax"]`、`"fields": "estimate.details"`。
-- 上限（既定 20,000 字）を超えるとレコード単位で末尾を落とし、`truncated: true` と `dropped_in_page` を返します。`per_page` を小さくするか `fields` で絞って同じページを再取得してください。
+- 一覧が上限（既定 20,000 字）を超えるとレコード単位で末尾を落とし、`truncated: true`・`dropped_in_page`・`page_incomplete: true` を返します。`page_incomplete` が付いた応答は `has_more` に従わず、`per_page` を小さくするか `fields` で絞って同じページを再取得してから次ページへ進んでください。
+- 単体の応答が上限を超えると、JSON が長いトップレベルのキー（配列・オブジェクト）から順に値を落とし、`omitted_keys`（`{key, chars}` の配列）に列挙します。`id` や `name` などのスカラは残るため、必要な項目は `fields` で指定して取得し直してください。
 - `notice` は切り詰めや上限超過が起きたときだけ付く案内文です（省略した件数、`fields` での絞り込みの勧め）。通常の応答には含まれません。
 - `the_board_api_post` / `the_board_api_patch` は送信前に body を検証します。同梱スキーマが古く誤検出だと確認できた場合のみ、`skip_validation: true` で検証をスキップできます。
 
@@ -152,7 +163,7 @@ CLI フラグは対応する環境変数より優先されます。さらに、�
 
 ### 0.2.x からの移行
 
-0.3.0 で `the_board_api_get` の応答がルート配列から `{data, pagination, truncated}` に変わり、既定が concise（null 省略）になりました。従来に近い出力が必要なら `format: "detailed"` を指定してください（envelope は付きます）。同梱スキーマは v2 形式（variants / enumLabels / responseFields）です。
+0.3.0 で `the_board_api_get` の応答がルート配列から envelope（一覧は `{data, pagination, truncated}`、単体は `{data}`）に変わり、既定が concise（null 省略）になりました。従来に近い出力が必要なら `format: "detailed"` を指定してください（envelope は付きます）。同梱スキーマは v2 形式（variants / enumLabels / responseFields）です。
 
 ## 開発
 

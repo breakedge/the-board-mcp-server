@@ -79,7 +79,7 @@ MCP client configuration with Docker:
 
 | Tool | Description |
 |------|-------------|
-| `the_board_api_get` | GET request — returns JSON `{data, pagination, truncated}`. Controls response size via `format` (concise default / detailed) and `fields` (select returned keys) |
+| `the_board_api_get` | GET request — returns JSON `{data, pagination, truncated}` for lists and `{data}` for a single record. Controls response size via `format` (concise default / detailed) and `fields` (select returned keys) |
 | `the_board_api_validate_write` | Dry-run validation of a POST / PATCH body against the schema (required / enum / type / variant). Does not call the API and works in read-only mode |
 | `the_board_api_post` | POST request — create resources |
 | `the_board_api_patch` | PATCH request — update resources, change status, lock/unlock |
@@ -92,15 +92,26 @@ MCP client configuration with Docker:
 
 ## Response Format (0.3.0+)
 
-`the_board_api_get` always returns the following JSON.
+`the_board_api_get` has two response shapes: list and single.
+
+List (e.g. `/v1/projects`):
 
 ```json
 {"data":[{"id":1,"name":"案件A","total":"500000.0"}],"pagination":{"total_count":302,"page":1,"per_page":10,"returned_count":10,"has_more":true,"next_page":2},"truncated":false}
 ```
 
+Single (e.g. `/v1/projects/123`; no `pagination` and no `truncated`):
+
+```json
+{"data":{"id":123,"name":"案件A","total":"500000.0"}}
+```
+
+A single response may also carry `unknown_fields`, `notice` or `omitted_keys`.
+
 - The default `format: "concise"` is compact JSON with null-valued keys omitted (a missing key means null). Empty arrays, `0`, `false`, and empty strings are kept. `format: "detailed"` is the previous pretty-printed JSON with nulls kept.
 - `fields` narrows the returned keys (dot paths, applied per record): `"fields": ["id","name","total","tax"]`, `"fields": "estimate.details"`.
-- Exceeding the limit (default 20,000 chars) drops trailing records: `truncated: true` with `dropped_in_page`. Lower `per_page` or narrow `fields` and re-fetch the same page.
+- A list over the limit (default 20,000 chars) drops trailing records: `truncated: true`, `dropped_in_page` and `page_incomplete: true`. When `page_incomplete` is present, ignore `has_more`: lower `per_page` or narrow `fields`, re-fetch the same page, and only then move on to the next page.
+- A single response over the limit drops the top-level keys (arrays and objects) with the longest JSON and lists them in `omitted_keys` (an array of `{key, chars}`). Scalars such as `id` and `name` are kept, so re-fetch what you need with `fields`.
 - `notice` appears only when records were dropped or the response exceeded the limit (how many were omitted, and the suggestion to narrow `fields`). Normal responses do not include it.
 - `the_board_api_post` / `the_board_api_patch` validate the body before sending. Pass `skip_validation: true` only when you have confirmed the bundled schema is stale and the validation error is wrong.
 
@@ -152,7 +163,7 @@ Available toolsets: `projects`, `documents`, `customers`, `payees`, `expenditure
 
 ### Migrating from 0.2.x
 
-In 0.3.0, `the_board_api_get` responses changed from a root array to `{data, pagination, truncated}`, and the default format became concise (nulls omitted). For output closer to the previous format, pass `format: "detailed"` (the envelope is still applied). The bundled schema is now in v2 format (variants / enumLabels / responseFields).
+In 0.3.0, `the_board_api_get` responses changed from a root array to an envelope (`{data, pagination, truncated}` for lists, `{data}` for a single record), and the default format became concise (nulls omitted). For output closer to the previous format, pass `format: "detailed"` (the envelope is still applied). The bundled schema is now in v2 format (variants / enumLabels / responseFields).
 
 ## Development
 

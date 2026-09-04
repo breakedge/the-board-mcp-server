@@ -76,6 +76,23 @@ describe("INSTRUCTIONS のAIエルゴノミクス必須事項 (B1-4/B1-5/B3-1/B3
 		expect(INSTRUCTIONS).toContain("payment_term_id");
 		expect(INSTRUCTIONS).toContain("client_name_disp_kbn");
 	});
+	it("list / single の 2 つの応答形を示す (E1)", () => {
+		expect(INSTRUCTIONS).toContain("list GET");
+		expect(INSTRUCTIONS).toContain("single GET");
+		expect(INSTRUCTIONS).toContain('{"data": {...}}');
+	});
+
+	it("切り詰め時の page_incomplete と単体応答の omitted_keys を案内する (E3)", () => {
+		expect(INSTRUCTIONS).toContain("page_incomplete");
+		expect(INSTRUCTIONS).toContain("omitted_keys");
+		expect(INSTRUCTIONS).toContain("same page");
+	});
+
+	it("新しい順の保証を /v1/projects に限定する (E2)", () => {
+		expect(INSTRUCTIONS).not.toContain("Lists are returned newest first");
+		expect(INSTRUCTIONS).toContain("no documented order");
+	});
+
 	it("2,550 トークン相当 (5,600 字) 以内に収める", () => {
 		expect(INSTRUCTIONS.length).toBeLessThanOrEqual(5600);
 	});

@@ -27,28 +27,29 @@ export const INSTRUCTIONS = `You are connected to board (the-board.jp) MCP serve
 
 ## Tools and order of use
 1. the_board_api_list_paths — find endpoints (one line each; keyword accepts English/Japanese words and filter names, e.g. "sales", "請求"). detail=true adds enums.
-2. the_board_api_describe(path, method) — full contract: query parameters (enum values, labels), request body fields, variants. part=response shows response fields.
+2. the_board_api_describe(path, method) — full contract: query parameters (enums, labels), request body fields, variants. part=response shows response fields.
 3. the_board_api_get — read. validate_write — dry-run a POST/PATCH body (read-only OK). Write tools (post/patch/delete) need the matching flag.
 4. the_board_auth_status — credentials and remaining daily quota (estimate).
 
 ## Quick map: what you want → endpoint + filters
-- Monthly sales / 売上・計上ベースの集計: GET /v1/analyses with report_ym_gteq / report_ym_lteq (YYYY-MM) and analysis_data_kbn_in[]=["1"] (1 = 案件, 2 = 案件原価, 3 = 発注). Records carry report_date (YYYY-MM-DD), not report_ym — group by its first 7 chars for monthly totals; fields ["report_date","total","tax"]. total is per record — sum yourself.
+- Monthly sales / 売上・計上ベースの集計: GET /v1/analyses with report_ym_gteq / report_ym_lteq (YYYY-MM) and analysis_data_kbn_in[]=["1"] (1 = 案件, 2 = 案件原価, 3 = 発注). Records carry report_date (YYYY-MM-DD), not report_ym — group by its first 7 chars; fields ["report_date","total","tax"]. total is per record — sum yourself.
 - Invoices by date / 請求書一覧: GET /v1/invoices with invoice_date_gteq/lteq (YYYY-MM-DD). invoice_status_in[] (1 未請求, 4 請求OK, 2 請求済, 5 一部入金済, 3 入金済, 9 回収不能). "一部入金済" counting as unpaid is a business call — ask the user.
 - Find a customer / 顧客: GET /v1/clients with name_cont. Contacts / 担当者: GET /v1/contacts with client_id_eq.
 - Projects of a customer / 案件: GET /v1/projects with client_id_eq, order_status_in[], name_cont. By number: project_no_eq (project_id does NOT work). order_status: 4 = 受注確定, 5 = 受注済 — if the user says 受注済 案件, confirm whether 4 should be included.
 - Copy settings from an existing project: GET /v1/projects/{id} (query {"response_group":"all"}) and reuse payment_term_id, payment_method_kbn, document_setting_id, invoice_timing_kbn, client_name_disp_kbn in the POST body.
 - Document contents (estimate, invoice, order …): GET /v1/projects/{id} with query {"response_group":"all"}; fields is a separate tool argument (not query) — fields:["estimate"] keeps it small (id from /v1/invoices is a billing id, NOT the document id).
-- Costs / 原価: /v1/project_costs. Purchases / 仕入・発注: /v1/expenditures. Masters: /v1/users, /v1/payment_terms, /v1/project_types.
+- Costs / 原価: /v1/project_costs. Purchases / 発注: /v1/expenditures. Masters: /v1/users, /v1/payment_terms, /v1/project_types.
 
 ## Response format
-- GET returns JSON: {"data": [...] | {...}, "pagination": {total_count, page, per_page, returned_count, has_more, next_page}, "truncated": false, "notice"?: "..."} — notice (optional) explains truncation/caveats.
-- Default format is concise: compact JSON with null keys omitted — a missing key means null; don't re-fetch as detailed just to confirm. detailed keeps nulls, pretty-printed.
-- fields selects keys (dot paths, per record): fields=["id","name","total","tax"] or "estimate.details", for aggregation/large lists. Unknown keys are listed in unknown_fields.
-- per_page max is 100 (default 10). Large pages are cut at record boundaries: truncated=true with dropped_in_page — lower per_page/fields and refetch, then next_page while has_more.
-- Zero results include "request" (filters actually applied) and validated=true — a real empty result, not a wrong parameter.
+- list GET: {"data": [...], "pagination": {total_count, page, per_page, returned_count, has_more, next_page}, "truncated": false, "notice"?: "..."}. single GET (by id): {"data": {...}} with optional unknown_fields / notice / omitted_keys.
+- concise (default): compact JSON, null keys omitted — a missing key means null. detailed keeps nulls, pretty-printed.
+- fields selects keys (dot paths, per record): ["id","name","total","tax"] or "estimate.details". Unknown keys go to unknown_fields.
+- per_page max is 100 (default 10). Large pages are cut at record boundaries: truncated=true, dropped_in_page and page_incomplete=true — then ignore has_more, lower per_page/fields and refetch the same page before next_page.
+- A single record over the limit loses its largest array/object keys; omitted_keys lists them — refetch with fields.
+- Zero results include "request" (filters applied) and validated=true — a real empty result, not a wrong parameter.
 
 ## Data semantics
-- Lists are returned newest first (新しい順; official spec for /v1/projects).
+- /v1/projects is newest first (新しい順, official); other lists have no documented order — sort yourself if it matters.
 - total is tax-exclusive (税抜); tax is separate (spec-verified for projects, observed elsewhere). Money values are decimal strings ("500000.0").
 - Document detail rows: document_detail_kbn 1 = normal line, 2 = section heading (in section_description), 3 = subtotal. A kbn=1 row without price/quantity is a note line — don't total it.
 - Filter suffixes: _eq (exact), _cont (substring), _gteq / _lteq (range), _in[] (array, e.g. {"invoice_status_in[]": ["2","5"]}). Unknown filter names/values are rejected with the valid list.
@@ -63,11 +64,11 @@ Estimates/invoices cannot be POSTed directly:
 
 ## Write safety
 - Read-only by default. post/patch need --enable-writes (or THE_BOARD_ENABLE_WRITES=true); delete and status/lock changes need --enable-destructive-writes. Missing write tool: ask the user to restart with the flag (validate_write names which).
-- Writes are not auto-retried except on rate limits; after a network timeout, GET first to check whether the resource was created before re-POSTing.
+- Writes are auto-retried only on rate limits; after a network timeout, GET first to check whether the resource was created before re-POSTing.
 - post/patch validate the body before sending; pass skip_validation=true only when the_board_api_validate_write reports an error you have confirmed is wrong (e.g. a stale bundled schema).
 
 ## Rate limits
-- 3 requests/second, 3,000/day. auth_status shows an estimated remaining daily quota (resets on restart).
+- 3 requests/second, 3,000/day. auth_status estimates the remaining daily quota (resets on restart).
 
 ## Reference
 - Official OpenAPI spec: https://developers.the-board.jp/doc/board_openapi.json (its paths omit the leading /v1).`;

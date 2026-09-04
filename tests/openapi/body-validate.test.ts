@@ -126,8 +126,9 @@ describe("validateBody", () => {
 	});
 
 	it("型不一致を検出し、number / integer は数値文字列を許容する", () => {
+		// string への数値は B1 で警告扱いになったため、ここは数値以外の型不一致で確認する
 		expect(
-			validateBody(projectsPost, { name: 1, client_id: 1, invoice_timing_kbn: 1 }).errors[0],
+			validateBody(projectsPost, { name: true, client_id: 1, invoice_timing_kbn: 1 }).errors[0],
 		).toMatchObject({
 			path: "name",
 			code: "type",
@@ -136,6 +137,17 @@ describe("validateBody", () => {
 		expect(
 			validateBody(estimatePatch, { details: [{ quantity: "1.5", document_detail_kbn: 1 }] }).valid,
 		).toBe(true);
+	});
+
+	it("string 型への有限数値は error でなく warning に留める (B1)", () => {
+		const r = validateBody(estimatePatch, { total: 300000 });
+		expect(r.valid).toBe(true);
+		expect(r.warnings.map((w) => `${w.path}:${w.code}`)).toEqual(["total:type"]);
+		expect(r.warnings[0].message).toContain("string");
+		expect(validateBody(estimatePatch, { total: true }).errors[0]).toMatchObject({
+			path: "total",
+			code: "type",
+		});
 	});
 
 	it("配列 items の required / enum を要素ごとに検査する", () => {

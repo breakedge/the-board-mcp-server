@@ -980,6 +980,24 @@ describe("handleValidateWrite", () => {
 				.isError,
 		).toBe(true);
 	});
+	it("明細あり・total 未指定は valid のまま total の警告を同梱する (B2)", () => {
+		const parsed = JSON.parse(
+			handleValidateWrite(
+				{
+					path: "/v1/documents/estimates/1",
+					method: "PATCH",
+					body: { details: [{ description: "a", document_detail_kbn: 1 }] },
+				},
+				makeConfig(),
+				schema,
+			).content[0].text as string,
+		);
+		expect(parsed.valid).toBe(true);
+		const totalWarning = parsed.warnings.find((w: { path: string }) => w.path === "total");
+		expect(totalWarning).toBeDefined();
+		expect(totalWarning.code).toBe("required");
+		expect(totalWarning.message).toContain("自動集計");
+	});
 });
 
 // ---------------------------------------------------------------------------

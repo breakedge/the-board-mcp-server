@@ -60,6 +60,16 @@ function checkField(
 ): void {
 	if (value === null || value === undefined) return;
 	if (!typeMatches(field.type, value)) {
+		// 公式スキーマは total / tax / quantity / unit_price を string と定義するが、LLM は
+		// 数値を出しがちで board 側も数値を解釈する。送信前に止めず警告に留める (B1)。
+		if (field.type === "string" && typeof value === "number" && Number.isFinite(value)) {
+			warnings.push({
+				path,
+				code: "type",
+				message: `${path} はスキーマ上 string です。数値のまま送信します (問題があれば "300000" のように文字列で指定してください)`,
+			});
+			return;
+		}
 		errors.push({
 			path,
 			code: "type",

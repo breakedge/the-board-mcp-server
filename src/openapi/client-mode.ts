@@ -592,6 +592,14 @@ export function handleValidateWrite(
 				],
 			};
 
+	// 送信してから初めて気付く「明細はあるが total=0」を dry-run の段階で伝える。
+	// スキーマ上は必須でないため error にはせず warning に留める (B2)。
+	const warnings: BodyIssue[] = [...validation.warnings];
+	const totalWarning = documentTotalWarning(args.body);
+	if (totalWarning) {
+		warnings.push({ path: "total", code: "required", message: totalWarning });
+	}
+
 	const isDestructive =
 		method === "PATCH" && DESTRUCTIVE_PATH_PATTERNS.some((pattern) => sanitized.includes(pattern));
 	let requiresFlag: string | null = null;
@@ -604,7 +612,7 @@ export function handleValidateWrite(
 			{
 				valid: validation.valid,
 				errors: validation.errors,
-				warnings: validation.warnings,
+				warnings,
 				variant: args.variant ?? null,
 				write_enabled: config.enableWrites,
 				requires_flag: requiresFlag,

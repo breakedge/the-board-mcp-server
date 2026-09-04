@@ -17,6 +17,14 @@ describe("createTextResponse", () => {
 			content: [{ type: "text", text: "ok" }],
 		});
 	});
+
+	it("MCP 出力の最終境界で資格情報を伏字化する (A1)", () => {
+		vi.stubEnv("THE_BOARD_API_TOKEN", "tok-secret-123");
+		const text = createTextResponse('{"query":{"name_cont":"tok-secret-123"}}').content[0]
+			.text as string;
+		expect(text).not.toContain("tok-secret-123");
+		expect(text).toContain("[REDACTED_TOKEN]");
+	});
 });
 
 describe("createErrorResponse", () => {
@@ -26,6 +34,13 @@ describe("createErrorResponse", () => {
 			content: [{ type: "text", text: "err" }],
 			isError: true,
 		});
+	});
+
+	it("MCP 出力の最終境界で資格情報を伏字化する (A1)", () => {
+		vi.stubEnv("THE_BOARD_API_TOKEN", "tok-secret-123");
+		const result = createErrorResponse("値: tok-secret-123");
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toBe("値: [REDACTED_TOKEN]");
 	});
 });
 

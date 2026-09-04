@@ -96,8 +96,12 @@ function writeResponse(
 	if (totalWarning) notes.push(totalWarning);
 	if (warnings.length > 0) notes.push(`注意: ${formatBodyIssues(warnings)}`);
 	if (notes.length > 0) {
+		// 独自に content を組む経路も createTextResponse と同じ最終境界の伏字化を通す (A1)
 		return {
-			content: [...notes.map((n) => ({ type: "text" as const, text: n })), { type: "text", text }],
+			content: [
+				...notes.map((n) => ({ type: "text" as const, text: redactSecrets(n) })),
+				{ type: "text", text: redactSecrets(text) },
+			],
 		};
 	}
 	return createTextResponse(text);

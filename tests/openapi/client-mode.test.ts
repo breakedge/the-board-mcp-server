@@ -708,6 +708,36 @@ describe("handleGet", () => {
 		expect(parsed.validated).toBe(true);
 	});
 
+	it("0 件応答の request echo に資格情報を残さない (A1)", async () => {
+		vi.stubEnv("THE_BOARD_API_TOKEN", "tok-secret-123");
+		mswServer.use(
+			http.get(`${TEST_BASE_URL}/v1/projects`, () =>
+				HttpResponse.json([], {
+					headers: { "X-Total-Count": "0", "X-Page": "1", "X-Per-Page": "10" },
+				}),
+			),
+		);
+		const result = await handleGet(
+			{ path: "/v1/projects", query: { name_cont: "tok-secret-123" } },
+			makeConfig(),
+			schema,
+		);
+		const text = result.content[0].text as string;
+		expect(text).not.toContain("tok-secret-123");
+		expect(text).toContain("[REDACTED_TOKEN]");
+	});
+
+	it("query 値の検証エラーに資格情報を残さない (A1)", async () => {
+		vi.stubEnv("THE_BOARD_API_TOKEN", "tok-secret-123");
+		const result = await handleGet(
+			{ path: "/v1/projects", query: { per_page: "tok-secret-123" } },
+			makeConfig(),
+			schema,
+		);
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).not.toContain("tok-secret-123");
+	});
+
 	it("0 件のとき fields を指定しても unknown_fields を載せない", async () => {
 		mswServer.use(
 			http.get(`${TEST_BASE_URL}/v1/projects`, () =>
@@ -948,6 +978,23 @@ describe("handlePatch", () => {
 // handleValidateWrite (B0-2)
 // ---------------------------------------------------------------------------
 describe("handleValidateWrite", () => {
+	it("検証エラーのメッセージに資格情報を残さない (A1)", () => {
+		vi.stubEnv("THE_BOARD_API_TOKEN", "tok-secret-123");
+		const result = handleValidateWrite(
+			{
+				path: "/v1/clients",
+				method: "POST",
+				body: { name: "a", name_disp: "a", payment_term_id: "tok-secret-123" },
+			},
+			makeConfig(),
+			schema,
+		);
+		const text = result.content[0].text as string;
+		expect(text).toContain("payment_term_id");
+		expect(text).not.toContain("tok-secret-123");
+		expect(text).toContain("[REDACTED_TOKEN]");
+	});
+
 	it("read-only でも動き、必須欠落を API を呼ばずに検出する", () => {
 		const result = handleValidateWrite(
 			{ path: "/v1/projects", method: "POST", body: { name: "x" }, variant: "一括請求" },

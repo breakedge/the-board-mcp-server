@@ -2,15 +2,19 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { redactSecrets } from "../api/client.js";
 import { TheBoardApiError, TheBoardTimeoutError } from "../api/types.js";
 
+/**
+ * MCP クライアントへ返す text content を組み立てる最終境界 (A1)。
+ * 引数 echo・検証エラー・検証警告は生の引数を含むため、ここで一括して伏字化する。
+ */
 export function createTextResponse(text: string): CallToolResult {
 	return {
-		content: [{ type: "text", text }],
+		content: [{ type: "text", text: redactSecrets(text) }],
 	};
 }
 
 export function createErrorResponse(message: string): CallToolResult {
 	return {
-		content: [{ type: "text", text: message }],
+		content: [{ type: "text", text: redactSecrets(message) }],
 		isError: true,
 	};
 }

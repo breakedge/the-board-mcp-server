@@ -96,6 +96,27 @@ describe("validateBody", () => {
 		expect(r.errors[0].message).toContain("一括請求");
 	});
 
+	it("他 variant の項目を指定すると variant エラー (unknown 警告にしない)", () => {
+		const r = validateBody(
+			projectsPost,
+			{
+				name: "a",
+				client_id: 1,
+				invoice_timing_kbn: 1,
+				invoice_date: "2026-10-31",
+				invoice_dates: ["2026-10-31"],
+			},
+			"一括請求",
+		);
+		expect(r.valid).toBe(false);
+		expect(r.errors).toEqual([
+			{ path: "invoice_dates", code: "variant", message: expect.any(String) },
+		]);
+		expect(r.errors[0].message).toContain("分割請求");
+		expect(r.errors[0].message).toContain("一括請求");
+		expect(r.warnings).toEqual([]);
+	});
+
 	it("enum は数値と数値文字列を同一視し、外れた値はラベル付きで報告", () => {
 		const ok = validateBody(projectsPost, { name: "a", client_id: "1", invoice_timing_kbn: "2" });
 		expect(ok.errors).toEqual([]);
@@ -129,6 +150,16 @@ describe("validateBody", () => {
 			"details[1].document_detail_kbn:required",
 			"details[2].document_detail_kbn:enum",
 		]);
+	});
+
+	it("スカラー配列の要素型を検査する", () => {
+		const r = validateBody(projectsPost, {
+			name: "a",
+			client_id: 1,
+			invoice_timing_kbn: 1,
+			tags: [1, "b"],
+		});
+		expect(r.errors[0]).toMatchObject({ path: "tags[0]", code: "type" });
 	});
 
 	it("スキーマに無いキーは warning (拒否しない)", () => {

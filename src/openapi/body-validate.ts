@@ -80,6 +80,17 @@ function checkField(
 		value.forEach((item, i) => {
 			checkObject(itemFields, undefined, item, `${path}[${i}]`, errors, warnings);
 		});
+	} else if (field.type === "array" && Array.isArray(value) && field.items?.type) {
+		const itemType = field.items.type;
+		value.forEach((item, i) => {
+			if (!typeMatches(itemType, item)) {
+				errors.push({
+					path: `${path}[${i}]`,
+					code: "type",
+					message: `${path}[${i}] は ${itemType} で指定してください (受け取った値: ${JSON.stringify(item)})`,
+				});
+			}
+		});
 	} else if (field.type === "object" && field.properties) {
 		checkObject(field.properties, undefined, value, path, errors, warnings);
 	}
@@ -87,6 +98,7 @@ function checkField(
 
 /**
  * オブジェクトを fields で検査する。required は明示配列があればそれ、無ければ各 field の required フラグ。
+ * otherVariantOf / variantTitle はトップレベル (prefix === "") でのみ使い、指定 variant 外のキーを variant エラーにする。
  */
 function checkObject(
 	fields: MinimalField[],
@@ -95,6 +107,8 @@ function checkObject(
 	prefix: string,
 	errors: BodyIssue[],
 	warnings: BodyIssue[],
+	otherVariantOf?: Map<string, string>,
+	variantTitle?: string,
 ): void {
 	if (value === null || typeof value !== "object" || Array.isArray(value)) {
 		errors.push({
@@ -119,6 +133,15 @@ function checkObject(
 	for (const [key, v] of Object.entries(obj)) {
 		const field = byName.get(key);
 		if (!field) {
+			const otherTitle = otherVariantOf?.get(key);
+			if (otherTitle) {
+				errors.push({
+					path: join(prefix, key),
+					code: "variant",
+					message: `${join(prefix, key)} は variant "${otherTitle}" の項目で、variant "${variantTitle}" では指定できません`,
+				});
+				continue;
+			}
 			warnings.push({
 				path: join(prefix, key),
 				code: "unknown",
@@ -145,6 +168,7 @@ export function validateBody(
 
 	const fields: MinimalField[] = [...op.requestBody.properties];
 	const required: string[] = [...(op.requestBody.required ?? [])];
+	let otherVariantOf: Map<string, string> | undefined;
 	if (op.variants && op.variants.length > 0) {
 		const titles = op.variants.map((v) => v.title).join(", ");
 		if (variant) {
@@ -159,6 +183,11 @@ export function validateBody(
 			}
 			fields.push(...found.properties);
 			required.push(...(found.required ?? []));
+			otherVariantOf = new Map();
+			for (const v of op.variants) {
+				if (v.title === variant) continue;
+				for (const f of v.properties) otherVariantOf.set(f.name, v.title);
+			}
 		} else {
 			for (const v of op.variants) fields.push(...v.properties);
 			warnings.push({
@@ -168,7 +197,7 @@ export function validateBody(
 			});
 		}
 	}
-	checkObject(fields, required, body, "", errors, warnings);
+	checkObject(fields, required, body, "", errors, warnings, otherVariantOf, variant);
 	return { valid: errors.length === 0, errors, warnings };
 }
 

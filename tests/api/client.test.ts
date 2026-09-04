@@ -107,7 +107,7 @@ describe("makeApiRequest — GET with query params", () => {
 });
 
 describe("makeApiRequest — 配列クエリパラメータ", () => {
-	it("配列値は同名キーを繰り返して付与されること (Rails 形式 tags[]=A&tags[]=B)", async () => {
+	it("配列値はカンマ区切りの単一値として付与されること (board は繰り返しキーの先頭しか見ない)", async () => {
 		let requestUrl: string | null = null;
 
 		server.use(
@@ -121,7 +121,25 @@ describe("makeApiRequest — 配列クエリパラメータ", () => {
 
 		expect(requestUrl).not.toBeNull();
 		const url = new URL(requestUrl as string);
-		expect(url.searchParams.getAll("tags[]")).toEqual(["A", "B"]);
+		expect(url.searchParams.getAll("tags[]")).toEqual(["A,B"]);
+	});
+
+	it("invoice_status_in[] のような複数値フィルタもカンマ区切り 1 個の param になること", async () => {
+		let requestUrl: string | null = null;
+
+		server.use(
+			http.get(`${TEST_BASE_URL}/v1/invoices`, ({ request }) => {
+				requestUrl = request.url;
+				return HttpResponse.json([]);
+			}),
+		);
+
+		await makeApiRequest("GET", "/v1/invoices", { "invoice_status_in[]": ["2", "5"] });
+
+		expect(requestUrl).not.toBeNull();
+		const url = new URL(requestUrl as string);
+		expect(url.searchParams.getAll("invoice_status_in[]")).toEqual(["2,5"]);
+		expect(url.searchParams.getAll("invoice_status_in[]")).toHaveLength(1);
 	});
 });
 

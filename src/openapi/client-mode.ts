@@ -17,7 +17,7 @@ import { formatPathNotFound } from "./path-hints.js";
 import { validateQueryValues } from "./query-validate.js";
 import { getKnownQueryParams, getOperation, sanitizePath, validatePath } from "./schema-loader.js";
 import { isPathEnabled } from "./toolsets.js";
-import type { MinimalParameter, MinimalSchema } from "./types.js";
+import type { MinimalParameter, MinimalSchema, MinimalVariant } from "./types.js";
 
 /**
  * クエリパラメータを送信前に検証する。問題があればエラーメッセージ、無ければ null。
@@ -102,6 +102,10 @@ function writeResponse(
 	}
 	return createTextResponse(text);
 }
+
+/** describe が上限を超えたときに responseFields のネストを落とした旨を伝える注意書き (A1)。 */
+const NESTED_RESPONSE_FIELDS_OMITTED =
+	"responseFields のネスト項目は上限超過のため省略しました (トップレベルのみ)";
 
 const DESTRUCTIVE_PATH_PATTERNS = [
 	"/lock_flg/",
@@ -256,28 +260,56 @@ export function handleDescribe(
 		}
 	}
 
-	const out: Record<string, unknown> = { path: pattern, method, summary: operation.summary };
-	if (part !== "response") {
-		if (operation.parameters) out.parameters = operation.parameters;
-		if (operation.requestBody) out.requestBody = operation.requestBody;
-		if (operation.variants && operation.variants.length > 0) {
+	// キー順は path, method, summary, notice?, variant?, parameters?, requestBody?, variants?,
+	// responseFields?。読み手が先頭を読んだだけで注意書きと variant 固有の定義に届くようにする (A2)。
+	const build = (omitNestedResponseFields: boolean): Record<string, unknown> => {
+		const out: Record<string, unknown> = { path: pattern, method, summary: operation.summary };
+		const notices: string[] = [];
+		if (omitNestedResponseFields) notices.push(NESTED_RESPONSE_FIELDS_OMITTED);
+
+		let variant: MinimalVariant | undefined;
+		let variantList: { title: string; required: string[]; fields: string[] }[] | undefined;
+		if (part !== "response" && operation.variants && operation.variants.length > 0) {
 			if (args.variant) {
-				out.variant = operation.variants.find((v) => v.title === args.variant);
+				variant = operation.variants.find((v) => v.title === args.variant);
 			} else {
 				const titles = operation.variants.map((v) => v.title);
-				out.variants = operation.variants.map((v) => ({
+				variantList = operation.variants.map((v) => ({
 					title: v.title,
 					required: v.required ?? [],
 					fields: v.properties.map((p) => p.name),
 				}));
-				out.notice = `請求方式などで必須項目が異なります。variant (${titles.join(" / ")}) を指定すると該当分岐のフィールド定義 (型・説明) を返します。`;
+				notices.push(
+					`請求方式などで必須項目が異なります。variant (${titles.join(" / ")}) を指定すると該当分岐のフィールド定義 (型・説明) を返します。`,
+				);
 			}
 		}
+
+		if (notices.length > 0) out.notice = notices.join(" ");
+		if (variant) out.variant = variant;
+		if (part !== "response") {
+			if (operation.parameters) out.parameters = operation.parameters;
+			if (operation.requestBody) out.requestBody = operation.requestBody;
+			if (variantList) out.variants = variantList;
+		}
+		if (part !== "request") {
+			const responseFields = operation.responseFields ?? [];
+			out.responseFields = omitNestedResponseFields
+				? responseFields.map(({ properties, ...rest }) => rest)
+				: responseFields;
+		}
+		return out;
+	};
+
+	let text = JSON.stringify(build(false));
+	// describe はレコードの列でないため件数で切り詰められない。上限を超えたときは情報量の多い
+	// responseFields のネストだけを落とし、それでも超えるならそのまま返す (A1)。
+	const hasNested =
+		part !== "request" && (operation.responseFields ?? []).some((f) => f.properties !== undefined);
+	if (text.length > maxResponseChars() && hasNested) {
+		text = JSON.stringify(build(true));
 	}
-	if (part !== "request") {
-		out.responseFields = operation.responseFields ?? [];
-	}
-	return createTextResponse(JSON.stringify(out));
+	return createTextResponse(text);
 }
 
 export async function handleGet(

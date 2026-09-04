@@ -372,6 +372,44 @@ describe("handleDescribe", () => {
 		expect(status.enumLabels["1"]).toBe("未請求");
 		expect(status.description).not.toContain("URLエンコード");
 	});
+	it("上限を超えたら responseFields のネストを落として notice を付ける", () => {
+		vi.stubEnv("THE_BOARD_MAX_RESPONSE_CHARS", "3000");
+		const parsed = JSON.parse(
+			handleDescribe(
+				{ path: "/v1/projects", method: "GET", part: "response" },
+				makeConfig(),
+				schema,
+			).content[0].text as string,
+		);
+		expect(
+			parsed.responseFields.some((f: { properties?: unknown }) => f.properties !== undefined),
+		).toBe(false);
+		expect(parsed.notice).toContain("ネスト");
+	});
+
+	it("上限内なら responseFields のネストをそのまま返す (notice なし)", () => {
+		const parsed = JSON.parse(
+			handleDescribe(
+				{ path: "/v1/invoices", method: "GET", part: "response" },
+				makeConfig(),
+				schema,
+			).content[0].text as string,
+		);
+		expect(
+			parsed.responseFields.some((f: { properties?: unknown }) => f.properties !== undefined),
+		).toBe(true);
+		expect(parsed).not.toHaveProperty("notice");
+	});
+
+	it("variant 指定時は variant を requestBody より前に出す", () => {
+		const text = handleDescribe(
+			{ path: "/v1/projects", method: "POST", variant: "一括請求" },
+			makeConfig(),
+			schema,
+		).content[0].text as string;
+		expect(text.indexOf('"variant"')).toBeGreaterThan(-1);
+		expect(text.indexOf('"variant"')).toBeLessThan(text.indexOf('"requestBody"'));
+	});
 });
 
 // ---------------------------------------------------------------------------

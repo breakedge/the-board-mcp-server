@@ -58,13 +58,22 @@ interface MinimalVariant {
 	required?: string[];
 	properties: MinimalField[];
 }
+interface MinimalResponseField {
+	name: string;
+	type?: string;
+	description?: string;
+	enumLabels?: Record<string, string>;
+	properties?: MinimalResponseField[];
+}
 interface MinimalOperation {
 	summary: string;
 	parameters?: MinimalParameter[];
 	requestBody?: MinimalRequestBody;
 	variants?: MinimalVariant[];
+	responseFields?: MinimalResponseField[];
 }
 interface MinimalSchema {
+	schemaVersion: number;
 	version: string;
 	paths: Record<string, Record<string, MinimalOperation>>;
 }
@@ -347,6 +356,47 @@ export function extractRequestBody(op: Json): MinimalRequestBody | undefined {
 	return body;
 }
 
+const RESPONSE_DESC_MAX = 60;
+const RESPONSE_MAX_DEPTH = 1;
+
+function toResponseFields(flat: Json, depth: number): MinimalResponseField[] {
+	const props = flat?.properties as Record<string, Json> | undefined;
+	if (!props) return [];
+	const out: MinimalResponseField[] = [];
+	for (const [name, raw] of Object.entries(props)) {
+		const prop = flatten(raw, new Set());
+		const field: MinimalResponseField = { name };
+		if (prop.type) field.type = prop.type;
+		else if (prop.items) field.type = "array";
+		else if (prop.properties) field.type = "object";
+		const parsed = parseDescription(prop.description);
+		if (parsed.description) {
+			field.description =
+				parsed.description.length > RESPONSE_DESC_MAX
+					? `${parsed.description.slice(0, RESPONSE_DESC_MAX)}…`
+					: parsed.description;
+		}
+		if (parsed.enumLabels) field.enumLabels = parsed.enumLabels;
+		if (depth < RESPONSE_MAX_DEPTH) {
+			const nestedSource = prop.items ? flatten(prop.items, new Set()) : prop;
+			const nested = toResponseFields(nestedSource, depth + 1);
+			if (nested.length > 0) field.properties = nested;
+		}
+		out.push(field);
+	}
+	return out;
+}
+
+/** 200 応答 (application/json) のフィールドを名前・型・説明で抽出する。配列応答は items を対象にする。 */
+export function extractResponseFields(op: Json): MinimalResponseField[] | undefined {
+	const schema = op.responses?.["200"]?.content?.["application/json"]?.schema;
+	if (!schema) return undefined;
+	let flat = flatten(schema, new Set());
+	if (flat.type === "array" && flat.items) flat = flatten(flat.items, new Set());
+	const fields = toResponseFields(flat, 0);
+	return fields.length > 0 ? fields : undefined;
+}
+
 async function loadSpec(inputPath?: string): Promise<Json> {
 	if (inputPath) return JSON.parse(readFileSync(inputPath, "utf-8"));
 	const res = await fetch(SPEC_URL);
@@ -359,6 +409,7 @@ async function main() {
 	const paths = spec.paths ?? {};
 
 	const minimal: MinimalSchema = {
+		schemaVersion: 2,
 		version: spec.info?.version ?? "unknown",
 		paths: {},
 	};
@@ -376,6 +427,8 @@ async function main() {
 			if (requestBody) entry.requestBody = requestBody;
 			const variants = extractVariants(op);
 			if (variants) entry.variants = variants;
+			const responseFields = extractResponseFields(op);
+			if (responseFields) entry.responseFields = responseFields;
 			minimal.paths[normalizedPath][method.toUpperCase()] = entry;
 		}
 	}

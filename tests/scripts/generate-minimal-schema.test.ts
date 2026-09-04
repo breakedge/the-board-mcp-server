@@ -423,3 +423,76 @@ describe("extractParameters — query パラメータの enum 構造化", () => 
 		expect(params?.[0].enumLabels).toBeUndefined();
 	});
 });
+
+import { extractResponseFields } from "../../scripts/generate-minimal-schema.js";
+
+describe("extractResponseFields — 200 応答のフィールド", () => {
+	const op = {
+		responses: {
+			"200": {
+				content: {
+					"application/json": {
+						schema: {
+							type: "array",
+							items: {
+								allOf: [
+									{
+										properties: {
+											id: { type: "integer", description: "案件ID", readOnly: true },
+											total: { type: "string", format: "decimal", description: "税抜金額" },
+											client: {
+												type: "object",
+												properties: {
+													id: { type: "integer" },
+													name: { type: "string", description: "顧客名" },
+													branch: { type: "object", properties: { id: { type: "integer" } } },
+												},
+											},
+											invoice_status: {
+												type: "integer",
+												description: "請求ステータス - 1：未請求 - 2：請求済",
+											},
+										},
+									},
+								],
+							},
+						},
+					},
+				},
+			},
+		},
+	};
+
+	it("配列応答は items のフィールドを返し、readOnly も含める", () => {
+		const fields = extractResponseFields(op);
+		expect(fields?.map((f) => f.name)).toEqual(["id", "total", "client", "invoice_status"]);
+		expect(fields?.[1]).toEqual({ name: "total", type: "string", description: "税抜金額" });
+	});
+
+	it("ネストは 1 段まで (2 段目は落とす)", () => {
+		const client = extractResponseFields(op)?.find((f) => f.name === "client");
+		expect(client?.properties?.map((f) => f.name)).toEqual(["id", "name", "branch"]);
+		expect(client?.properties?.find((f) => f.name === "branch")?.properties).toBeUndefined();
+	});
+
+	it("enumLabels を載せ、説明は 60 字で切る", () => {
+		const status = extractResponseFields(op)?.find((f) => f.name === "invoice_status");
+		expect(status?.enumLabels).toEqual({ "1": "未請求", "2": "請求済" });
+		const long = extractResponseFields({
+			responses: {
+				"200": {
+					content: {
+						"application/json": {
+							schema: { properties: { x: { type: "string", description: "あ".repeat(100) } } },
+						},
+					},
+				},
+			},
+		});
+		expect(long?.[0].description?.length).toBe(61);
+	});
+
+	it("200 応答が無ければ undefined", () => {
+		expect(extractResponseFields({ responses: { "204": {} } })).toBeUndefined();
+	});
+});

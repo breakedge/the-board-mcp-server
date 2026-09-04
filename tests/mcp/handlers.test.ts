@@ -72,8 +72,12 @@ describe("INSTRUCTIONS のAIエルゴノミクス必須事項 (B1-4/B1-5/B3-1/B3
 		expect(INSTRUCTIONS).toContain("税抜");
 		expect(INSTRUCTIONS).toContain("the_board_api_validate_write");
 	});
-	it("2,400 トークン相当 (5,300 字) 以内に収める", () => {
-		expect(INSTRUCTIONS.length).toBeLessThanOrEqual(5300);
+	it("既存案件の設定を複製する導線 (payment_term_id 等) を案内する", () => {
+		expect(INSTRUCTIONS).toContain("payment_term_id");
+		expect(INSTRUCTIONS).toContain("client_name_disp_kbn");
+	});
+	it("2,550 トークン相当 (5,600 字) 以内に収める", () => {
+		expect(INSTRUCTIONS.length).toBeLessThanOrEqual(5600);
 	});
 });
 

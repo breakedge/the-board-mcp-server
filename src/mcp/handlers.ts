@@ -36,6 +36,7 @@ export const INSTRUCTIONS = `You are connected to board (the-board.jp) MCP serve
 - Invoices by date / 請求書一覧: GET /v1/invoices with invoice_date_gteq/lteq (YYYY-MM-DD). invoice_status_in[] (1 未請求, 4 請求OK, 2 請求済, 5 一部入金済, 3 入金済, 9 回収不能). "一部入金済" counting as unpaid is a business call — ask the user.
 - Find a customer / 顧客: GET /v1/clients with name_cont. Contacts / 担当者: GET /v1/contacts with client_id_eq.
 - Projects of a customer / 案件: GET /v1/projects with client_id_eq, order_status_in[], name_cont. By number: project_no_eq (project_id does NOT work). order_status: 4 = 受注確定, 5 = 受注済 — if the user says 受注済 案件, confirm whether 4 should be included.
+- Copy settings from an existing project: GET /v1/projects/{id} (query {"response_group":"all"}) and reuse payment_term_id, payment_method_kbn, document_setting_id, invoice_timing_kbn, client_name_disp_kbn in the POST body.
 - Document contents (estimate, invoice, order …): GET /v1/projects/{id} with query {"response_group":"all"}; fields is a separate tool argument (not query) — fields:["estimate"] keeps it small (id from /v1/invoices is a billing id, NOT the document id).
 - Costs / 原価: /v1/project_costs. Purchases / 仕入・発注: /v1/expenditures. Masters: /v1/users, /v1/payment_terms, /v1/project_types.
 
@@ -332,7 +333,7 @@ export async function createMcpServer(config: Config): Promise<McpServer> {
 board は書類を直接 POST できない案件中心モデルです。次の手順で進めてください:
 1. the_board_api_describe("/v1/projects", "POST") で共通項目と variant(一括請求 / 定期請求 / 分割請求)を確認し、選んだ variant を指定してもう一度 describe して固有の必須項目を把握する。
 2. the_board_api_validate_write("/v1/projects", "POST", body, variant) で valid になるまで body を直してから POST /v1/projects で案件を作成する。board が見積・請求書などを自動生成する。
-3. GET /v1/projects/{id}?response_group=all で生成された書類ID(.estimate.id / .invoices[].id / .order.id)を取得する。
+3. GET /v1/projects/{id} に query {"response_group": "all"} と fields ["estimate","order","invoices","deliveries"] を指定し、生成された書類ID(.estimate.id / .invoices[].id / .order.id)を取得する。
 4. the_board_api_describe で各書類の PATCH エンドポイントの項目を確認し、PATCH /v1/documents/estimates/{id} や PATCH /v1/documents/invoices/{id} に details[](document_detail_kbn=1 の通常行)と total(税抜)・tax を明示送信する。total/tax は自動集計されない。
 5. 最後に GET /v1/projects/{id}?response_group=all で各書類の内容(明細・金額)が意図どおりか検証する。
 

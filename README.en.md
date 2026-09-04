@@ -101,6 +101,7 @@ MCP client configuration with Docker:
 - The default `format: "concise"` is compact JSON with null-valued keys omitted (a missing key means null). Empty arrays, `0`, `false`, and empty strings are kept. `format: "detailed"` is the previous pretty-printed JSON with nulls kept.
 - `fields` narrows the returned keys (dot paths, applied per record): `"fields": ["id","name","total","tax"]`, `"fields": "estimate.details"`.
 - Exceeding the limit (default 20,000 chars) drops trailing records: `truncated: true` with `dropped_in_page`. Lower `per_page` or narrow `fields` and re-fetch the same page.
+- `notice` appears only when records were dropped or the response exceeded the limit (how many were omitted, and the suggestion to narrow `fields`). Normal responses do not include it.
 - `the_board_api_post` / `the_board_api_patch` validate the body before sending. Pass `skip_validation: true` only when you have confirmed the bundled schema is stale and the validation error is wrong.
 
 ## Common Tasks

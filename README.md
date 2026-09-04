@@ -101,6 +101,7 @@ Docker を使う MCP クライアント設定:
 - 既定の `format: "concise"` は空白なしの JSON で、値が null のキーを省きます（キーが無い = null）。空配列・0・false・空文字は残ります。`format: "detailed"` は従来どおりの整形 JSON で null を保持します。
 - `fields` で返すキーを絞れます（ドット区切り、各レコードに適用）: `"fields": ["id","name","total","tax"]`、`"fields": "estimate.details"`。
 - 上限（既定 20,000 字）を超えるとレコード単位で末尾を落とし、`truncated: true` と `dropped_in_page` を返します。`per_page` を小さくするか `fields` で絞って同じページを再取得してください。
+- `notice` は切り詰めや上限超過が起きたときだけ付く案内文です（省略した件数、`fields` での絞り込みの勧め）。通常の応答には含まれません。
 - `the_board_api_post` / `the_board_api_patch` は送信前に body を検証します。同梱スキーマが古く誤検出だと確認できた場合のみ、`skip_validation: true` で検証をスキップできます。
 
 ## よくある使い方

@@ -79,6 +79,29 @@ describe("formatApiError", () => {
 		expect(formatApiError(err)).toContain("入力値が正しくありません");
 	});
 
+	it("422 の errors が配列なら field: description (code) で整形する", () => {
+		const err = new TheBoardApiError(
+			"パラメータが正しくありません。",
+			422,
+			{
+				errors: [
+					{
+						field: "per_page",
+						code: "less_than_or_equal_to",
+						description: "per_pageは100以下の値にしてください。",
+					},
+				],
+			},
+			"GET",
+			"/v1/projects",
+		);
+		const msg = formatApiError(err);
+		expect(msg).toContain(
+			"per_page: per_pageは100以下の値にしてください。 (less_than_or_equal_to)",
+		);
+		expect(msg).not.toContain("0:");
+	});
+
 	it("429 → レート制限メッセージ", () => {
 		const err = new TheBoardApiError("Too Many Requests", 429, {});
 		expect(formatApiError(err)).toContain("レート制限");

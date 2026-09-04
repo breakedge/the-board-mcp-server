@@ -18,6 +18,21 @@ export function createErrorResponse(message: string): CallToolResult {
 function extractValidationDetails(body: unknown): string {
 	if (body && typeof body === "object") {
 		const b = body as Record<string, unknown>;
+		// board の 422 は errors を配列 [{field, code, description}] で返すことが多い
+		if (Array.isArray(b.errors)) {
+			const details = b.errors
+				.map((e) => {
+					if (e && typeof e === "object") {
+						const o = e as Record<string, unknown>;
+						const field = String(o.field ?? "?");
+						const text = String(o.description ?? o.message ?? JSON.stringify(o));
+						return o.code ? `${field}: ${text} (${String(o.code)})` : `${field}: ${text}`;
+					}
+					return String(e);
+				})
+				.join("; ");
+			return details ? ` (${details})` : "";
+		}
 		if (b.errors && typeof b.errors === "object") {
 			const errors = b.errors as Record<string, unknown>;
 			// board API は errors の値を配列 / 文字列 / オブジェクトいずれでも返しうるため

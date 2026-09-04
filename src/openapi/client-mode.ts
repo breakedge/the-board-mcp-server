@@ -13,6 +13,7 @@ import {
 } from "../utils/shape.js";
 import { aliasesForPath } from "./aliases.js";
 import { type BodyIssue, formatBodyIssues, validateBody } from "./body-validate.js";
+import { formatPathNotFound } from "./path-hints.js";
 import { validateQueryValues } from "./query-validate.js";
 import { getKnownQueryParams, getOperation, sanitizePath, validatePath } from "./schema-loader.js";
 import { isPathEnabled } from "./toolsets.js";
@@ -298,7 +299,7 @@ export async function handleGet(
 	}
 
 	if (!validatePath("GET", sanitized, schema)) {
-		return createErrorResponse(`パスが見つかりません: ${sanitized}`);
+		return createErrorResponse(formatPathNotFound("GET", sanitized, schema));
 	}
 
 	if (args.query) {
@@ -378,7 +379,7 @@ export async function handlePost(
 	}
 
 	if (!validatePath("POST", sanitized, schema)) {
-		return createErrorResponse(`パスが見つかりません: ${sanitized}`);
+		return createErrorResponse(formatPathNotFound("POST", sanitized, schema));
 	}
 
 	// skip_validation は同梱スキーマが古く false positive を出す時の明示的な避難路 (B0-2)。
@@ -436,7 +437,7 @@ export async function handlePatch(
 	}
 
 	if (!validatePath("PATCH", sanitized, schema)) {
-		return createErrorResponse(`パスが見つかりません: ${sanitized}`);
+		return createErrorResponse(formatPathNotFound("PATCH", sanitized, schema));
 	}
 
 	// skip_validation は同梱スキーマが古く false positive を出す時の明示的な避難路 (B0-2)。
@@ -484,7 +485,7 @@ export async function handleDelete(
 	}
 
 	if (!validatePath("DELETE", sanitized, schema)) {
-		return createErrorResponse(`パスが見つかりません: ${sanitized}`);
+		return createErrorResponse(formatPathNotFound("DELETE", sanitized, schema));
 	}
 
 	try {
@@ -522,7 +523,7 @@ export function handleValidateWrite(
 		return createErrorResponse("method は POST か PATCH を指定してください。");
 	}
 	if (!validatePath(method, sanitized, schema)) {
-		return createErrorResponse(`パスが見つかりません: ${sanitized}`);
+		return createErrorResponse(formatPathNotFound(method, sanitized, schema));
 	}
 
 	const found = getOperation(method, sanitized, schema);

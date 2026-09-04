@@ -14,7 +14,9 @@ function redactWith(message: string, apiKey: string, apiToken: string): string {
 		sanitized = sanitized.replaceAll(`Bearer ${apiToken}`, "Bearer [REDACTED_TOKEN]");
 		sanitized = sanitized.replaceAll(apiToken, "[REDACTED_TOKEN]");
 	}
-	return sanitized.replace(/Authorization: Bearer \S+/g, "Authorization: Bearer [REDACTED_TOKEN]");
+	// 設定済みの apiToken と一致しない Bearer トークンも汎用的に伏字化する
+	// (board が想定外の別トークンを応答本文に含めるケースへの defense-in-depth)。
+	return sanitized.replace(/Bearer\s+\S+/g, "Bearer [REDACTED_TOKEN]");
 }
 
 function sanitizeErrorMessage(message: string, apiKey: string, apiToken: string): string {
@@ -31,6 +33,15 @@ export function redactSecrets(message: string): string {
 		process.env.THE_BOARD_API_KEY ?? "",
 		process.env.THE_BOARD_API_TOKEN ?? "",
 	);
+}
+
+const DEFAULT_TIMEOUT_MS = 30_000;
+
+/** 1 試行あたりの timeout。THE_BOARD_REQUEST_TIMEOUT_MS (正の整数 ms) で上書き可。 */
+function requestTimeoutMs(): number {
+	const raw = process.env.THE_BOARD_REQUEST_TIMEOUT_MS;
+	const n = raw === undefined || raw === "" ? Number.NaN : Number(raw);
+	return Number.isFinite(n) && n > 0 ? Math.floor(n) : DEFAULT_TIMEOUT_MS;
 }
 
 function sanitizeBody(body: unknown, apiKey: string, apiToken: string): unknown {
@@ -118,10 +129,6 @@ export async function makeApiRequest(
 		throw new Error("THE_BOARD_API_TOKEN environment variable is not set");
 	}
 
-	// Rate limiting
-	dailyCounter.increment();
-	await perSecondLimiter.acquire();
-
 	const isListReq = concurrentListLimiter.isListPath(path);
 	let releaseList: (() => void) | undefined;
 	if (isListReq) {
@@ -130,6 +137,10 @@ export async function makeApiRequest(
 
 	try {
 		return await withRetry(async () => {
+			// Rate limiting (リトライごとに通す。429 リトライは新規試行として消費する)
+			dailyCounter.increment();
+			await perSecondLimiter.acquire();
+
 			const url = new URL(path, baseUrl);
 
 			if (params) {
@@ -161,18 +172,30 @@ export async function makeApiRequest(
 				headers["Content-Type"] = "application/json";
 			}
 
-			const response = await fetch(url.toString(), {
-				method,
-				headers,
-				body: body !== undefined ? JSON.stringify(body) : undefined,
-			});
+			const timeoutMs = requestTimeoutMs();
+			let response: Response;
+			try {
+				response = await fetch(url.toString(), {
+					method,
+					headers,
+					body: body !== undefined ? JSON.stringify(body) : undefined,
+					signal: AbortSignal.timeout(timeoutMs),
+				});
+			} catch (err) {
+				if (err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError")) {
+					throw new Error(
+						`board API が ${Math.round(timeoutMs / 1000)} 秒以内に応答しませんでした [${method} ${path}]`,
+					);
+				}
+				throw err;
+			}
 
 			if (response.status === 204) {
 				return { data: null };
 			}
 
 			if (response.ok) {
-				const data = await response.json();
+				const data = sanitizeBody(await response.json(), apiKey, apiToken);
 				const pagination = extractPagination(response.headers);
 				return pagination ? { data, pagination } : { data };
 			}

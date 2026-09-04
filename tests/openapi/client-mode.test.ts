@@ -996,6 +996,11 @@ describe("handleAuthStatus", () => {
 		expect(parsed.dailyRequestLimit).toBe(3000);
 	});
 
+	it("daily 残量が推定値である注記を含む", async () => {
+		const parsed = JSON.parse((await handleAuthStatus({}, makeConfig())).content[0].text as string);
+		expect(parsed.dailyRequestsRemainingNote).toContain("推定");
+	});
+
 	it("既定では資格情報の実検証を行わない (credentialsValid 無し)", async () => {
 		const result = await handleAuthStatus();
 		const parsed = JSON.parse(result.content[0].text as string);

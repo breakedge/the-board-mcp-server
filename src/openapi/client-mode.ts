@@ -599,6 +599,8 @@ export async function handleAuthStatus(
 		apiTokenConfigured,
 		dailyRequestsRemaining,
 		dailyRequestLimit,
+		dailyRequestsRemainingNote:
+			"プロセス内の推定値。board はレート制限ヘッダを返さないため、サーバ再起動でリセットされる",
 	};
 
 	// validate=true のときだけ軽量 GET で資格情報の有効性を実検証する (B3-4)。

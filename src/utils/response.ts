@@ -1,6 +1,6 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { redactSecrets } from "../api/client.js";
-import { TheBoardApiError } from "../api/types.js";
+import { TheBoardApiError, TheBoardTimeoutError } from "../api/types.js";
 
 export function createTextResponse(text: string): CallToolResult {
 	return {
@@ -62,6 +62,10 @@ function apiDetail(message: string): string {
 }
 
 export function formatApiError(error: unknown): string {
+	// timeout は想定内の失敗。message が秒数と呼び出し先を含むためそのまま返す (D1)。
+	if (error instanceof TheBoardTimeoutError) {
+		return error.message;
+	}
 	if (error instanceof TheBoardApiError) {
 		const detail = apiDetail(error.message);
 		// どの呼び出しが失敗したかを示し、AI が id/種別の誤りを自己修正できるようにする (B2-2)。

@@ -4,7 +4,7 @@ import {
 	PerSecondLimiter,
 	withRetry,
 } from "./rate-limiter.js";
-import { type ApiErrorResponse, TheBoardApiError } from "./types.js";
+import { type ApiErrorResponse, TheBoardApiError, TheBoardTimeoutError } from "./types.js";
 
 /** 指定された key/token をメッセージから伏字化する共通処理 (空文字は no-op)。 */
 function redactWith(message: string, apiKey: string, apiToken: string): string {
@@ -181,8 +181,10 @@ export async function makeApiRequest(
 				});
 			} catch (err) {
 				if (err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError")) {
-					throw new Error(
+					throw new TheBoardTimeoutError(
 						`board API が ${Math.round(timeoutMs / 1000)} 秒以内に応答しませんでした [${method} ${path}]`,
+						method,
+						path,
 					);
 				}
 				throw err;

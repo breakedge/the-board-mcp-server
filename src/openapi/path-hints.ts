@@ -33,7 +33,7 @@ export function formatPathNotFound(method: string, path: string, schema: Minimal
 	if (pattern) {
 		const supported = Object.keys(schema.paths[pattern]).join(", ");
 		const hint = PREFIX_HINTS[prefixOf(pattern)];
-		return `${pattern} は ${upper} に対応していません (対応 method: ${supported})。${hint ? ` ${hint}` : ""}`;
+		return `${pattern} は ${upper} に対応していません (対応 method: ${supported})。${hint ?? ""}`;
 	}
 	const prefix = prefixOf(path);
 	const candidates = Object.keys(schema.paths)

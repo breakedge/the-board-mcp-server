@@ -14,6 +14,7 @@ describe("formatPathNotFound", () => {
 		expect(msg).toContain("POST に対応していません");
 		expect(msg).toContain("GET");
 		expect(msg).toContain("POST /v1/projects");
+		expect(msg).not.toContain("。 ");
 	});
 	it("未知パスは同じ prefix の候補を最大 5 件返す", () => {
 		const msg = formatPathNotFound("GET", "/v1/documents/invoices", schema);

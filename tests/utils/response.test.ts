@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { TheBoardApiError } from "../../src/api/types.js";
+import { TheBoardApiError, TheBoardTimeoutError } from "../../src/api/types.js";
 import {
 	createErrorResponse,
 	createTextResponse,
@@ -154,6 +154,18 @@ describe("formatApiError", () => {
 		const msg = formatApiError(err);
 		expect(msg).toContain("見つかりませんでした");
 		expect(msg).toContain("GET /v1/documents/invoices/123");
+	});
+
+	it("timeout は「予期しないエラー」にせずそのまま伝える (D1)", () => {
+		const msg = formatApiError(
+			new TheBoardTimeoutError(
+				"board API が 30 秒以内に応答しませんでした [GET /v1/users]",
+				"GET",
+				"/v1/users",
+			),
+		);
+		expect(msg).not.toContain("予期しない");
+		expect(msg).toBe("board API が 30 秒以内に応答しませんでした [GET /v1/users]");
 	});
 
 	it("Error以外 (string) → 予期しないエラーメッセージ", () => {

@@ -2,7 +2,7 @@ import { delay, HttpResponse, http } from "msw";
 import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { getRateLimitStatus, makeApiRequest, redactSecrets } from "../../src/api/client.js";
-import { TheBoardApiError } from "../../src/api/types.js";
+import { TheBoardApiError, TheBoardTimeoutError } from "../../src/api/types.js";
 
 const TEST_BASE_URL = "https://api.the-board.jp";
 const TEST_API_KEY = "test-api-key";
@@ -342,6 +342,7 @@ describe("makeApiRequest — timeout / retry / 伏字化", () => {
 			}),
 		);
 		await expect(makeApiRequest("GET", "/v1/users")).rejects.toThrow(/応答しませんでした/);
+		await expect(makeApiRequest("GET", "/v1/users")).rejects.toThrow(TheBoardTimeoutError);
 	});
 
 	it("成功応答の本文に含まれるトークンも伏字化する", async () => {

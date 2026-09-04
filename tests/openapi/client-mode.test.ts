@@ -318,6 +318,26 @@ describe("handleDescribe", () => {
 		expect(result.content[0].text).toContain("一括請求");
 	});
 
+	it("variant を持たない endpoint に variant を渡すとエラー", () => {
+		const result = handleDescribe(
+			{ path: "/v1/clients", method: "POST", variant: "存在しない" },
+			makeConfig(),
+			schema,
+		);
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toContain("variant はありません");
+	});
+
+	it("part=response と存在しない variant の組み合わせもエラーになる (variant は無視されない)", () => {
+		const result = handleDescribe(
+			{ path: "/v1/projects", method: "POST", variant: "月次", part: "response" },
+			makeConfig(),
+			schema,
+		);
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toContain("一括請求");
+	});
+
 	it("part=response は responseFields だけを返す", () => {
 		const parsed = JSON.parse(
 			handleDescribe(

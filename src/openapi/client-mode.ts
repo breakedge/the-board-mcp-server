@@ -235,21 +235,29 @@ export function handleDescribe(
 	const { pattern, operation } = found;
 	const part = args.part === "response" || args.part === "all" ? args.part : "request";
 
+	// variant は part に関わらず検証する。variants を持たない endpoint への指定や未知の title を
+	// (part=response 時などに) 黙って無視すると、AI が「variant 適用済み」と誤認しうるため。
+	if (args.variant) {
+		if (!operation.variants || operation.variants.length === 0) {
+			return createErrorResponse(`このエンドポイントに variant はありません: ${method} ${pattern}`);
+		}
+		if (!operation.variants.some((v) => v.title === args.variant)) {
+			const titles = operation.variants.map((v) => v.title);
+			return createErrorResponse(
+				`variant "${args.variant}" はありません。指定できる variant: ${titles.join(", ")}`,
+			);
+		}
+	}
+
 	const out: Record<string, unknown> = { path: pattern, method, summary: operation.summary };
 	if (part !== "response") {
 		if (operation.parameters) out.parameters = operation.parameters;
 		if (operation.requestBody) out.requestBody = operation.requestBody;
 		if (operation.variants && operation.variants.length > 0) {
-			const titles = operation.variants.map((v) => v.title);
 			if (args.variant) {
-				const variant = operation.variants.find((v) => v.title === args.variant);
-				if (!variant) {
-					return createErrorResponse(
-						`variant "${args.variant}" はありません。指定できる variant: ${titles.join(", ")}`,
-					);
-				}
-				out.variant = variant;
+				out.variant = operation.variants.find((v) => v.title === args.variant);
 			} else {
+				const titles = operation.variants.map((v) => v.title);
 				out.variants = operation.variants.map((v) => ({
 					title: v.title,
 					required: v.required ?? [],

@@ -143,6 +143,15 @@ describe("buildListEnvelope", () => {
 		expect(parsed.notice).toContain("fields");
 	});
 
+	it("落としたうえで 1 件が超過するときは省略件数と fields の両方を notice に残す (C2)", () => {
+		const data = Array.from({ length: 10 }, (_, i) => ({ id: i, text: "x".repeat(500) }));
+		const parsed = JSON.parse(buildListEnvelope({ data, format: "concise", maxChars: 300 }));
+		expect(parsed.data).toHaveLength(1);
+		expect(parsed.dropped_in_page).toBe(9);
+		expect(parsed.notice).toContain("末尾 9 件");
+		expect(parsed.notice).toContain("fields");
+	});
+
 	it("0 件のときは request を echo し validated=true", () => {
 		const parsed = JSON.parse(
 			buildListEnvelope({

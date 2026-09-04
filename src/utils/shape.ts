@@ -177,7 +177,11 @@ export function buildListEnvelope(input: ListEnvelopeInput): string {
 	}
 	if (text.length > input.maxChars && kept.length === 1) {
 		const env = build();
-		env.notice = SINGLE_TOO_LARGE(input.maxChars);
+		// 省略件数の案内を上書きすると「何件落ちたか」が失われるため、両方を残す
+		const dropNotice = typeof env.notice === "string" ? env.notice : undefined;
+		env.notice = dropNotice
+			? `${dropNotice} ${SINGLE_TOO_LARGE(input.maxChars)}`
+			: SINGLE_TOO_LARGE(input.maxChars);
 		text = serialize(env, input.format);
 	}
 	return text;

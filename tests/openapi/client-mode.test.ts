@@ -474,6 +474,24 @@ describe("handleGet", () => {
 		expect(parsed.data).toEqual([{ id: 1 }]);
 	});
 
+	it("fields はツール引数と query の双方にあってもツール引数を優先し query から除く (C1)", async () => {
+		mswServer.use(
+			http.get(`${TEST_BASE_URL}/v1/projects`, ({ request }) => {
+				const url = new URL(request.url);
+				expect(url.searchParams.has("fields")).toBe(false);
+				return HttpResponse.json([{ id: 1, name: "a" }]);
+			}),
+		);
+		const result = await handleGet(
+			{ path: "/v1/projects", query: { per_page: 1, fields: "name" }, fields: "id" },
+			makeConfig(),
+			schema,
+		);
+		expect(result.isError).toBeUndefined();
+		const parsed = JSON.parse(result.content[0].text as string);
+		expect(parsed.data).toEqual([{ id: 1 }]);
+	});
+
 	it("無効パス → エラーレスポンス", async () => {
 		const config = makeConfig();
 		const result = await handleGet({ path: "/v1/nonexistent" }, config, schema);

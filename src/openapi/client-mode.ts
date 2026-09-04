@@ -334,20 +334,20 @@ export async function handleGet(
 		return createErrorResponse(formatPathNotFound("GET", sanitized, schema));
 	}
 
-	// LLM が fields / format をツール引数でなく query に書いてしまうことがある。対応する
-	// ツール引数が未指定なら query から吸収して取り除く (query に残すと validateQuery が
-	// 「不明なクエリパラメータ」で拒否するため、validateQuery より前に行う)。
+	// LLM が fields / format をツール引数でなく query に書いてしまうことがある。どちらに来ても
+	// query からは必ず取り除き (残すと validateQuery が「不明なクエリパラメータ」で拒否する)、
+	// ツール引数が指定されていればそちらを優先する。validateQuery より前に行う。
 	let query = args.query;
 	let rawFields: unknown = args.fields;
 	let rawFormat = args.format;
 	if (query && ("fields" in query || "format" in query)) {
 		const rest = { ...query };
-		if (rawFields === undefined && "fields" in rest) {
-			rawFields = rest.fields;
+		if ("fields" in rest) {
+			if (rawFields === undefined) rawFields = rest.fields;
 			delete rest.fields;
 		}
-		if (rawFormat === undefined && "format" in rest) {
-			rawFormat = rest.format as string | undefined;
+		if ("format" in rest) {
+			if (rawFormat === undefined) rawFormat = rest.format as string | undefined;
 			delete rest.format;
 		}
 		query = rest;

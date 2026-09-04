@@ -114,6 +114,7 @@ A single response may also carry `unknown_fields`, `notice` or `omitted_keys`.
 - A single response over the limit drops the top-level keys (arrays and objects) with the longest JSON and lists them in `omitted_keys` (an array of `{key, chars}`). Scalars such as `id` and `name` are kept, so re-fetch what you need with `fields`.
 - `notice` appears only when records were dropped or the response exceeded the limit (how many were omitted, and the suggestion to narrow `fields`). Normal responses do not include it.
 - `the_board_api_post` / `the_board_api_patch` validate the body before sending. Pass `skip_validation: true` only when you have confirmed the bundled schema is stale and the validation error is wrong.
+- List order: `/v1/projects` lists are returned newest first (official spec); other list endpoints have no documented order. Sort client-side if you need a specific order.
 
 ## Common Tasks
 

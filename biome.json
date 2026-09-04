@@ -25,7 +25,8 @@
 			"!**/dist",
 			"!**/coverage",
 			"!**/_local",
-			"!**/.superpowers"
+			"!**/.superpowers",
+			"!**/.worktrees"
 		]
 	}
 }

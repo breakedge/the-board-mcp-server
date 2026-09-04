@@ -180,3 +180,120 @@ describe("resolveRef — spec 未ロード時の contract", () => {
 		);
 	});
 });
+
+import { extractParameters, parseDescription } from "../../scripts/generate-minimal-schema.js";
+
+describe("parseDescription — 説明文の整形と enum 構造化", () => {
+	it("「- 1：ラベル」列挙を enum / enumLabels に構造化し、説明文から除く", () => {
+		const r = parseDescription(
+			"請求ステータス - 1：未請求 - 4：請求OK - 2：請求済 ※複数の場合はカンマ区切り ※例にはURLエンコード前の値が記載されていますが、送信する際はURLエンコードしてください。",
+		);
+		expect(r.enum).toEqual([1, 4, 2]);
+		expect(r.enumLabels).toEqual({ "1": "未請求", "4": "請求OK", "2": "請求済" });
+		expect(r.description).toBe("請求ステータス ※複数指定は配列で渡す");
+	});
+
+	it("括弧付きラベルも 1 語として扱う", () => {
+		const r = parseDescription("受注ステータス - 1：見積中(高) - 2：見積中(中) - 9：失注");
+		expect(r.enumLabels).toEqual({ "1": "見積中(高)", "2": "見積中(中)", "9": "失注" });
+		expect(r.description).toBe("受注ステータス");
+	});
+
+	it("列挙が 1 つだけなら enum 化しない", () => {
+		const r = parseDescription("備考 - 1：メモ");
+		expect(r.enum).toBeUndefined();
+		expect(r.description).toBe("備考 - 1：メモ");
+	});
+
+	it("「＊10・8・5・0のいずれか」から enum を復元する", () => {
+		const r = parseDescription("税率 ＊10・8・5・0のいずれかを設定してください");
+		expect(r.enum).toEqual([10, 8, 5, 0]);
+		expect(r.description).toBe("税率 ＊10・8・5・0のいずれかを設定してください");
+	});
+
+	it("空・非文字列は空オブジェクト", () => {
+		expect(parseDescription(undefined)).toEqual({});
+		expect(parseDescription("   ")).toEqual({});
+	});
+
+	it("200 字で切り詰める", () => {
+		const r = parseDescription("あ".repeat(250));
+		expect(r.description?.length).toBe(201);
+		expect(r.description?.endsWith("…")).toBe(true);
+	});
+});
+
+describe("toFields — v2 の補正", () => {
+	it("type=string なのに items を持つ矛盾は items を落とす", () => {
+		const fields = toFields(
+			{
+				type: "object",
+				properties: {
+					invoice_date: { type: "string", format: "YYYY-MM-DD", items: { type: "string" } },
+				},
+			},
+			new Set(),
+			0,
+		);
+		expect(fields[0]).toEqual({ name: "invoice_date", type: "string", format: "YYYY-MM-DD" });
+	});
+
+	it("説明文の列挙を enum / enumLabels としてフィールドに載せる", () => {
+		const fields = toFields(
+			{
+				type: "object",
+				properties: {
+					document_detail_kbn: {
+						type: "integer",
+						description: "明細区分 - 1：通常 - 2：見出し行 - 3：小計行",
+					},
+				},
+			},
+			new Set(),
+			0,
+		);
+		expect(fields[0].enum).toEqual([1, 2, 3]);
+		expect(fields[0].enumLabels).toEqual({ "1": "通常", "2": "見出し行", "3": "小計行" });
+		expect(fields[0].description).toBe("明細区分");
+	});
+});
+
+describe("extractParameters — query パラメータの enum 構造化", () => {
+	it("schema.enum が無くても説明文の列挙から enum を作る", () => {
+		const params = extractParameters({
+			parameters: [
+				{
+					name: "invoice_status_in[]",
+					in: "query",
+					schema: { type: "string" },
+					description: "請求ステータス - 1：未請求 - 2：請求済 ※複数の場合はカンマ区切り",
+				},
+				{ name: "id", in: "path", schema: { type: "integer" } },
+			],
+		});
+		expect(params).toHaveLength(1);
+		expect(params?.[0]).toEqual({
+			name: "invoice_status_in[]",
+			required: false,
+			type: "string",
+			enum: [1, 2],
+			enumLabels: { "1": "未請求", "2": "請求済" },
+			description: "請求ステータス ※複数指定は配列で渡す",
+		});
+	});
+
+	it("schema.enum があればそれを優先し、ラベルだけ説明文から補う", () => {
+		const params = extractParameters({
+			parameters: [
+				{
+					name: "response_group",
+					in: "query",
+					schema: { type: "string", enum: ["small", "medium", "large"] },
+					description: "取得範囲",
+				},
+			],
+		});
+		expect(params?.[0].enum).toEqual(["small", "medium", "large"]);
+		expect(params?.[0].enumLabels).toBeUndefined();
+	});
+});

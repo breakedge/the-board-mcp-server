@@ -35,6 +35,7 @@ interface MinimalParameter {
 	required: boolean;
 	type: string;
 	enum?: (string | number)[];
+	enumLabels?: Record<string, string>;
 	description?: string;
 }
 interface MinimalField {
@@ -43,6 +44,7 @@ interface MinimalField {
 	format?: string;
 	required?: boolean;
 	enum?: (string | number)[];
+	enumLabels?: Record<string, string>;
 	description?: string;
 	properties?: MinimalField[];
 	items?: { type?: string; properties?: MinimalField[] };
@@ -88,11 +90,49 @@ function resolveRef(node: Json, seen: Set<string>): Json {
 	return current;
 }
 
-function cleanDescription(desc: unknown): string | undefined {
-	if (typeof desc !== "string") return undefined;
-	const collapsed = desc.replace(/\s+/g, " ").trim();
-	if (!collapsed) return undefined;
-	return collapsed.length > DESC_MAX ? `${collapsed.slice(0, DESC_MAX)}…` : collapsed;
+interface ParsedDescription {
+	description?: string;
+	enum?: (string | number)[];
+	enumLabels?: Record<string, string>;
+}
+
+// 公式 spec の説明文に含まれる、MCP 経由では無意味・有害な注記
+const URL_ENCODE_NOTE =
+	/※例にはURLエンコード前の値が記載されていますが、?送信する際はURLエンコードしてください。?/g;
+const COMMA_NOTE = /※複数の場合はカンマ区切り/g;
+// 「- 1：未請求 - 4：請求OK …」形式の列挙 (値は数値または英字、ラベルは次の「- 値：」か「※」か末尾まで)
+const ENUM_ITEM =
+	/-\s*([0-9]+|[A-Za-z_]+)：\s*([^-※]+?)(?=\s*-\s*(?:[0-9]+|[A-Za-z_]+)：|\s*※|\s*$)/g;
+// 「＊10・8・5・0のいずれか」形式 (v1.9.0 で enum が説明文に退化した税率)
+const DOTTED_ENUM = /＊((?:\d+・)+\d+)のいずれか/;
+
+/**
+ * 説明文を整形し、列挙があれば enum / enumLabels に構造化する。
+ * - URL エンコード注記を除去、「カンマ区切り」を配列指定の注記に置換
+ * - 「- 値：ラベル」が 2 個以上あれば enum 化して説明文から除く
+ * - 「＊10・8・5・0のいずれか」は enum を復元 (説明文は残す)
+ * - 空白を畳んで DESC_MAX で切り詰め
+ */
+export function parseDescription(desc: unknown): ParsedDescription {
+	if (typeof desc !== "string") return {};
+	let text = desc.replace(/\s+/g, " ").trim();
+	if (!text) return {};
+	text = text.replace(URL_ENCODE_NOTE, "").replace(COMMA_NOTE, "※複数指定は配列で渡す");
+	const result: ParsedDescription = {};
+	const items = [...text.matchAll(ENUM_ITEM)];
+	if (items.length >= 2) {
+		result.enum = items.map((m) => (/^[0-9]+$/.test(m[1]) ? Number(m[1]) : m[1]));
+		result.enumLabels = Object.fromEntries(items.map((m) => [m[1], m[2].trim()]));
+		text = text.replace(ENUM_ITEM, "");
+	} else {
+		const dotted = text.match(DOTTED_ENUM);
+		if (dotted) result.enum = dotted[1].split("・").map(Number);
+	}
+	text = text.replace(/\s+/g, " ").trim();
+	if (text) {
+		result.description = text.length > DESC_MAX ? `${text.slice(0, DESC_MAX)}…` : text;
+	}
+	return result;
 }
 
 const MAX_FLATTEN_DEPTH = 50;
@@ -170,12 +210,18 @@ export function toFields(schema: Json, seen: Set<string>, depth: number): Minima
 		// format (date / date-time / int32 等) は describe で AI が値の形を掴むのに有用
 		if (typeof prop.format === "string") field.format = prop.format;
 		if (requiredSet.has(name)) field.required = true;
-		if (Array.isArray(prop.enum)) field.enum = prop.enum;
-		const desc = cleanDescription(prop.description);
-		if (desc) field.description = desc;
-		// type 文字列を省く spec もあるため、items/properties の有無で配列/オブジェクトを判定する
+		const parsed = parseDescription(prop.description);
+		if (Array.isArray(prop.enum)) {
+			field.enum = prop.enum;
+		} else if (parsed.enum) {
+			field.enum = parsed.enum;
+		}
+		if (parsed.enumLabels) field.enumLabels = parsed.enumLabels;
+		if (parsed.description) field.description = parsed.description;
+		// 公式 spec の矛盾 (type=string に items が付く invoice_date) は items を無視する
+		const hasItems = prop.items && field.type !== "string";
 		if (depth < MAX_DEPTH) {
-			if (prop.items) {
+			if (hasItems) {
 				const itemFlat = flatten(prop.items, seen);
 				const item: { type?: string; properties?: MinimalField[] } = {};
 				if (itemFlat.type) item.type = itemFlat.type;
@@ -192,7 +238,7 @@ export function toFields(schema: Json, seen: Set<string>, depth: number): Minima
 	return fields;
 }
 
-function extractParameters(op: Json): MinimalParameter[] | undefined {
+export function extractParameters(op: Json): MinimalParameter[] | undefined {
 	const params = Array.isArray(op.parameters) ? op.parameters : [];
 	const result: MinimalParameter[] = [];
 	for (const raw of params) {
@@ -203,9 +249,14 @@ function extractParameters(op: Json): MinimalParameter[] | undefined {
 			required: !!p.required,
 			type: p.schema?.type ?? "string",
 		};
-		if (Array.isArray(p.schema?.enum)) param.enum = p.schema.enum;
-		const desc = cleanDescription(p.description);
-		if (desc) param.description = desc;
+		const parsed = parseDescription(p.description);
+		if (Array.isArray(p.schema?.enum)) {
+			param.enum = p.schema.enum;
+		} else if (parsed.enum) {
+			param.enum = parsed.enum;
+		}
+		if (parsed.enumLabels) param.enumLabels = parsed.enumLabels;
+		if (parsed.description) param.description = parsed.description;
 		result.push(param);
 	}
 	return result.length > 0 ? result : undefined;

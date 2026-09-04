@@ -211,6 +211,19 @@ describe("parseDescription — 説明文の整形と enum 構造化", () => {
 		expect(r.description).toBe("税率 ＊10・8・5・0のいずれかを設定してください");
 	});
 
+	it("箇条書きの続き (「- または…」) で終わる列挙も最後の項目まで取る (B3)", () => {
+		const r = parseDescription("送付 - 1：A - 2：B - または カスタムのID");
+		expect(r.enum).toEqual([1, 2]);
+		expect(r.enumLabels).toEqual({ "1": "A", "2": "B" });
+		expect(r.description).toContain("または");
+		expect(r.description).toContain("のID");
+	});
+
+	it("説明文が「…のID」を含む enum は enumOpen を立てる (B3)", () => {
+		expect(parseDescription("送付 - 1：A - 2：B - または カスタムのID").enumOpen).toBe(true);
+		expect(parseDescription("送付 - 1：A - 2：B").enumOpen).toBeUndefined();
+	});
+
 	it("空・非文字列は空オブジェクト", () => {
 		expect(parseDescription(undefined)).toEqual({});
 		expect(parseDescription("   ")).toEqual({});
@@ -255,6 +268,43 @@ describe("toFields — v2 の補正", () => {
 		expect(fields[0].enum).toEqual([1, 2, 3]);
 		expect(fields[0].enumLabels).toEqual({ "1": "通常", "2": "見出し行", "3": "小計行" });
 		expect(fields[0].description).toBe("明細区分");
+		expect(fields[0].enumOpen).toBeUndefined();
+	});
+
+	it("カスタム ID も取れる enum は enumOpen: true を載せる (B3)", () => {
+		const fields = toFields(
+			{
+				type: "object",
+				properties: {
+					document_send_type: {
+						type: "integer",
+						description:
+							"書類送付方法\n\n- 1：メール(DL)\n- 2：郵送\n- 5：メール(添付)+郵送\n- または[カスタム書類送付方法](#tag/x)のID\n",
+					},
+				},
+			},
+			new Set(),
+			0,
+		);
+		expect(fields[0].enum).toEqual([1, 2, 5]);
+		expect(fields[0].enumOpen).toBe(true);
+	});
+});
+
+describe("extractParameters — enumOpen", () => {
+	it("説明文が「…のID」を含む enum パラメータに enumOpen を載せる (B3)", () => {
+		const params = extractParameters({
+			parameters: [
+				{
+					in: "query",
+					name: "document_send_type_eq",
+					schema: { type: "integer" },
+					description: "送付方法 - 1：メール - 2：郵送 - またはカスタム書類送付方法のID",
+				},
+			],
+		});
+		expect(params?.[0].enum).toEqual([1, 2]);
+		expect(params?.[0].enumOpen).toBe(true);
 	});
 });
 

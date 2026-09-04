@@ -36,7 +36,13 @@ export function validateQueryValues(
 			if (p.type === "integer" && !isIntegerLike(v)) {
 				return `クエリパラメータ "${key}" は整数で指定してください (受け取った値: ${JSON.stringify(v)})`;
 			}
-			if (p.enum && p.enum.length > 0 && !p.enum.some((e) => String(e) === String(v))) {
+			// enumOpen は「既知の値の列挙」でしかない enum (カスタム ID も受け付ける) のため拒否しない (B3)
+			if (
+				p.enum &&
+				p.enum.length > 0 &&
+				!p.enumOpen &&
+				!p.enum.some((e) => String(e) === String(v))
+			) {
 				return `クエリパラメータ "${key}" の値 ${JSON.stringify(v)} は指定できません。有効な値: ${enumText(p)}`;
 			}
 			if (typeof v === "string") {

@@ -36,6 +36,7 @@ interface MinimalParameter {
 	type: string;
 	enum?: (string | number)[];
 	enumLabels?: Record<string, string>;
+	enumOpen?: boolean;
 	description?: string;
 }
 interface MinimalField {
@@ -45,6 +46,7 @@ interface MinimalField {
 	required?: boolean;
 	enum?: (string | number)[];
 	enumLabels?: Record<string, string>;
+	enumOpen?: boolean;
 	description?: string;
 	properties?: MinimalField[];
 	items?: { type?: string; properties?: MinimalField[] };
@@ -109,15 +111,19 @@ interface ParsedDescription {
 	description?: string;
 	enum?: (string | number)[];
 	enumLabels?: Record<string, string>;
+	/** enum が「既知の値の列挙」でしかなく、カスタム ID 等も許される (説明文が「…のID」)。 */
+	enumOpen?: boolean;
 }
 
 // 公式 spec の説明文に含まれる、MCP 経由では無意味・有害な注記
 const URL_ENCODE_NOTE =
 	/※例にはURLエンコード前の値が記載されていますが、?送信する際はURLエンコードしてください。?/g;
 const COMMA_NOTE = /※複数の場合はカンマ区切り/g;
-// 「- 1：未請求 - 4：請求OK …」形式の列挙 (値は数値または英字、ラベルは次の「- 値：」か「※」か末尾まで)
+// 「- 1：未請求 - 4：請求OK …」形式の列挙 (値は数値または英字、ラベルは次の箇条書きか「※」か末尾まで)。
+// 終端に「任意の箇条書きの開始 (空白 - 空白)」を含めるのは、公式説明が
+// 「- 5：メール(添付)+郵送 - または[カスタム…]のID」のように番号なしの項目で続くため (B3)。
 const ENUM_ITEM =
-	/-\s*([0-9]+|[A-Za-z_]+)：\s*([^-※]+?)(?=\s*-\s*(?:[0-9]+|[A-Za-z_]+)：|\s*※|\s*$)/g;
+	/-\s*([0-9]+|[A-Za-z_]+)：\s*([^-※]+?)(?=\s*-\s*(?:[0-9]+|[A-Za-z_]+)：|\s*-\s|\s*※|\s*$)/g;
 // 「＊10・8・5・0のいずれか」形式 (v1.9.0 で enum が説明文に退化した税率)
 const DOTTED_ENUM = /＊((?:\d+・)+\d+)のいずれか/;
 
@@ -126,6 +132,7 @@ const DOTTED_ENUM = /＊((?:\d+・)+\d+)のいずれか/;
  * - URL エンコード注記を除去、「カンマ区切り」を配列指定の注記に置換
  * - 「- 値：ラベル」が 2 個以上あれば enum 化して説明文から除く
  * - 「＊10・8・5・0のいずれか」は enum を復元 (説明文は残す)
+ * - 列挙に加えて「…のID」も許す説明 (カスタム ID) は enumOpen を立てる
  * - 空白を畳んで DESC_MAX で切り詰め
  */
 export function parseDescription(desc: unknown): ParsedDescription {
@@ -143,6 +150,8 @@ export function parseDescription(desc: unknown): ParsedDescription {
 		const dotted = text.match(DOTTED_ENUM);
 		if (dotted) result.enum = dotted[1].split("・").map(Number);
 	}
+	// 列挙のほかに「[カスタム…]のID」も受け付ける説明は、enum を閉じた集合として扱えない (B3)
+	if (result.enum && /のID/.test(desc)) result.enumOpen = true;
 	text = text.replace(/\s+/g, " ").trim();
 	if (text) {
 		result.description = text.length > DESC_MAX ? `${text.slice(0, DESC_MAX)}…` : text;
@@ -232,6 +241,7 @@ export function toFields(schema: Json, seen: Set<string>, depth: number): Minima
 			field.enum = parsed.enum;
 		}
 		if (parsed.enumLabels) field.enumLabels = parsed.enumLabels;
+		if (parsed.enumOpen && field.enum) field.enumOpen = true;
 		if (parsed.description) field.description = parsed.description;
 		// 公式 spec の矛盾 (type=string に items が付く invoice_date) は items を無視する
 		const hasItems = prop.items && field.type !== "string";
@@ -271,6 +281,7 @@ export function extractParameters(op: Json): MinimalParameter[] | undefined {
 			param.enum = parsed.enum;
 		}
 		if (parsed.enumLabels) param.enumLabels = parsed.enumLabels;
+		if (parsed.enumOpen && param.enum) param.enumOpen = true;
 		if (parsed.description) param.description = parsed.description;
 		result.push(param);
 	}

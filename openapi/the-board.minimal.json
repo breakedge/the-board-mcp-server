@@ -161,12 +161,13 @@
 					{
 						"name": "document_send_type",
 						"type": "integer",
-						"description": "書類送付方法 - 5：メール(添付)+郵送 - または[カスタム書類送付方法](#tag/document_send_c…",
+						"description": "書類送付方法 - または[カスタム書類送付方法](#tag/document_send_channel/operatio…",
 						"enumLabels": {
 							"1": "メール(DL)",
 							"2": "郵送",
 							"3": "メール(DL)+郵送",
-							"4": "メール(添付)"
+							"4": "メール(添付)",
+							"5": "メール(添付)+郵送"
 						}
 					},
 					{
@@ -400,14 +401,16 @@
 							"name": "document_send_type",
 							"type": "integer",
 							"format": "int32",
-							"enum": [1, 2, 3, 4],
+							"enum": [1, 2, 3, 4, 5],
 							"enumLabels": {
 								"1": "メール(DL)",
 								"2": "郵送",
 								"3": "メール(DL)+郵送",
-								"4": "メール(添付)"
+								"4": "メール(添付)",
+								"5": "メール(添付)+郵送"
 							},
-							"description": "書類送付方法 - 5：メール(添付)+郵送 - または[カスタム書類送付方法](#tag/document_send_channel/operation/getDocumentSendChannels)のID"
+							"enumOpen": true,
+							"description": "書類送付方法 - または[カスタム書類送付方法](#tag/document_send_channel/operation/getDocumentSendChannels)のID"
 						},
 						{
 							"name": "note",
@@ -636,14 +639,16 @@
 							"name": "document_send_type",
 							"type": "integer",
 							"format": "int32",
-							"enum": [1, 2, 3, 4],
+							"enum": [1, 2, 3, 4, 5],
 							"enumLabels": {
 								"1": "メール(DL)",
 								"2": "郵送",
 								"3": "メール(DL)+郵送",
-								"4": "メール(添付)"
+								"4": "メール(添付)",
+								"5": "メール(添付)+郵送"
 							},
-							"description": "書類送付方法 - 5：メール(添付)+郵送 - または[カスタム書類送付方法](#tag/document_send_channel/operation/getDocumentSendChannels)のID"
+							"enumOpen": true,
+							"description": "書類送付方法 - または[カスタム書類送付方法](#tag/document_send_channel/operation/getDocumentSendChannels)のID"
 						},
 						{
 							"name": "note",
@@ -869,12 +874,13 @@
 					{
 						"name": "document_send_type",
 						"type": "integer",
-						"description": "書類送付方法 - 5：メール(添付)+郵送 - または[カスタム書類送付方法](#tag/document_send_c…",
+						"description": "書類送付方法 - または[カスタム書類送付方法](#tag/document_send_channel/operatio…",
 						"enumLabels": {
 							"1": "メール(DL)",
 							"2": "郵送",
 							"3": "メール(DL)+郵送",
-							"4": "メール(添付)"
+							"4": "メール(添付)",
+							"5": "メール(添付)+郵送"
 						}
 					},
 					{
@@ -1112,12 +1118,13 @@
 					{
 						"name": "document_send_type",
 						"type": "integer",
-						"description": "書類送付方法 - 5：メール(添付)+郵送 - または[カスタム書類送付方法](#tag/document_send_c…",
+						"description": "書類送付方法 - または[カスタム書類送付方法](#tag/document_send_channel/operatio…",
 						"enumLabels": {
 							"1": "メール(DL)",
 							"2": "郵送",
 							"3": "メール(DL)+郵送",
-							"4": "メール(添付)"
+							"4": "メール(添付)",
+							"5": "メール(添付)+郵送"
 						}
 					},
 					{
@@ -10970,12 +10977,13 @@
 					{
 						"name": "document_send_type",
 						"type": "integer",
-						"description": "書類送付方法 - 5：メール(添付)+郵送 - または[カスタム書類送付方法](#tag/document_send_c…",
+						"description": "書類送付方法 - または[カスタム書類送付方法](#tag/document_send_channel/operatio…",
 						"enumLabels": {
 							"1": "メール(DL)",
 							"2": "郵送",
 							"3": "メール(DL)+郵送",
-							"4": "メール(添付)"
+							"4": "メール(添付)",
+							"5": "メール(添付)+郵送"
 						}
 					},
 					{
@@ -11214,14 +11222,16 @@
 							"name": "document_send_type",
 							"type": "integer",
 							"format": "int32",
-							"enum": [1, 2, 3, 4],
+							"enum": [1, 2, 3, 4, 5],
 							"enumLabels": {
 								"1": "メール(DL)",
 								"2": "郵送",
 								"3": "メール(DL)+郵送",
-								"4": "メール(添付)"
+								"4": "メール(添付)",
+								"5": "メール(添付)+郵送"
 							},
-							"description": "書類送付方法 - 5：メール(添付)+郵送 - または[カスタム書類送付方法](#tag/document_send_channel/operation/getDocumentSendChannels)のID"
+							"enumOpen": true,
+							"description": "書類送付方法 - または[カスタム書類送付方法](#tag/document_send_channel/operation/getDocumentSendChannels)のID"
 						},
 						{
 							"name": "note",
@@ -11456,14 +11466,16 @@
 							"name": "document_send_type",
 							"type": "integer",
 							"format": "int32",
-							"enum": [1, 2, 3, 4],
+							"enum": [1, 2, 3, 4, 5],
 							"enumLabels": {
 								"1": "メール(DL)",
 								"2": "郵送",
 								"3": "メール(DL)+郵送",
-								"4": "メール(添付)"
+								"4": "メール(添付)",
+								"5": "メール(添付)+郵送"
 							},
-							"description": "書類送付方法 - 5：メール(添付)+郵送 - または[カスタム書類送付方法](#tag/document_send_channel/operation/getDocumentSendChannels)のID"
+							"enumOpen": true,
+							"description": "書類送付方法 - または[カスタム書類送付方法](#tag/document_send_channel/operation/getDocumentSendChannels)のID"
 						},
 						{
 							"name": "note",
@@ -11695,12 +11707,13 @@
 					{
 						"name": "document_send_type",
 						"type": "integer",
-						"description": "書類送付方法 - 5：メール(添付)+郵送 - または[カスタム書類送付方法](#tag/document_send_c…",
+						"description": "書類送付方法 - または[カスタム書類送付方法](#tag/document_send_channel/operatio…",
 						"enumLabels": {
 							"1": "メール(DL)",
 							"2": "郵送",
 							"3": "メール(DL)+郵送",
-							"4": "メール(添付)"
+							"4": "メール(添付)",
+							"5": "メール(添付)+郵送"
 						}
 					},
 					{
@@ -11943,12 +11956,13 @@
 					{
 						"name": "document_send_type",
 						"type": "integer",
-						"description": "書類送付方法 - 5：メール(添付)+郵送 - または[カスタム書類送付方法](#tag/document_send_c…",
+						"description": "書類送付方法 - または[カスタム書類送付方法](#tag/document_send_channel/operatio…",
 						"enumLabels": {
 							"1": "メール(DL)",
 							"2": "郵送",
 							"3": "メール(DL)+郵送",
-							"4": "メール(添付)"
+							"4": "メール(添付)",
+							"5": "メール(添付)+郵送"
 						}
 					},
 					{

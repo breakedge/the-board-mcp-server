@@ -6,6 +6,8 @@ export interface MinimalParameter {
 	enum?: (string | number)[];
 	/** enum 値 → 日本語ラベル (例 {"1": "未請求"})。 */
 	enumLabels?: Record<string, string>;
+	/** enum は既知の値の列挙にすぎず、カスタム ID 等の enum 外の値も許される (説明文が「…のID」)。 */
+	enumOpen?: boolean;
 	/** パラメータ説明 (ノイズ除去・切り詰め済み)。 */
 	description?: string;
 }
@@ -19,6 +21,8 @@ export interface MinimalField {
 	required?: boolean;
 	enum?: (string | number)[];
 	enumLabels?: Record<string, string>;
+	/** enum は既知の値の列挙にすぎず、カスタム ID 等の enum 外の値も許される (説明文が「…のID」)。 */
+	enumOpen?: boolean;
 	description?: string;
 	/** type === "object" のときのネストプロパティ。 */
 	properties?: MinimalField[];

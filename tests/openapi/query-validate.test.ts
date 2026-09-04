@@ -19,6 +19,14 @@ const params: MinimalParameter[] = [
 		type: "string",
 		enum: ["small", "medium", "large", "all"],
 	},
+	{
+		name: "document_send_type_eq",
+		required: false,
+		type: "integer",
+		enum: [1, 2],
+		enumLabels: { "1": "メール", "2": "郵送" },
+		enumOpen: true,
+	},
 	{ name: "per_page", required: false, type: "integer" },
 	{ name: "page", required: false, type: "integer" },
 ];
@@ -49,6 +57,10 @@ describe("validateQueryValues", () => {
 		expect(validateQueryValues({ per_page: 0 }, params)).not.toBeNull();
 		expect(validateQueryValues({ per_page: 100, page: 1 }, params)).toBeNull();
 		expect(validateQueryValues({ page: 0 }, params)).not.toBeNull();
+	});
+	it("enumOpen のパラメータは enum 外の値 (カスタム ID) を通す (B3)", () => {
+		expect(validateQueryValues({ document_send_type_eq: 99 }, params)).toBeNull();
+		expect(validateQueryValues({ document_send_type_eq: 1 }, params)).toBeNull();
 	});
 	it("スキーマに無いキーと null は検査しない", () => {
 		expect(validateQueryValues({ unknown_key: "x", client_id_eq: null }, params)).toBeNull();

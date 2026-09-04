@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import type { MinimalSchema } from "./types.js";
+import type { MinimalOperation, MinimalSchema } from "./types.js";
 
 export function sanitizePath(path: string): string {
 	if (path.length === 0) {
@@ -84,4 +84,16 @@ export function getKnownQueryParams(
 		return null;
 	}
 	return new Set(operation.parameters.map((p) => p.name));
+}
+
+/** method + 具体パスから operation を引く。パターン解決に失敗、または method 非対応なら null。 */
+export function getOperation(
+	method: string,
+	path: string,
+	schema: MinimalSchema,
+): { pattern: string; operation: MinimalOperation } | null {
+	const pattern = matchPathPattern(path, schema);
+	if (pattern === null) return null;
+	const operation = schema.paths[pattern]?.[method.toUpperCase()];
+	return operation ? { pattern, operation } : null;
 }

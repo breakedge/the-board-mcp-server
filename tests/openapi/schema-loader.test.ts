@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import {
+	getOperation,
 	loadSchema,
 	matchPathPattern,
 	sanitizePath,
@@ -143,5 +144,22 @@ describe("loadSchema", () => {
 		// version は board API spec に追従するため値は pin せず形式のみ検証する
 		const s = await loadSchema();
 		expect(s.version).toMatch(/^\d+\.\d+\.\d+$/);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// getOperation
+// ---------------------------------------------------------------------------
+describe("getOperation", () => {
+	it("具体パスをパターンに解決して operation を返す", async () => {
+		const schema = await loadSchema();
+		const found = getOperation("patch", "/v1/documents/estimates/123", schema);
+		expect(found?.pattern).toBe("/v1/documents/estimates/{id}");
+		expect(found?.operation.summary).toBeTruthy();
+	});
+	it("method 非対応や未知パスは null", async () => {
+		const schema = await loadSchema();
+		expect(getOperation("POST", "/v1/invoices", schema)).toBeNull();
+		expect(getOperation("GET", "/v1/nope", schema)).toBeNull();
 	});
 });

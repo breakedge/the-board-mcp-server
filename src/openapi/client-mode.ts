@@ -12,12 +12,7 @@ import {
 	type ResponseFormat,
 } from "../utils/shape.js";
 import { aliasesForPath } from "./aliases.js";
-import {
-	getKnownQueryParams,
-	matchPathPattern,
-	sanitizePath,
-	validatePath,
-} from "./schema-loader.js";
+import { getKnownQueryParams, getOperation, sanitizePath, validatePath } from "./schema-loader.js";
 import { isPathEnabled } from "./toolsets.js";
 import type { MinimalParameter, MinimalSchema } from "./types.js";
 
@@ -215,7 +210,7 @@ export function handleListPaths(
  * AI が外部 OpenAPI を取得せずにボディ構造・enum・必須項目を把握できるようにする (B1-2)。
  */
 export function handleDescribe(
-	args: { path: string; method: string },
+	args: { path: string; method: string; variant?: string; part?: string },
 	config: Config,
 	schema: MinimalSchema,
 ): CallToolResult {
@@ -232,26 +227,42 @@ export function handleDescribe(
 		);
 	}
 
-	const pattern = matchPathPattern(sanitized, schema);
 	const method = args.method.toUpperCase();
-	const operation = pattern ? schema.paths[pattern]?.[method] : undefined;
-	if (!pattern || !operation) {
+	const found = getOperation(method, sanitized, schema);
+	if (!found) {
 		return createErrorResponse(`エンドポイントが見つかりません: ${method} ${sanitized}`);
 	}
+	const { pattern, operation } = found;
+	const part = args.part === "response" || args.part === "all" ? args.part : "request";
 
-	return createTextResponse(
-		JSON.stringify(
-			{
-				path: pattern,
-				method,
-				summary: operation.summary,
-				parameters: operation.parameters,
-				requestBody: operation.requestBody,
-			},
-			null,
-			2,
-		),
-	);
+	const out: Record<string, unknown> = { path: pattern, method, summary: operation.summary };
+	if (part !== "response") {
+		if (operation.parameters) out.parameters = operation.parameters;
+		if (operation.requestBody) out.requestBody = operation.requestBody;
+		if (operation.variants && operation.variants.length > 0) {
+			const titles = operation.variants.map((v) => v.title);
+			if (args.variant) {
+				const variant = operation.variants.find((v) => v.title === args.variant);
+				if (!variant) {
+					return createErrorResponse(
+						`variant "${args.variant}" はありません。指定できる variant: ${titles.join(", ")}`,
+					);
+				}
+				out.variant = variant;
+			} else {
+				out.variants = operation.variants.map((v) => ({
+					title: v.title,
+					required: v.required ?? [],
+					fields: v.properties.map((p) => p.name),
+				}));
+				out.notice = `請求方式などで必須項目が異なります。variant (${titles.join(" / ")}) を指定すると該当分岐のフィールド定義 (型・説明) を返します。`;
+			}
+		}
+	}
+	if (part !== "request") {
+		out.responseFields = operation.responseFields ?? [];
+	}
+	return createTextResponse(JSON.stringify(out));
 }
 
 export async function handleGet(

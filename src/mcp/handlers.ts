@@ -131,10 +131,20 @@ export async function createMcpServer(config: Config): Promise<McpServer> {
 	// describe — endpoint の契約 (parameters + requestBody フィールド) を返す introspection
 	server.tool(
 		"the_board_api_describe",
-		"Describe one endpoint's contract: query parameters (with enums) and request body fields (names, types, required, enums). Use before POST/PATCH to build a correct body without external docs.",
+		"Describe one endpoint's contract: query parameters (with enum values and labels) and request body fields (names, types, required, enums). Endpoints whose body depends on a mode (e.g. POST /v1/projects by billing type) list variants; pass variant to get that branch's fields. part=response returns the response fields (name, type, meaning). Use before POST/PATCH to build a correct body without external docs.",
 		{
 			path: z.string().describe("API path (e.g., /v1/projects, /v1/documents/estimates/123)"),
 			method: z.string().describe("HTTP method (GET, POST, PATCH, DELETE)"),
+			variant: z
+				.string()
+				.optional()
+				.describe("Variant title from a previous describe call (e.g. 一括請求)"),
+			part: z
+				.enum(["request", "response", "all"])
+				.optional()
+				.describe(
+					"request (default): parameters and request body. response: response fields. all: both.",
+				),
 		},
 		{
 			title: "Describe a board API endpoint",

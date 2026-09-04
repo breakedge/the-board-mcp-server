@@ -275,6 +275,82 @@ describe("handleDescribe", () => {
 		);
 		expect(result.isError).toBe(true);
 	});
+
+	it("variant 未指定なら共通フィールドと variant の一覧 (title / required / fields) を返す", () => {
+		const parsed = JSON.parse(
+			handleDescribe({ path: "/v1/projects", method: "POST" }, makeConfig(), schema).content[0]
+				.text as string,
+		);
+		expect(parsed.requestBody.properties.map((p: { name: string }) => p.name)).toContain("name");
+		expect(parsed.variants.map((v: { title: string }) => v.title)).toEqual([
+			"一括請求",
+			"定期請求",
+			"分割請求",
+		]);
+		expect(parsed.variants[0].fields).toContain("invoice_date");
+		expect(parsed.variants[0]).not.toHaveProperty("properties");
+		expect(parsed.notice).toContain("variant");
+		expect(parsed).not.toHaveProperty("responseFields");
+	});
+
+	it("variant 指定なら当該分岐のフィールド定義を返し variants 一覧は出さない", () => {
+		const parsed = JSON.parse(
+			handleDescribe(
+				{ path: "/v1/projects", method: "POST", variant: "一括請求" },
+				makeConfig(),
+				schema,
+			).content[0].text as string,
+		);
+		expect(parsed.variant.title).toBe("一括請求");
+		expect(parsed.variant.properties.map((p: { name: string }) => p.name)).toContain(
+			"invoice_date",
+		);
+		expect(parsed).not.toHaveProperty("variants");
+	});
+
+	it("存在しない variant は候補付きでエラー", () => {
+		const result = handleDescribe(
+			{ path: "/v1/projects", method: "POST", variant: "月次" },
+			makeConfig(),
+			schema,
+		);
+		expect(result.isError).toBe(true);
+		expect(result.content[0].text).toContain("一括請求");
+	});
+
+	it("part=response は responseFields だけを返す", () => {
+		const parsed = JSON.parse(
+			handleDescribe(
+				{ path: "/v1/projects", method: "GET", part: "response" },
+				makeConfig(),
+				schema,
+			).content[0].text as string,
+		);
+		expect(parsed).not.toHaveProperty("parameters");
+		const total = parsed.responseFields.find((f: { name: string }) => f.name === "total");
+		expect(total.description).toContain("税抜");
+	});
+
+	it("part=all は両方を返す", () => {
+		const parsed = JSON.parse(
+			handleDescribe({ path: "/v1/invoices", method: "GET", part: "all" }, makeConfig(), schema)
+				.content[0].text as string,
+		);
+		expect(parsed.parameters).toBeDefined();
+		expect(parsed.responseFields).toBeDefined();
+	});
+
+	it("enum を持つパラメータは enumLabels 付きで返す", () => {
+		const parsed = JSON.parse(
+			handleDescribe({ path: "/v1/invoices", method: "GET" }, makeConfig(), schema).content[0]
+				.text as string,
+		);
+		const status = parsed.parameters.find(
+			(p: { name: string }) => p.name === "invoice_status_in[]",
+		);
+		expect(status.enumLabels["1"]).toBe("未請求");
+		expect(status.description).not.toContain("URLエンコード");
+	});
 });
 
 // ---------------------------------------------------------------------------

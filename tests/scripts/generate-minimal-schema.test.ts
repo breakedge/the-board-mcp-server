@@ -258,6 +258,123 @@ describe("toFields — v2 の補正", () => {
 	});
 });
 
+import { extractVariants, splitVariants } from "../../scripts/generate-minimal-schema.js";
+
+// 公式 spec の POST /projects と同じ形: anyOf の各分岐が { allOf: [{ title, allOf: [...] }, { required }] }
+const projectsCreateLike: Json = {
+	anyOf: [
+		{
+			allOf: [
+				{
+					title: "共通",
+					allOf: [
+						{
+							properties: {
+								name: { type: "string", description: "案件名" },
+								client_id: { type: "integer" },
+								invoice_timing_kbn: {
+									type: "integer",
+									description: "請求方式 - 1：一括 - 2：定期 - 3：分割",
+								},
+							},
+						},
+					],
+				},
+				{ required: ["name", "client_id", "invoice_timing_kbn"] },
+			],
+		},
+		{
+			allOf: [
+				{
+					title: "一括請求",
+					allOf: [{ properties: { invoice_date: { type: "string", format: "YYYY-MM-DD" } } }],
+				},
+				{ required: ["invoice_date"] },
+			],
+		},
+		{
+			allOf: [
+				{
+					title: "定期請求",
+					allOf: [
+						{
+							properties: {
+								contract_start_date: { type: "string" },
+								periodical_invoice_interval: { type: "integer" },
+							},
+						},
+					],
+				},
+				{ required: ["contract_start_date"] },
+			],
+		},
+	],
+};
+
+describe("splitVariants / extractVariants — title 付き anyOf", () => {
+	it("「共通」分岐と title 付き分岐に分ける", () => {
+		const split = splitVariants(projectsCreateLike);
+		expect(split).not.toBeNull();
+		expect(split?.common).not.toBeNull();
+		expect(split?.variants.map((v) => v.title)).toEqual(["一括請求", "定期請求"]);
+	});
+
+	it("title の無い分岐が 1 つでもあれば null (従来の union にフォールバック)", () => {
+		expect(
+			splitVariants({ anyOf: [{ title: "A", properties: { a: {} } }, { properties: { b: {} } }] }),
+		).toBeNull();
+		expect(splitVariants({ type: "object", properties: {} })).toBeNull();
+	});
+
+	it("extractRequestBody は共通部分だけを返す", () => {
+		const body = extractRequestBody({
+			requestBody: { content: { "application/json": { schema: projectsCreateLike } } },
+		});
+		expect(body?.properties.map((p) => p.name)).toEqual([
+			"name",
+			"client_id",
+			"invoice_timing_kbn",
+		]);
+		expect(body?.required).toEqual(["name", "client_id", "invoice_timing_kbn"]);
+		expect(body?.properties[2].enumLabels).toEqual({ "1": "一括", "2": "定期", "3": "分割" });
+	});
+
+	it("extractVariants は variant ごとのフィールドと required を返す", () => {
+		const variants = extractVariants({
+			requestBody: { content: { "application/json": { schema: projectsCreateLike } } },
+		});
+		expect(variants).toHaveLength(2);
+		expect(variants?.[0]).toEqual({
+			title: "一括請求",
+			required: ["invoice_date"],
+			properties: [{ name: "invoice_date", type: "string", format: "YYYY-MM-DD", required: true }],
+		});
+		expect(variants?.[1].properties.map((p) => p.name)).toEqual([
+			"contract_start_date",
+			"periodical_invoice_interval",
+		]);
+	});
+
+	it("title の無い anyOf は従来どおり union し variants は undefined", () => {
+		const op = {
+			requestBody: {
+				content: {
+					"application/json": {
+						schema: {
+							anyOf: [
+								{ type: "object", required: ["a"], properties: { a: { type: "string" } } },
+								{ type: "object", properties: { b: { type: "string" } } },
+							],
+						},
+					},
+				},
+			},
+		};
+		expect(extractRequestBody(op)?.properties.map((p) => p.name)).toEqual(["a", "b"]);
+		expect(extractVariants(op)).toBeUndefined();
+	});
+});
+
 describe("extractParameters — query パラメータの enum 構造化", () => {
 	it("schema.enum が無くても説明文の列挙から enum を作る", () => {
 		const params = extractParameters({

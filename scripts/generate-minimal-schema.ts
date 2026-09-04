@@ -53,10 +53,16 @@ interface MinimalRequestBody {
 	required?: string[];
 	properties: MinimalField[];
 }
+interface MinimalVariant {
+	title: string;
+	required?: string[];
+	properties: MinimalField[];
+}
 interface MinimalOperation {
 	summary: string;
 	parameters?: MinimalParameter[];
 	requestBody?: MinimalRequestBody;
+	variants?: MinimalVariant[];
 }
 interface MinimalSchema {
 	version: string;
@@ -262,15 +268,78 @@ export function extractParameters(op: Json): MinimalParameter[] | undefined {
 	return result.length > 0 ? result : undefined;
 }
 
-export function extractRequestBody(op: Json): MinimalRequestBody | undefined {
-	const schema = op.requestBody?.content?.["application/json"]?.schema;
-	if (!schema) return undefined;
-	const properties = toFields(schema, new Set(), 0);
-	if (properties.length === 0) return undefined;
+/** ノード自身か、その allOf 部品のどれかが持つ title を返す (公式 spec は title を allOf の内側に置く)。 */
+function nodeTitle(node: Json, seen: Set<string>): string | undefined {
+	const resolved = resolveRef(node, new Set(seen));
+	if (!resolved || typeof resolved !== "object") return undefined;
+	if (typeof resolved.title === "string" && resolved.title.trim()) return resolved.title.trim();
+	if (Array.isArray(resolved.allOf)) {
+		for (const part of resolved.allOf) {
+			const t = nodeTitle(part, seen);
+			if (t) return t;
+		}
+	}
+	return undefined;
+}
+
+const COMMON_TITLE = "共通";
+
+/**
+ * anyOf/oneOf の全分岐が title を持つとき、「共通」分岐と variant 分岐に分ける。
+ * 1 つでも title の無い分岐があれば null (flatten の union にフォールバック)。
+ */
+export function splitVariants(
+	schema: Json,
+): { common: Json | null; variants: { title: string; schema: Json }[] } | null {
+	const resolved = resolveRef(schema, new Set());
+	const branches = resolved?.anyOf ?? resolved?.oneOf;
+	if (!Array.isArray(branches) || branches.length < 2) return null;
+	const titled = branches.map((b: Json) => ({ title: nodeTitle(b, new Set()), schema: b }));
+	if (titled.some((t) => !t.title)) return null;
+	const common = titled.find((t) => t.title === COMMON_TITLE)?.schema ?? null;
+	const variants = titled
+		.filter((t) => t.title !== COMMON_TITLE)
+		.map((t) => ({ title: t.title as string, schema: t.schema }));
+	return { common, variants };
+}
+
+function requiredOf(schema: Json, properties: MinimalField[]): string[] {
 	const flat = flatten(schema, new Set());
-	const required = Array.isArray(flat.required)
+	return Array.isArray(flat.required)
 		? flat.required.filter((r: string) => properties.some((p) => p.name === r))
 		: [];
+}
+
+function bodySchemaOf(op: Json): Json {
+	return op.requestBody?.content?.["application/json"]?.schema;
+}
+
+export function extractVariants(op: Json): MinimalVariant[] | undefined {
+	const schema = bodySchemaOf(op);
+	if (!schema) return undefined;
+	const split = splitVariants(schema);
+	if (!split || split.variants.length === 0) return undefined;
+	const result: MinimalVariant[] = [];
+	for (const v of split.variants) {
+		const properties = toFields(v.schema, new Set(), 0);
+		const variant: MinimalVariant = { title: v.title, properties };
+		const required = requiredOf(v.schema, properties);
+		if (required.length > 0) variant.required = required;
+		result.push(variant);
+	}
+	return result;
+}
+
+export function extractRequestBody(op: Json): MinimalRequestBody | undefined {
+	const schema = bodySchemaOf(op);
+	if (!schema) return undefined;
+	// title 付き分岐は共通部分のみをここに載せ、variant 固有部分は extractVariants に任せる
+	const split = splitVariants(schema);
+	const source = split ? split.common : schema;
+	if (!source) return undefined;
+	const properties = toFields(source, new Set(), 0);
+	if (properties.length === 0) return undefined;
+	const required = requiredOf(source, properties);
 	const body: MinimalRequestBody = { properties };
 	if (required.length > 0) body.required = required;
 	return body;
@@ -303,6 +372,8 @@ async function main() {
 			if (parameters) entry.parameters = parameters;
 			const requestBody = extractRequestBody(op);
 			if (requestBody) entry.requestBody = requestBody;
+			const variants = extractVariants(op);
+			if (variants) entry.variants = variants;
 			minimal.paths[normalizedPath][method.toUpperCase()] = entry;
 		}
 	}

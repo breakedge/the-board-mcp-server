@@ -79,15 +79,38 @@ MCP client configuration with Docker:
 
 | Tool | Description |
 |------|-------------|
-| `the_board_api_get` | GET request — retrieve resources (single or list) |
+| `the_board_api_get` | GET request — returns JSON `{data, pagination, truncated}`. Controls response size via `format` (concise default / detailed) and `fields` (select returned keys) |
+| `the_board_api_validate_write` | Dry-run validation of a POST / PATCH body against the schema (required / enum / type / variant). Does not call the API and works in read-only mode |
 | `the_board_api_post` | POST request — create resources |
 | `the_board_api_patch` | PATCH request — update resources, change status, lock/unlock |
 | `the_board_api_delete` | DELETE request — delete resources |
-| `the_board_api_list_paths` | Search available API endpoints |
-| `the_board_api_describe` | Get an endpoint's query parameters and requestBody field definitions (type, required, enum) |
+| `the_board_api_list_paths` | Search endpoints (one line per endpoint, searchable by English/Japanese aliases and filter names, `detail=true` for parameters and enums) |
+| `the_board_api_describe` | Endpoint definition (query parameter enums and labels, requestBody, variants such as billing modes, `part=response` for response fields) |
 | `the_board_auth_status` | Check authentication status and rate limit remaining |
 
-> **Note**: Write tools are registered only when the matching flag is set. `the_board_api_post` / `the_board_api_patch` appear with `--enable-writes`, and `the_board_api_delete` with `--enable-destructive-writes`. In the default read-only mode, only the GET, `list_paths`, `describe`, and `auth_status` tools are available.
+> **Note**: Write tools are registered only when the matching flag is set. `the_board_api_post` / `the_board_api_patch` appear with `--enable-writes`, and `the_board_api_delete` with `--enable-destructive-writes`. In the default read-only mode, only the GET, `list_paths`, `describe`, `validate_write`, and `auth_status` tools are available.
+
+## Response Format (0.3.0+)
+
+`the_board_api_get` always returns the following JSON.
+
+```json
+{"data":[{"id":1,"name":"案件A","total":"500000.0"}],"pagination":{"total_count":302,"page":1,"per_page":10,"returned_count":10,"has_more":true,"next_page":2},"truncated":false}
+```
+
+- The default `format: "concise"` is compact JSON with null-valued keys omitted (a missing key means null). Empty arrays, `0`, `false`, and empty strings are kept. `format: "detailed"` is the previous pretty-printed JSON with nulls kept.
+- `fields` narrows the returned keys (dot paths, applied per record): `"fields": ["id","name","total","tax"]`, `"fields": "estimate.details"`.
+- Exceeding the limit (default 20,000 chars) drops trailing records: `truncated: true` with `dropped_in_page`. Lower `per_page` or narrow `fields` and re-fetch the same page.
+- `the_board_api_post` / `the_board_api_patch` validate the body before sending. Pass `skip_validation: true` only when you have confirmed the bundled schema is stale and the validation error is wrong.
+
+## Common Tasks
+
+| What you want | Call |
+|---|---|
+| Monthly sales for Jan-Aug 2026 (accrual basis, projects only) | `get /v1/analyses` with `report_ym_gteq=2026-01`, `report_ym_lteq=2026-08`, `analysis_data_kbn_in[]=["1"]`, `fields=report_ym,total,tax` |
+| Unpaid invoices billed in August | `get /v1/invoices` with `invoice_date_gteq/lteq`, `invoice_status_in[]=["2","5"]`, `fields=id,name,client.name,total,tax,payment_limit_date` |
+| Estimate line items for project no. 1356 | `get /v1/projects?project_no_eq=1356&response_group=all&fields=id,estimate` |
+| Check a body before creating a project | `describe /v1/projects POST` → describe again with `variant` → `validate_write` |
 
 ## Configuration
 
@@ -102,6 +125,8 @@ MCP client configuration with Docker:
 | `THE_BOARD_ENABLE_WRITES` | No | Set to `true` to allow POST / PATCH |
 | `THE_BOARD_ENABLE_DESTRUCTIVE_WRITES` | No | Set to `true` to allow DELETE / status changes / lock |
 | `THE_BOARD_TOOLSETS` | No | Comma-separated toolsets to enable (default: all) |
+| `THE_BOARD_MAX_RESPONSE_CHARS` | No | Max character length of a GET response (default 20000). Excess is dropped at record boundaries, returning `truncated: true` |
+| `THE_BOARD_REQUEST_TIMEOUT_MS` | No | Timeout per API call (default 30000) |
 
 CLI flags take precedence over the corresponding environment variables. In addition, an explicit `--read-only` is the strongest safety switch: it disables all write tools even when write flags or their environment variables are set (fail-closed).
 
@@ -123,6 +148,10 @@ Available toolsets: `projects`, `documents`, `customers`, `payees`, `expenditure
 | Read-only (default) | GET only |
 | Writes enabled | + POST, PATCH |
 | Destructive writes | + DELETE, status changes, lock/unlock |
+
+### Migrating from 0.2.x
+
+In 0.3.0, `the_board_api_get` responses changed from a root array to `{data, pagination, truncated}`, and the default format became concise (nulls omitted). For output closer to the previous format, pass `format: "detailed"` (the envelope is still applied). The bundled schema is now in v2 format (variants / enumLabels / responseFields).
 
 ## Development
 

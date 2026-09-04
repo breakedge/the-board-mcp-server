@@ -326,6 +326,15 @@ describe("splitVariants / extractVariants — title 付き anyOf", () => {
 		expect(splitVariants({ type: "object", properties: {} })).toBeNull();
 	});
 
+	it("title の無い深い allOf ネストで無限再帰・スタックオーバーフローしない", () => {
+		let deep: Json = { properties: {} };
+		for (let i = 0; i < 60; i++) {
+			deep = { allOf: [deep] };
+		}
+		expect(() => splitVariants({ anyOf: [deep, { title: "A", properties: {} }] })).not.toThrow();
+		expect(splitVariants({ anyOf: [deep, { title: "A", properties: {} }] })).toBeNull();
+	});
+
 	it("extractRequestBody は共通部分だけを返す", () => {
 		const body = extractRequestBody({
 			requestBody: { content: { "application/json": { schema: projectsCreateLike } } },

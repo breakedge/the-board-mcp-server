@@ -269,13 +269,15 @@ export function extractParameters(op: Json): MinimalParameter[] | undefined {
 }
 
 /** ノード自身か、その allOf 部品のどれかが持つ title を返す (公式 spec は title を allOf の内側に置く)。 */
-function nodeTitle(node: Json, seen: Set<string>): string | undefined {
-	const resolved = resolveRef(node, new Set(seen));
+function nodeTitle(node: Json, seen: Set<string>, depth = 0): string | undefined {
+	if (depth > MAX_FLATTEN_DEPTH) return undefined;
+	const path = new Set(seen);
+	const resolved = resolveRef(node, path);
 	if (!resolved || typeof resolved !== "object") return undefined;
 	if (typeof resolved.title === "string" && resolved.title.trim()) return resolved.title.trim();
 	if (Array.isArray(resolved.allOf)) {
 		for (const part of resolved.allOf) {
-			const t = nodeTitle(part, seen);
+			const t = nodeTitle(part, path, depth + 1);
 			if (t) return t;
 		}
 	}

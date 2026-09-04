@@ -6,13 +6,21 @@ import {
 } from "./rate-limiter.js";
 import { type ApiErrorResponse, TheBoardApiError, TheBoardTimeoutError } from "./types.js";
 
+// 誤設定 (極端に短い apiKey / apiToken) で "format" のような実データ中の部分文字列を
+// 巻き込んで壊さないための最短長ガード。これ未満は素の replaceAll を行わない。
+const MIN_CREDENTIAL_LENGTH = 8;
+
 /** 指定された key/token をメッセージから伏字化する共通処理 (空文字は no-op)。 */
 function redactWith(message: string, apiKey: string, apiToken: string): string {
 	let sanitized = message;
-	if (apiKey) sanitized = sanitized.replaceAll(apiKey, "[REDACTED_API_KEY]");
+	if (apiKey && apiKey.length >= MIN_CREDENTIAL_LENGTH) {
+		sanitized = sanitized.replaceAll(apiKey, "[REDACTED_API_KEY]");
+	}
 	if (apiToken) {
 		sanitized = sanitized.replaceAll(`Bearer ${apiToken}`, "Bearer [REDACTED_TOKEN]");
-		sanitized = sanitized.replaceAll(apiToken, "[REDACTED_TOKEN]");
+		if (apiToken.length >= MIN_CREDENTIAL_LENGTH) {
+			sanitized = sanitized.replaceAll(apiToken, "[REDACTED_TOKEN]");
+		}
 	}
 	return sanitized.replace(/Authorization: Bearer \S+/g, "Authorization: Bearer [REDACTED_TOKEN]");
 }

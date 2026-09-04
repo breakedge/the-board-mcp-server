@@ -380,6 +380,13 @@ describe("makeApiRequest — timeout / retry / 伏字化", () => {
 			amount: 1000,
 		});
 	});
+
+	it("8 文字未満のトークンでは replaceAll による誤爆で実データを壊さない (0.3.1)", async () => {
+		vi.stubEnv("THE_BOARD_API_TOKEN", "t");
+		server.use(http.get(`${TEST_BASE_URL}/v1/users`, () => HttpResponse.json({ format: "x" })));
+		const { data } = await makeApiRequest("GET", "/v1/users");
+		expect(data).toEqual({ format: "x" });
+	});
 });
 
 describe("makeApiRequest — エラーサニタイズ", () => {

@@ -346,11 +346,20 @@ describe("makeApiRequest — timeout / retry / 伏字化", () => {
 
 	it("成功応答の本文に含まれるトークンも伏字化する", async () => {
 		server.use(
-			http.get(`${TEST_BASE_URL}/v1/users`, () => HttpResponse.json({ note: "Bearer test-token" })),
+			http.get(`${TEST_BASE_URL}/v1/users`, () =>
+				HttpResponse.json({
+					note: `Bearer ${TEST_API_TOKEN}`,
+					memo: "Bearer bonds",
+					amount: 1000,
+				}),
+			),
 		);
 		const { data } = await makeApiRequest("GET", "/v1/users");
-		expect(JSON.stringify(data)).not.toContain("test-token");
-		expect(JSON.stringify(data)).toContain("[REDACTED_TOKEN]");
+		expect(data).toEqual({
+			note: "Bearer [REDACTED_TOKEN]",
+			memo: "Bearer bonds",
+			amount: 1000,
+		});
 	});
 });
 

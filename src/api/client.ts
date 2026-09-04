@@ -14,9 +14,7 @@ function redactWith(message: string, apiKey: string, apiToken: string): string {
 		sanitized = sanitized.replaceAll(`Bearer ${apiToken}`, "Bearer [REDACTED_TOKEN]");
 		sanitized = sanitized.replaceAll(apiToken, "[REDACTED_TOKEN]");
 	}
-	// 設定済みの apiToken と一致しない Bearer トークンも汎用的に伏字化する
-	// (board が想定外の別トークンを応答本文に含めるケースへの defense-in-depth)。
-	return sanitized.replace(/Bearer\s+\S+/g, "Bearer [REDACTED_TOKEN]");
+	return sanitized.replace(/Authorization: Bearer \S+/g, "Authorization: Bearer [REDACTED_TOKEN]");
 }
 
 function sanitizeErrorMessage(message: string, apiKey: string, apiToken: string): string {

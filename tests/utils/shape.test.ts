@@ -6,6 +6,7 @@ import {
 	maxResponseChars,
 	omitNulls,
 	parseFields,
+	toPaginationInfo,
 } from "../../src/utils/shape.js";
 
 describe("parseFields", () => {
@@ -159,6 +160,28 @@ describe("buildListEnvelope", () => {
 		);
 		expect(parsed.unknown_fields).toEqual(["zz"]);
 	});
+
+	it("concise は data の null キーを省くが 0/false/空文字/空配列は残す", () => {
+		const parsed = JSON.parse(
+			buildListEnvelope({
+				data: [{ id: 1, memo: null, count: 0, active: false, note: "", tags: [] }],
+				format: "concise",
+				maxChars: 20000,
+			}),
+		);
+		expect(parsed.data).toEqual([{ id: 1, count: 0, active: false, note: "", tags: [] }]);
+	});
+
+	it("detailed は null キーを残す", () => {
+		const parsed = JSON.parse(
+			buildListEnvelope({
+				data: [{ id: 1, memo: null }],
+				format: "detailed",
+				maxChars: 20000,
+			}),
+		);
+		expect(parsed.data).toEqual([{ id: 1, memo: null }]);
+	});
 });
 
 describe("buildSingleEnvelope", () => {
@@ -172,6 +195,31 @@ describe("buildSingleEnvelope", () => {
 		);
 		expect(parsed.data.text.length).toBe(300);
 		expect(parsed.notice).toContain("fields");
+	});
+
+	it("concise は data の null キーを省く", () => {
+		const parsed = JSON.parse(
+			buildSingleEnvelope({ data: { id: 1, memo: null }, format: "concise", maxChars: 20000 }),
+		);
+		expect(parsed.data).toEqual({ id: 1 });
+	});
+});
+
+describe("toPaginationInfo", () => {
+	it("perPage 不在時は returnedCount を仮の per_page として has_more を判定し、per_page キーは出さない", () => {
+		expect(toPaginationInfo({ totalCount: 25, page: 1 }, 10)).toEqual({
+			total_count: 25,
+			page: 1,
+			returned_count: 10,
+			has_more: true,
+			next_page: 2,
+		});
+		expect(toPaginationInfo({ totalCount: 10, page: 1 }, 10)).toEqual({
+			total_count: 10,
+			page: 1,
+			returned_count: 10,
+			has_more: false,
+		});
 	});
 });
 

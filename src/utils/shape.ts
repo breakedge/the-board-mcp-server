@@ -109,8 +109,9 @@ export interface PaginationInfo {
 }
 
 export function toPaginationInfo(p: Pagination, returnedCount: number): PaginationInfo {
-	const hasMore =
-		p.page !== undefined && p.perPage !== undefined && p.page * p.perPage < p.totalCount;
+	// X-Per-Page ヘッダが無いケースでも has_more を判定できるよう、実際に返した件数を仮の per_page とする
+	const perPage = p.perPage ?? returnedCount;
+	const hasMore = p.page !== undefined && p.page * perPage < p.totalCount;
 	const info: PaginationInfo = {
 		total_count: p.totalCount,
 		...(p.page !== undefined ? { page: p.page } : {}),
@@ -143,7 +144,9 @@ export function buildListEnvelope(input: ListEnvelopeInput): string {
 	let dropped = 0;
 
 	const build = (): Record<string, unknown> => {
-		const env: Record<string, unknown> = { data: kept };
+		// concise は data の null キーのみ省く (request の echo 値には適用しない)
+		const dataOut = input.format === "concise" ? kept.map(omitNulls) : kept;
+		const env: Record<string, unknown> = { data: dataOut };
 		if (input.pagination) env.pagination = toPaginationInfo(input.pagination, kept.length);
 		env.truncated = dropped > 0;
 		if (input.unknownFields && input.unknownFields.length > 0) {
@@ -184,7 +187,8 @@ export interface SingleEnvelopeInput {
 
 /** 単体応答の envelope。切り詰めはせず、超過時は notice だけ付ける。 */
 export function buildSingleEnvelope(input: SingleEnvelopeInput): string {
-	const env: Record<string, unknown> = { data: input.data };
+	const dataOut = input.format === "concise" ? omitNulls(input.data) : input.data;
+	const env: Record<string, unknown> = { data: dataOut };
 	if (input.unknownFields && input.unknownFields.length > 0) {
 		env.unknown_fields = input.unknownFields;
 	}

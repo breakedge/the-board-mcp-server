@@ -61,7 +61,7 @@ afterAll(() => {
 // ---------------------------------------------------------------------------
 describe("handleListPaths", () => {
 	it("引数なしで全エンドポイントを返す", () => {
-		const result = handleListPaths({}, makeConfig(), schema);
+		const result = handleListPaths({ detail: true }, makeConfig(), schema);
 		expect(result.content[0].type).toBe("text");
 		const text = result.content[0].text as string;
 		const parsed = JSON.parse(text);
@@ -73,33 +73,50 @@ describe("handleListPaths", () => {
 	});
 
 	it("method='GET' で GET のみフィルタ", () => {
-		const result = handleListPaths({ method: "GET" }, makeConfig(), schema);
+		const result = handleListPaths({ method: "GET", detail: true }, makeConfig(), schema);
 		const parsed = JSON.parse(result.content[0].text as string);
 		expect(parsed.every((e: { method: string }) => e.method === "GET")).toBe(true);
 	});
 
-	it("keyword='client' でパス/summaryに 'client' を含むもの", () => {
-		const result = handleListPaths({ keyword: "client" }, makeConfig(), schema);
+	it("keyword='client' でパス/summary/別名/パラメータ名に 'client' を含むもの", () => {
+		// keyword は path/summary/aliases/parameter 名を横断して検索するため (Task 8 の仕様)、
+		// client_id_eq 等のパラメータ名一致もヒットしうる。
+		const result = handleListPaths({ keyword: "client", detail: true }, makeConfig(), schema);
 		const parsed = JSON.parse(result.content[0].text as string);
 		expect(parsed.length).toBeGreaterThan(0);
 		expect(
 			parsed.every(
-				(e: { path: string; summary: string }) =>
+				(e: {
+					path: string;
+					summary: string;
+					aliases: string[];
+					parameters?: { name: string }[];
+				}) =>
 					e.path.toLowerCase().includes("client") ||
 					e.summary.toLowerCase().includes("client") ||
-					e.summary.includes("顧客"),
+					e.summary.includes("顧客") ||
+					e.aliases.some((a) => a.toLowerCase().includes("client")) ||
+					(e.parameters ?? []).some((p) => p.name.toLowerCase().includes("client")),
 			),
 		).toBe(true);
 	});
 
 	it("method + keyword の組み合わせ", () => {
-		const result = handleListPaths({ method: "POST", keyword: "client" }, makeConfig(), schema);
+		const result = handleListPaths(
+			{ method: "POST", keyword: "client", detail: true },
+			makeConfig(),
+			schema,
+		);
 		const parsed = JSON.parse(result.content[0].text as string);
 		expect(parsed.every((e: { method: string }) => e.method === "POST")).toBe(true);
 	});
 
 	it("toolsets で有効ドメインのみに絞る (--toolsets projects)", () => {
-		const result = handleListPaths({}, makeConfig({ toolsets: ["projects"] }), schema);
+		const result = handleListPaths(
+			{ detail: true },
+			makeConfig({ toolsets: ["projects"] }),
+			schema,
+		);
 		const parsed = JSON.parse(result.content[0].text as string);
 		expect(parsed.length).toBeGreaterThan(0);
 		// projects ドメイン (/v1/projects*, /v1/project_costs*) のパスのみ
@@ -121,7 +138,11 @@ describe("handleListPaths", () => {
 	});
 
 	it("parameters を持つエンドポイントは出力に parameters を含む (B1-3)", () => {
-		const result = handleListPaths({ method: "GET", keyword: "projects" }, makeConfig(), schema);
+		const result = handleListPaths(
+			{ method: "GET", keyword: "projects", detail: true },
+			makeConfig(),
+			schema,
+		);
 		const parsed = JSON.parse(result.content[0].text as string);
 		const projects = parsed.find(
 			(e: { path: string; method: string }) => e.path === "/v1/projects" && e.method === "GET",
@@ -132,7 +153,11 @@ describe("handleListPaths", () => {
 	});
 
 	it("parameters を持たないエンドポイントには parameters を付けない (B1-3)", () => {
-		const result = handleListPaths({ method: "POST", keyword: "client" }, makeConfig(), schema);
+		const result = handleListPaths(
+			{ method: "POST", keyword: "client", detail: true },
+			makeConfig(),
+			schema,
+		);
 		const parsed = JSON.parse(result.content[0].text as string);
 		const post = parsed.find((e: { path: string }) => e.path === "/v1/clients");
 		expect(post).toBeDefined();
@@ -141,7 +166,11 @@ describe("handleListPaths", () => {
 
 	it("list_paths のパラメータは軽量で enum/description を含めない (B1-3 lean)", () => {
 		// 詳細(enum/説明)は describe で取得する。discovery 出力は軽量に保つ。
-		const result = handleListPaths({ method: "GET", keyword: "projects" }, makeConfig(), schema);
+		const result = handleListPaths(
+			{ method: "GET", keyword: "projects", detail: true },
+			makeConfig(),
+			schema,
+		);
 		const parsed = JSON.parse(result.content[0].text as string);
 		const projects = parsed.find(
 			(e: { path: string; method: string }) => e.path === "/v1/projects" && e.method === "GET",
@@ -150,6 +179,51 @@ describe("handleListPaths", () => {
 		expect(rg.type).toBe("string");
 		expect(rg.enum).toBeUndefined();
 		expect(rg.description).toBeUndefined();
+	});
+
+	it("既定は 1 行 1 endpoint のテキストで、別名を角括弧で付ける", () => {
+		const result = handleListPaths({}, makeConfig(), schema);
+		const text = result.content[0].text as string;
+		expect(text.startsWith("{") || text.startsWith("[")).toBe(false);
+		const lines = text.split("\n");
+		expect(lines.length).toBeGreaterThan(80);
+		expect(lines.find((l) => l.startsWith("GET /v1/analyses "))).toMatch(/\[.*sales.*\]/);
+	});
+
+	it("英語の別名で検索できる", () => {
+		const text = handleListPaths({ keyword: "sales" }, makeConfig(), schema).content[0]
+			.text as string;
+		expect(text).toContain("/v1/analyses");
+		expect(text).not.toContain("/v1/clients");
+	});
+
+	it("パラメータ名でも検索できる", () => {
+		const text = handleListPaths({ keyword: "project_no_eq" }, makeConfig(), schema).content[0]
+			.text as string;
+		expect(text).toContain("GET /v1/projects ");
+	});
+
+	it("空白区切りの複数語は OR", () => {
+		const text = handleListPaths({ keyword: "sales contact" }, makeConfig(), schema).content[0]
+			.text as string;
+		expect(text).toContain("/v1/analyses");
+		expect(text).toContain("/v1/contacts");
+	});
+
+	it("該当なしのときは案内文", () => {
+		const text = handleListPaths({ keyword: "zzzz" }, makeConfig(), schema).content[0]
+			.text as string;
+		expect(text).toContain("該当する endpoint はありません");
+	});
+
+	it("detail=true は enum を短縮表記で含む JSON", () => {
+		const parsed = JSON.parse(
+			handleListPaths({ keyword: "invoices", method: "GET", detail: true }, makeConfig(), schema)
+				.content[0].text as string,
+		);
+		const inv = parsed.find((e: { path: string }) => e.path === "/v1/invoices");
+		const status = inv.parameters.find((p: { name: string }) => p.name === "invoice_status_in[]");
+		expect(status.values).toContain("1:未請求");
 	});
 });
 

@@ -108,10 +108,17 @@ export async function createMcpServer(config: Config): Promise<McpServer> {
 	// list_paths
 	server.tool(
 		"the_board_api_list_paths",
-		"Search available API endpoints. Use this first to discover paths.",
+		"Search available API endpoints (one line per endpoint: METHOD path summary [aliases]). keyword matches path, summary, English/Japanese aliases and query parameter names (space-separated words are OR). Set detail=true to get JSON with query parameters and enum values.",
 		{
 			method: z.string().optional().describe("HTTP method filter (GET, POST, PATCH, DELETE)"),
-			keyword: z.string().optional().describe("Search keyword for path or summary"),
+			keyword: z
+				.string()
+				.optional()
+				.describe("Search words, e.g. 'invoice', 'sales', '請求', 'project_no_eq'"),
+			detail: z
+				.boolean()
+				.optional()
+				.describe("true: return JSON with parameters (names, types, enum values)"),
 		},
 		{
 			title: "List available API endpoints",

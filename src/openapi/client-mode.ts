@@ -11,6 +11,7 @@ import {
 	parseFields,
 	type ResponseFormat,
 } from "../utils/shape.js";
+import { aliasesForPath } from "./aliases.js";
 import {
 	getKnownQueryParams,
 	matchPathPattern,
@@ -18,7 +19,7 @@ import {
 	validatePath,
 } from "./schema-loader.js";
 import { isPathEnabled } from "./toolsets.js";
-import type { MinimalSchema } from "./types.js";
+import type { MinimalParameter, MinimalSchema } from "./types.js";
 
 /**
  * クエリパラメータを送信前に検証する。問題があればエラーメッセージ、無ければ null。
@@ -108,55 +109,97 @@ const DESTRUCTIVE_PATH_PATTERNS = [
 	"/payment_status/",
 ];
 
+/** enum を持つパラメータを "値:ラベル" 短縮表記の文字列にまとめる。enum が無ければ undefined。 */
+function enumShortForm(p: MinimalParameter): string | undefined {
+	if (!p.enum || p.enum.length === 0) return undefined;
+	return p.enum
+		.map((v) => (p.enumLabels?.[String(v)] ? `${v}:${p.enumLabels[String(v)]}` : String(v)))
+		.join("|");
+}
+
 export function handleListPaths(
-	args: { method?: string; keyword?: string },
+	args: { method?: string; keyword?: string; detail?: boolean },
 	config: Config,
 	schema: MinimalSchema,
 ): CallToolResult {
-	const results: {
+	const tokens = (args.keyword ?? "")
+		.toLowerCase()
+		.split(/\s+/)
+		.filter((t) => t.length > 0);
+
+	const entries: {
 		method: string;
 		path: string;
 		summary: string;
-		parameters?: MinimalSchema["paths"][string][string]["parameters"];
+		aliases: string[];
+		parameters?: MinimalParameter[];
 	}[] = [];
 
 	for (const [path, pathObj] of Object.entries(schema.paths)) {
 		// 無効な toolset に属するパスは列挙しない
-		if (!isPathEnabled(path, config.toolsets)) {
-			continue;
-		}
-
+		if (!isPathEnabled(path, config.toolsets)) continue;
+		const aliases = aliasesForPath(path);
 		for (const [method, operation] of Object.entries(pathObj)) {
 			const upperMethod = method.toUpperCase();
+			if (args.method && upperMethod !== args.method.toUpperCase()) continue;
 			const summary = operation.summary ?? "";
-
-			if (args.method && upperMethod !== args.method.toUpperCase()) {
-				continue;
+			if (tokens.length > 0) {
+				const haystack = [
+					path,
+					summary,
+					...aliases,
+					...(operation.parameters ?? []).map((p) => p.name),
+				]
+					.join(" ")
+					.toLowerCase();
+				if (!tokens.some((t) => haystack.includes(t))) continue;
 			}
-
-			if (args.keyword) {
-				const kw = args.keyword.toLowerCase();
-				if (!path.toLowerCase().includes(kw) && !summary.toLowerCase().includes(kw)) {
-					continue;
-				}
-			}
-
-			// スキーマが宣言するクエリパラメータ名を同梱し、AI が外部 OpenAPI を見ずに
-			// フィルタ名 (project_no_eq 等) を発見できるようにする (B1-3)。
-			// enum/説明などの詳細は discovery を軽量に保つため describe 側に委ねる。
-			const entry: (typeof results)[number] = { method: upperMethod, path, summary };
-			if (operation.parameters && operation.parameters.length > 0) {
-				entry.parameters = operation.parameters.map((p) => ({
-					name: p.name,
-					required: p.required,
-					type: p.type,
-				}));
-			}
-			results.push(entry);
+			entries.push({
+				method: upperMethod,
+				path,
+				summary,
+				aliases,
+				parameters: operation.parameters,
+			});
 		}
 	}
 
-	const response = createTextResponse(JSON.stringify(results));
+	let text: string;
+	if (entries.length === 0) {
+		text =
+			"該当する endpoint はありません。keyword を変える (英語・日本語どちらでも可) か、引数なしで全件を確認してください。";
+	} else if (args.detail) {
+		text = JSON.stringify(
+			entries.map((e) => ({
+				method: e.method,
+				path: e.path,
+				summary: e.summary,
+				aliases: e.aliases,
+				...(e.parameters && e.parameters.length > 0
+					? {
+							parameters: e.parameters.map((p) => {
+								const values = enumShortForm(p);
+								return {
+									name: p.name,
+									required: p.required,
+									type: p.type,
+									...(values ? { values } : {}),
+								};
+							}),
+						}
+					: {}),
+			})),
+		);
+	} else {
+		text = entries
+			.map(
+				(e) =>
+					`${e.method} ${e.path} ${e.summary}${e.aliases.length > 0 ? ` [${e.aliases.join(", ")}]` : ""}`,
+			)
+			.join("\n");
+	}
+
+	const response = createTextResponse(text);
 	// toolsets で絞り込み中は、隠れた endpoint がある旨を AI に伝える (B3-6)。
 	if (config.toolsets.length < ALL_TOOLSETS.length) {
 		response.content.push({

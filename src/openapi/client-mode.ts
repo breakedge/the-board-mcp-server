@@ -1,13 +1,16 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import {
-	getRateLimitStatus,
-	makeApiRequest,
-	type Pagination,
-	redactSecrets,
-} from "../api/client.js";
+import { getRateLimitStatus, makeApiRequest, redactSecrets } from "../api/client.js";
 import { TheBoardApiError } from "../api/types.js";
 import { ALL_TOOLSETS, type Config, type Toolset } from "../config.js";
 import { createErrorResponse, createTextResponse, formatApiError } from "../utils/response.js";
+import {
+	applyFields,
+	buildListEnvelope,
+	buildSingleEnvelope,
+	maxResponseChars,
+	parseFields,
+	type ResponseFormat,
+} from "../utils/shape.js";
 import {
 	getKnownQueryParams,
 	matchPathPattern,
@@ -16,18 +19,6 @@ import {
 } from "./schema-loader.js";
 import { isPathEnabled } from "./toolsets.js";
 import type { MinimalSchema } from "./types.js";
-
-/** ページネーション状況を AI 向けの一文にする (B2-5)。 */
-function paginationHint(p: Pagination): string {
-	const parts = [`全 ${p.totalCount} 件`];
-	if (p.page !== undefined) parts.push(`page ${p.page}`);
-	if (p.perPage !== undefined) parts.push(`per_page ${p.perPage}`);
-	let hint = `ページネーション: ${parts.join(", ")}。`;
-	if (p.page !== undefined && p.perPage !== undefined && p.page * p.perPage < p.totalCount) {
-		hint += ` 全件取得していません。続きは page=${p.page + 1} を指定してください。`;
-	}
-	return hint;
-}
 
 /**
  * クエリパラメータを送信前に検証する。問題があればエラーメッセージ、無ければ null。
@@ -221,7 +212,7 @@ export function handleDescribe(
 }
 
 export async function handleGet(
-	args: { path: string; query?: Record<string, unknown> },
+	args: { path: string; query?: Record<string, unknown>; format?: string; fields?: unknown },
 	config: Config,
 	schema: MinimalSchema,
 ): Promise<CallToolResult> {
@@ -249,14 +240,33 @@ export async function handleGet(
 		}
 	}
 
+	const format: ResponseFormat = args.format === "detailed" ? "detailed" : "concise";
+	const fields = parseFields(args.fields);
+	const maxChars = maxResponseChars();
+
 	try {
 		const { data, pagination } = await makeApiRequest("GET", sanitized, args.query);
-		const body = createTextResponse(JSON.stringify(data, null, 2));
-		if (pagination) {
-			// 本体とは別 content でページネーション状況を示し、AI が全件取得済みかを判断できるようにする (B2-5)。
-			body.content.push({ type: "text", text: paginationHint(pagination) });
+		const projected = fields ? applyFields(data, fields) : { value: data, unknownFields: [] };
+		if (Array.isArray(projected.value)) {
+			return createTextResponse(
+				buildListEnvelope({
+					data: projected.value,
+					pagination,
+					format,
+					maxChars,
+					unknownFields: projected.unknownFields,
+					request: { path: sanitized, query: args.query },
+				}),
+			);
 		}
-		return body;
+		return createTextResponse(
+			buildSingleEnvelope({
+				data: projected.value,
+				format,
+				maxChars,
+				unknownFields: projected.unknownFields,
+			}),
+		);
 	} catch (err) {
 		return createErrorResponse(formatApiError(err));
 	}

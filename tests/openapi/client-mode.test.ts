@@ -219,7 +219,7 @@ describe("handleGet", () => {
 		expect(result.content[0].text).toContain('"id"');
 	});
 
-	it("リスト GET はページネーションヒントを別 content で返す (B2-5)", async () => {
+	it("リスト GET は envelope の pagination にページネーション情報を含む (B2-5)", async () => {
 		mswServer.use(
 			http.get(`${TEST_BASE_URL}/v1/clients`, () =>
 				HttpResponse.json([{ id: 1 }], {
@@ -229,10 +229,10 @@ describe("handleGet", () => {
 		);
 		const result = await handleGet({ path: "/v1/clients" }, makeConfig(), schema);
 		expect(result.isError).toBeUndefined();
-		const text = result.content.map((c) => c.text).join("\n");
-		expect(text).toContain('"id"'); // 本体は維持
-		expect(text).toContain("57"); // 総件数
-		expect(text).toContain("page");
+		const parsed = JSON.parse(result.content[0].text as string);
+		expect(parsed.data).toEqual([{ id: 1 }]); // 本体は維持
+		expect(parsed.pagination.total_count).toBe(57);
+		expect(parsed.pagination.page).toBe(1);
 	});
 
 	it("query オブジェクト渡し", async () => {
@@ -355,6 +355,92 @@ describe("handleGet", () => {
 			schema,
 		);
 		expect(result.isError).toBe(true);
+	});
+
+	it("既定 (concise) は compact JSON で null キーを省き、0 / false / 空配列は残す", async () => {
+		mswServer.use(
+			http.get(`${TEST_BASE_URL}/v1/clients`, () =>
+				HttpResponse.json([{ id: 1, fax: null, count: 0, flag: false, tags: [] }], {
+					headers: { "X-Total-Count": "1", "X-Page": "1", "X-Per-Page": "10" },
+				}),
+			),
+		);
+		const result = await handleGet({ path: "/v1/clients" }, makeConfig(), schema);
+		const text = result.content[0].text as string;
+		expect(text).not.toContain("\n");
+		expect(JSON.parse(text)).toEqual({
+			data: [{ id: 1, count: 0, flag: false, tags: [] }],
+			pagination: { total_count: 1, page: 1, per_page: 10, returned_count: 1, has_more: false },
+			truncated: false,
+		});
+	});
+
+	it("format=detailed は pretty JSON で null を残す", async () => {
+		mswServer.use(
+			http.get(`${TEST_BASE_URL}/v1/clients/1`, () => HttpResponse.json({ id: 1, fax: null })),
+		);
+		const result = await handleGet(
+			{ path: "/v1/clients/1", format: "detailed" },
+			makeConfig(),
+			schema,
+		);
+		const text = result.content[0].text as string;
+		expect(text).toContain("\n");
+		expect(JSON.parse(text)).toEqual({ data: { id: 1, fax: null } });
+	});
+
+	it("fields で絞り込み、未知のキーは unknown_fields に載せる", async () => {
+		mswServer.use(
+			http.get(`${TEST_BASE_URL}/v1/projects`, () =>
+				HttpResponse.json([{ id: 1, name: "a", client: { id: 2, name: "c" }, total: "1.0" }], {
+					headers: { "X-Total-Count": "1" },
+				}),
+			),
+		);
+		const result = await handleGet(
+			{ path: "/v1/projects", fields: "id,client.name,nope" },
+			makeConfig(),
+			schema,
+		);
+		const parsed = JSON.parse(result.content[0].text as string);
+		expect(parsed.data).toEqual([{ id: 1, client: { name: "c" } }]);
+		expect(parsed.unknown_fields).toEqual(["nope"]);
+	});
+
+	it("上限超過時はレコード単位で切り詰め truncated=true", async () => {
+		vi.stubEnv("THE_BOARD_MAX_RESPONSE_CHARS", "400");
+		mswServer.use(
+			http.get(`${TEST_BASE_URL}/v1/projects`, () =>
+				HttpResponse.json(
+					Array.from({ length: 10 }, (_, i) => ({ id: i, name: "x".repeat(60) })),
+					{ headers: { "X-Total-Count": "10", "X-Page": "1", "X-Per-Page": "10" } },
+				),
+			),
+		);
+		const result = await handleGet({ path: "/v1/projects" }, makeConfig(), schema);
+		const parsed = JSON.parse(result.content[0].text as string);
+		expect(parsed.truncated).toBe(true);
+		expect(parsed.data.length).toBeLessThan(10);
+		expect(parsed.data.length + parsed.dropped_in_page).toBe(10);
+	});
+
+	it("0 件のとき request を echo する", async () => {
+		mswServer.use(
+			http.get(`${TEST_BASE_URL}/v1/projects`, () =>
+				HttpResponse.json([], {
+					headers: { "X-Total-Count": "0", "X-Page": "1", "X-Per-Page": "10" },
+				}),
+			),
+		);
+		const result = await handleGet(
+			{ path: "/v1/projects", query: { name_cont: "zzz" } },
+			makeConfig(),
+			schema,
+		);
+		const parsed = JSON.parse(result.content[0].text as string);
+		expect(parsed.data).toEqual([]);
+		expect(parsed.request).toEqual({ path: "/v1/projects", query: { name_cont: "zzz" } });
+		expect(parsed.validated).toBe(true);
 	});
 });
 

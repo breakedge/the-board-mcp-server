@@ -140,13 +140,35 @@ export async function createMcpServer(config: Config): Promise<McpServer> {
 	// get
 	server.tool(
 		"the_board_api_get",
-		"Send GET request to the board API. Retrieves resources (single or list).",
+		'Send GET request to the board API. Returns JSON {data, pagination, truncated}. Default format is concise (compact JSON, null keys omitted). Use fields to return only the keys you need (e.g. ["id","name","total"]); large pages are cut at record boundaries with truncated=true.',
 		{
 			path: z.string().describe("API path (e.g., /v1/clients, /v1/projects/123)"),
 			query: coercibleRecord.optional().describe("Query parameters"),
+			format: z
+				.enum(["concise", "detailed"])
+				.optional()
+				.describe(
+					"concise (default): compact JSON, null keys omitted (a missing key means null). detailed: pretty JSON with nulls kept.",
+				),
+			fields: z
+				.union([z.array(z.string()), z.string()])
+				.optional()
+				.describe(
+					"Keys to return, dot paths allowed (e.g. id,name,client.name,estimate.details). Applied to each record; unknown keys are listed in unknown_fields.",
+				),
 		},
 		{ title: "Get resource from the board API", readOnlyHint: true },
-		(args) => handleGet(args as { path: string; query?: Record<string, unknown> }, config, schema),
+		(args) =>
+			handleGet(
+				args as {
+					path: string;
+					query?: Record<string, unknown>;
+					format?: string;
+					fields?: unknown;
+				},
+				config,
+				schema,
+			),
 	);
 
 	// post / patch は書き込みが有効な場合のみ登録 (read-only 時は LLM から不可視)

@@ -44,6 +44,10 @@ describe("validateQueryValues", () => {
 		expect(validateQueryValues({ "invoice_status_in[]": [1, "2"] }, params)).toBeNull();
 		expect(validateQueryValues({ response_group: "huge" }, params)).toContain("small");
 	});
+
+	it("enum は decimal 文字列も数値同値で比較する ('2.0' は 2 と一致) (0.3.1)", () => {
+		expect(validateQueryValues({ "invoice_status_in[]": ["2.0"] }, params)).toBeNull();
+	});
 	it("日付は YYYY-MM-DD、計上年月は YYYY-MM", () => {
 		expect(validateQueryValues({ invoice_date_gteq: "2026/08/01" }, params)).toContain(
 			"YYYY-MM-DD",

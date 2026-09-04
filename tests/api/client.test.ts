@@ -107,7 +107,7 @@ describe("makeApiRequest — GET with query params", () => {
 });
 
 describe("makeApiRequest — 配列クエリパラメータ", () => {
-	it("配列値は同名キーを繰り返して付与されること (Rails 形式 tags[]=A&tags[]=B)", async () => {
+	it("配列値はカンマ区切りの単一値として付与されること (board は繰り返しキーの先頭しか見ない)", async () => {
 		let requestUrl: string | null = null;
 
 		server.use(
@@ -121,7 +121,42 @@ describe("makeApiRequest — 配列クエリパラメータ", () => {
 
 		expect(requestUrl).not.toBeNull();
 		const url = new URL(requestUrl as string);
-		expect(url.searchParams.getAll("tags[]")).toEqual(["A", "B"]);
+		expect(url.searchParams.getAll("tags[]")).toEqual(["A,B"]);
+	});
+
+	it("invoice_status_in[] のような複数値フィルタもカンマ区切り 1 個の param になること", async () => {
+		let requestUrl: string | null = null;
+
+		server.use(
+			http.get(`${TEST_BASE_URL}/v1/invoices`, ({ request }) => {
+				requestUrl = request.url;
+				return HttpResponse.json([]);
+			}),
+		);
+
+		await makeApiRequest("GET", "/v1/invoices", { "invoice_status_in[]": ["2", "5"] });
+
+		expect(requestUrl).not.toBeNull();
+		const url = new URL(requestUrl as string);
+		expect(url.searchParams.getAll("invoice_status_in[]")).toEqual(["2,5"]);
+		expect(url.searchParams.getAll("invoice_status_in[]")).toHaveLength(1);
+	});
+
+	it("空配列は未指定として扱い、param 自体を送らないこと (0.3.1)", async () => {
+		let requestUrl: string | null = null;
+
+		server.use(
+			http.get(`${TEST_BASE_URL}/v1/projects`, ({ request }) => {
+				requestUrl = request.url;
+				return HttpResponse.json([]);
+			}),
+		);
+
+		await makeApiRequest("GET", "/v1/projects", { "tags[]": [] });
+
+		expect(requestUrl).not.toBeNull();
+		const url = new URL(requestUrl as string);
+		expect(url.searchParams.has("tags[]")).toBe(false);
 	});
 });
 
@@ -362,6 +397,20 @@ describe("makeApiRequest — timeout / retry / 伏字化", () => {
 			amount: 1000,
 		});
 	});
+
+	it("8 文字未満のトークンでは replaceAll による誤爆で実データを壊さない (0.3.1)", async () => {
+		vi.stubEnv("THE_BOARD_API_TOKEN", "t");
+		server.use(http.get(`${TEST_BASE_URL}/v1/users`, () => HttpResponse.json({ format: "x" })));
+		const { data } = await makeApiRequest("GET", "/v1/users");
+		expect(data).toEqual({ format: "x" });
+	});
+
+	it("3 文字の API key でも replaceAll による誤爆で実データを壊さない (0.3.1)", async () => {
+		vi.stubEnv("THE_BOARD_API_KEY", "key");
+		server.use(http.get(`${TEST_BASE_URL}/v1/users`, () => HttpResponse.json({ key: "x" })));
+		const { data } = await makeApiRequest("GET", "/v1/users");
+		expect(data).toEqual({ key: "x" });
+	});
 });
 
 describe("makeApiRequest — エラーサニタイズ", () => {
@@ -397,6 +446,25 @@ describe("makeApiRequest — エラーサニタイズ", () => {
 		} catch (err) {
 			expect(err).toBeInstanceOf(TheBoardApiError);
 			expect((err as TheBoardApiError).message).not.toContain(TEST_API_KEY);
+		}
+	});
+
+	it("設定中のトークンと異なる Authorization: Bearer 値も正規表現で伏字化されること (0.3.1)", async () => {
+		const otherSecret = ["other", "secret", "value"].join("-");
+		const headerLine = `Authorization: ${"Bearer"} ${otherSecret}`;
+		server.use(
+			http.get(`${TEST_BASE_URL}/v1/clients`, () => {
+				return HttpResponse.json({ message: `${headerLine} is invalid` }, { status: 401 });
+			}),
+		);
+
+		try {
+			await makeApiRequest("GET", "/v1/clients");
+			expect.fail("should have thrown");
+		} catch (err) {
+			expect(err).toBeInstanceOf(TheBoardApiError);
+			expect((err as TheBoardApiError).message).toContain("Authorization: Bearer [REDACTED_TOKEN]");
+			expect((err as TheBoardApiError).message).not.toContain(otherSecret);
 		}
 	});
 

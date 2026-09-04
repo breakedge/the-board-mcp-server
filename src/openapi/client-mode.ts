@@ -344,17 +344,22 @@ export async function handleGet(
 	// LLM が fields / format をツール引数でなく query に書いてしまうことがある。どちらに来ても
 	// query からは必ず取り除き (残すと validateQuery が「不明なクエリパラメータ」で拒否する)、
 	// ツール引数が指定されていればそちらを優先する。validateQuery より前に行う。
+	// query 側の値が null / undefined は「未指定」として無視する (query から除くだけで採用しない)。
 	let query = args.query;
 	let rawFields: unknown = args.fields;
 	let rawFormat = args.format;
 	if (query && ("fields" in query || "format" in query)) {
 		const rest = { ...query };
 		if ("fields" in rest) {
-			if (rawFields === undefined) rawFields = rest.fields;
+			if (rawFields === undefined && rest.fields !== null && rest.fields !== undefined) {
+				rawFields = rest.fields;
+			}
 			delete rest.fields;
 		}
 		if ("format" in rest) {
-			if (rawFormat === undefined) rawFormat = rest.format as string | undefined;
+			if (rawFormat === undefined && rest.format !== null && rest.format !== undefined) {
+				rawFormat = rest.format as string | undefined;
+			}
 			delete rest.format;
 		}
 		query = rest;

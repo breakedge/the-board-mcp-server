@@ -492,6 +492,42 @@ describe("handleGet", () => {
 		expect(parsed.data).toEqual([{ id: 1 }]);
 	});
 
+	it("query の format が null なら未指定として扱い concise で応答する (0.3.1)", async () => {
+		mswServer.use(
+			http.get(`${TEST_BASE_URL}/v1/projects`, ({ request }) => {
+				const url = new URL(request.url);
+				expect(url.searchParams.has("format")).toBe(false);
+				return HttpResponse.json([{ id: 1, name: "a" }]);
+			}),
+		);
+		const result = await handleGet(
+			{ path: "/v1/projects", query: { per_page: 1, format: null } },
+			makeConfig(),
+			schema,
+		);
+		expect(result.isError).toBeUndefined();
+		const parsed = JSON.parse(result.content[0].text as string);
+		expect(parsed.data).toEqual([{ id: 1, name: "a" }]);
+	});
+
+	it("query の fields が null なら未指定として扱い、射影せず API にも送らない (0.3.1)", async () => {
+		mswServer.use(
+			http.get(`${TEST_BASE_URL}/v1/projects`, ({ request }) => {
+				const url = new URL(request.url);
+				expect(url.searchParams.has("fields")).toBe(false);
+				return HttpResponse.json([{ id: 1, name: "a" }]);
+			}),
+		);
+		const result = await handleGet(
+			{ path: "/v1/projects", query: { per_page: 1, fields: null } },
+			makeConfig(),
+			schema,
+		);
+		expect(result.isError).toBeUndefined();
+		const parsed = JSON.parse(result.content[0].text as string);
+		expect(parsed.data).toEqual([{ id: 1, name: "a" }]);
+	});
+
 	it("query から吸収した format が不正なら API を呼ばずに拒否する (C5)", async () => {
 		const result = await handleGet(
 			{ path: "/v1/projects", query: { format: "detaield" } },

@@ -6,13 +6,24 @@ import {
 } from "./rate-limiter.js";
 import { type ApiErrorResponse, TheBoardApiError, TheBoardTimeoutError } from "./types.js";
 
+// 誤設定 (極端に短い apiKey / apiToken) で "format" のような実データ中の部分文字列を
+// 巻き込んで壊さないための最短長ガード。これ未満は素の replaceAll を行わない。
+// トレードオフ: この長さ未満の資格情報は素の文字列としては伏字化されない (誤爆防止を優先)。
+// ただし Authorization ヘッダ経由の漏洩は `Bearer ${apiToken}` の置換と
+// `Authorization: Bearer \S+` の正規表現置換が長さに関わらず引き続き効く。
+const MIN_CREDENTIAL_LENGTH = 8;
+
 /** 指定された key/token をメッセージから伏字化する共通処理 (空文字は no-op)。 */
 function redactWith(message: string, apiKey: string, apiToken: string): string {
 	let sanitized = message;
-	if (apiKey) sanitized = sanitized.replaceAll(apiKey, "[REDACTED_API_KEY]");
+	if (apiKey && apiKey.length >= MIN_CREDENTIAL_LENGTH) {
+		sanitized = sanitized.replaceAll(apiKey, "[REDACTED_API_KEY]");
+	}
 	if (apiToken) {
 		sanitized = sanitized.replaceAll(`Bearer ${apiToken}`, "Bearer [REDACTED_TOKEN]");
-		sanitized = sanitized.replaceAll(apiToken, "[REDACTED_TOKEN]");
+		if (apiToken.length >= MIN_CREDENTIAL_LENGTH) {
+			sanitized = sanitized.replaceAll(apiToken, "[REDACTED_TOKEN]");
+		}
 	}
 	return sanitized.replace(/Authorization: Bearer \S+/g, "Authorization: Bearer [REDACTED_TOKEN]");
 }
@@ -147,14 +158,15 @@ export async function makeApiRequest(
 					if (value === null || value === undefined) {
 						continue;
 					}
-					// 配列値は同名キーを繰り返して付与する。board (Rails) は配列パラメータを
-					// `tags[]=A&tags[]=B` 形式で受けるため、呼び出し側が `tags[]` のように
-					// `[]` 付きキーを渡す前提(String(array) だと "A,B" に潰れてしまう)。
+					// board API は同名キーの繰り返し (`key[]=1&key[]=2`) を受け付けず先頭の値しか
+					// 見ない(本番で実測確認済み)。カンマ区切りの単一値 (`key[]=1,2`) が正しい形式。
 					// 要素が非スカラの場合は handler 側の validateQuery が事前に弾く。
 					if (Array.isArray(value)) {
-						for (const v of value) {
-							url.searchParams.append(key, String(v));
+						// 空配列は「未指定」扱い(送ると key[]= の空値になり board 側の挙動が不定になる)。
+						if (value.length === 0) {
+							continue;
 						}
+						url.searchParams.set(key, value.map((v) => String(v)).join(","));
 					} else {
 						url.searchParams.set(key, String(value));
 					}

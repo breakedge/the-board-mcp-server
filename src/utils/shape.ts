@@ -76,6 +76,11 @@ export function applyFields(
 	value: unknown,
 	fields: string[],
 ): { value: unknown; unknownFields: string[] } {
+	// 空配列には照合対象のレコードが無く、どの field も「見つからなかった」とは言えない。
+	// unknownFields に載せると「フィールド名が誤り」と誤誘導するため、ここでは判定しない。
+	if (Array.isArray(value) && value.length === 0) {
+		return { value: [], unknownFields: [] };
+	}
 	const matched = new Set<string>();
 	const projected = project(value, buildTree(fields), "", matched);
 	return { value: projected, unknownFields: fields.filter((f) => !matched.has(f)) };

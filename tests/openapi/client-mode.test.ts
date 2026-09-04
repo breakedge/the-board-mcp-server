@@ -442,6 +442,25 @@ describe("handleGet", () => {
 		expect(parsed.request).toEqual({ path: "/v1/projects", query: { name_cont: "zzz" } });
 		expect(parsed.validated).toBe(true);
 	});
+
+	it("0 件のとき fields を指定しても unknown_fields を載せない", async () => {
+		mswServer.use(
+			http.get(`${TEST_BASE_URL}/v1/projects`, () =>
+				HttpResponse.json([], {
+					headers: { "X-Total-Count": "0", "X-Page": "1", "X-Per-Page": "10" },
+				}),
+			),
+		);
+		const result = await handleGet(
+			{ path: "/v1/projects", fields: "id,name" },
+			makeConfig(),
+			schema,
+		);
+		const parsed = JSON.parse(result.content[0].text as string);
+		expect(parsed.data).toEqual([]);
+		expect(parsed.validated).toBe(true);
+		expect(parsed).not.toHaveProperty("unknown_fields");
+	});
 });
 
 // ---------------------------------------------------------------------------

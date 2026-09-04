@@ -60,6 +60,10 @@ describe("applyFields", () => {
 		const { value } = applyFields({ contact: null }, ["contact.name"]);
 		expect(value).toEqual({ contact: null });
 	});
+
+	it("空配列は照合対象が無いため unknownFields を空にする", () => {
+		expect(applyFields([], ["id", "name"])).toEqual({ value: [], unknownFields: [] });
+	});
 });
 
 describe("omitNulls", () => {

@@ -12,6 +12,17 @@ export class TheBoardApiError extends Error {
 }
 
 /**
+ * プロセス内で数える日次上限に達したときのエラー (D1)。リモートの 429 と違い
+ * 待っても当日中は回復しないため、withRetry はこれをリトライせず即座に返す。
+ */
+export class TheBoardLocalLimitError extends TheBoardApiError {
+	constructor(message: string) {
+		super(message, 429, null);
+		this.name = "TheBoardLocalLimitError";
+	}
+}
+
+/**
  * board API が timeout した場合のエラー。想定内の失敗として扱い、
  * 「予期しないエラー」ではなくそのままの案内を AI に返せるようにする (D1)。
  */
